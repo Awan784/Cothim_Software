@@ -27,16 +27,6 @@
 </head>
 
 <body class="ams-light {{ wafi_is_rtl() ? 'is-rtl' : '' }}">
-    @if(auth()->check() && ($shell['plan'] ?? '') === 'trial')
-        <div class="ams-trial-banner">
-            @if(($shell['trialDays'] ?? 0) > 0)
-                <span>You’re on a 14-day free trial of the Plus plan. {{ (int) $shell['trialDays'] }} days left.</span>
-            @else
-                <span>Your free trial has ended. Choose a plan to keep invoicing with ZATCA QR.</span>
-            @endif
-            <a href="{{ route('settings.plans') }}" class="ams-trial-cta">Explore plans</a>
-        </div>
-    @endif
     <nav class="px-4 navbar navbar-light ams-mobile-nav col-12 d-lg-none">
         <a class="navbar-brand me-lg-5" href="{{ route('dashboard') }}">
             <img class="navbar-brand-dark" src="{{ asset('assets/img/brand/light.svg') }}" alt="Logo">
@@ -67,9 +57,6 @@
                         </button>
                     </div>
                     <ul class="navbar-nav align-items-center">
-                        <li class="nav-item me-2">
-                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('locale.switch', wafi_is_rtl() ? 'en' : 'ar') }}">{{ wafi_is_rtl() ? 'English' : 'عربي' }}</a>
-                        </li>
                         @if(auth()->user()?->isPlatformAdmin())
                             <li class="nav-item me-2">
                                 <a class="btn btn-sm btn-outline-primary" href="{{ route('platform.home') }}">{{ __('Platform admin') }}</a>

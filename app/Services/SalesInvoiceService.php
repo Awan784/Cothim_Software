@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
+use App\Models\StockItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,6 +18,7 @@ class SalesInvoiceService
         private SettingsService $settings,
         private ZatcaQrService $zatca,
         private CashVoucherService $vouchers,
+        private InventoryService $inventory,
     ) {}
 
     /**
@@ -61,6 +63,7 @@ class SalesInvoiceService
             foreach ($computed['lines'] as $line) {
                 SalesInvoiceLine::create([
                     'sales_invoice_id' => $invoice->id,
+                    'stock_item_id' => $line['stock_item_id'] ?? null,
                     'description' => $line['description'] ?? 'Item',
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
@@ -97,6 +100,27 @@ class SalesInvoiceService
             $invoice->save();
 
             Customer::whereKey($invoice->customer_id)->increment('current_balance', (float) $invoice->total);
+
+            $invoice->load('lines');
+
+            foreach ($invoice->lines as $line) {
+                $stockItemId = $line->stock_item_id;
+                if (! $stockItemId && $line->description) {
+                    $stockItemId = StockItem::query()->where('name', $line->description)->value('id');
+                }
+                if (! $stockItemId) {
+                    continue;
+                }
+
+                $this->inventory->issue((int) $stockItemId, (float) $line->quantity, [
+                    'unit_cost' => $line->unit_price,
+                    'moved_at' => $invoice->invoice_date,
+                    'reference' => $invoice->invoice_no,
+                    'notes' => $line->description,
+                    'source_type' => 'sales_invoice',
+                    'source_id' => $invoice->id,
+                ]);
+            }
 
             return $invoice->fresh(['lines', 'customer']);
         });

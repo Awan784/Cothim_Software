@@ -19,6 +19,8 @@ class StockMovement extends Model
         'moved_at',
         'reference',
         'notes',
+        'source_type',
+        'source_id',
     ];
 
     protected $casts = [

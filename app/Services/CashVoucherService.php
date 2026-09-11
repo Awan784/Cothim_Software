@@ -22,7 +22,7 @@ class CashVoucherService
             ->orderBy('id')
             ->value('id')
             ?? CashAccount::create([
-                'name' => 'Main Cash',
+                'name' => 'Shop Cash',
                 'opening_balance' => 0,
                 'current_balance' => 0,
                 'is_active' => true,

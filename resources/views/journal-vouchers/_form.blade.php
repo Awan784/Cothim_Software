@@ -27,7 +27,7 @@
                 <label class="col-sm-4 col-form-label col-form-label-sm">Type of Account</label>
                 <div class="col-sm-8">
                     <select id="entry_account_type" class="form-select form-select-sm">
-                        @foreach(['supplier' => 'Suppliers', 'customer' => 'Customers', 'investor' => 'Investors', 'expense' => 'Expenses', 'bank' => 'Banks', 'cash' => 'Cash', 'nominal' => 'Nominal A/C'] as $k => $label)
+                        @foreach(['supplier' => 'Suppliers', 'customer' => 'Customers', 'expense' => 'Expenses', 'bank' => 'Banks', 'cash' => 'Cash'] as $k => $label)
                             <option value="{{ $k }}">{{ $label }}</option>
                         @endforeach
                     </select>

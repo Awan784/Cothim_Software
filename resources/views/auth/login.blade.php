@@ -1,4 +1,4 @@
-@extends('marketing.layout')
+@extends('auth.layout')
 @section('title', __('Login').' — '.config('ams.product_name'))
 
 @section('content')
@@ -33,7 +33,6 @@
             </div>
             <button class="wafi-btn wafi-btn-indigo" type="submit">{{ __('Sign in') }}</button>
         </form>
-        <p class="muted" style="margin-top:1rem">{{ __('New company?') }} <a href="{{ route('register') }}">{{ __('Start now for free') }}</a></p>
     </div>
 </section>
 @endsection

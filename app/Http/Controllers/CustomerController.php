@@ -3,97 +3,94 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class CustomerController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): View
     {
-        $customers = Customer::orderBy('name')->get();
+        $customers = Customer::orderByRaw('COALESCE(NULLIF(company_name, ""), name)')->orderBy('name')->get();
 
         return view('customers.index', compact('customers'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
-        return view('customers.create');
+        return view('customers.create', [
+            'customer' => new Customer(['is_active' => true]),
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'vat_number' => ['nullable', 'string', 'max:32'],
-            'address' => ['nullable', 'string'],
-            'opening_balance' => ['nullable', 'numeric'],
-            'is_active' => ['nullable', 'boolean'],
-        ]);
-
-        $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
-        $data['is_active'] = (bool) ($data['is_active'] ?? true);
+        $data = $this->validated($request);
+        $data['is_active'] = $request->boolean('is_active');
 
         Customer::create($data);
 
         return redirect()->route('customers.index')->with('success', 'Customer created.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Customer $customer)
+    public function show(Customer $customer): RedirectResponse
     {
         return redirect()->route('customers.edit', $customer);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Customer $customer)
+    public function edit(Customer $customer): View
     {
         return view('customers.edit', compact('customer'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Customer $customer)
+    public function update(Request $request, Customer $customer): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'vat_number' => ['nullable', 'string', 'max:32'],
-            'address' => ['nullable', 'string'],
-            'opening_balance' => ['nullable', 'numeric'],
-            'is_active' => ['nullable', 'boolean'],
-        ]);
-
-        $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
-        $data['is_active'] = (bool) ($data['is_active'] ?? false);
+        $data = $this->validated($request);
+        $data['is_active'] = $request->boolean('is_active');
 
         $customer->update($data);
 
         return redirect()->route('customers.index')->with('success', 'Customer updated.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Customer $customer)
+    public function destroy(Customer $customer): RedirectResponse
     {
         $customer->delete();
 
         return back()->with('success', 'Customer deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validated(Request $request): array
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'proprietor_name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'mobile' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'ntn' => ['nullable', 'string', 'max:50'],
+            'strn' => ['nullable', 'string', 'max:50'],
+            'license_no' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'area' => ['nullable', 'string', 'max:150'],
+            'address' => ['nullable', 'string'],
+            'opening_balance' => ['nullable', 'numeric'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
+        $data['vat_number'] = $data['strn'] ?? null;
+
+        foreach (['company_name', 'proprietor_name', 'phone', 'mobile', 'email', 'ntn', 'strn', 'license_no', 'city', 'area', 'address'] as $field) {
+            if (($data[$field] ?? '') === '') {
+                $data[$field] = null;
+            }
+        }
+
+        return $data;
     }
 }

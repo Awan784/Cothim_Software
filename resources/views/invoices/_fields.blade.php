@@ -3,6 +3,7 @@
     $rows = old('lines');
     if (! is_array($rows) && $isEdit) {
         $rows = $invoice->lines->map(fn ($l) => [
+            'stock_item_id' => $l->stock_item_id,
             'description' => $l->description,
             'quantity' => $l->quantity,
             'unit_price' => $l->unit_price,
@@ -18,7 +19,7 @@
                 <option value="">Select customer</option>
                 @foreach($customers as $customer)
                     <option value="{{ $customer->id }}" {{ (string) old('customer_id', $isEdit ? $invoice->customer_id : '') === (string) $customer->id ? 'selected' : '' }}>
-                        {{ $customer->name }}
+                        {{ $customer->displayName() }}
                     </option>
                 @endforeach
             </select>

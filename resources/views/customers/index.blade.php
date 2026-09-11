@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-0">Customers</h1>
-                <p class="mb-0">Manage customers.</p>
+                <p class="mb-0">Shops and pharmacies.</p>
             </div>
             <div>
                 <a href="{{ route('customers.create') }}" class="btn btn-sm btn-gray-800">Add Customer</a>
@@ -18,10 +18,12 @@
                 <table class="table table-flush" data-datatable="true">
                     <thead class="thead-light">
                         <tr>
-                            <th>Name</th>
+                            <th>Company / shop</th>
+                            <th>Contact</th>
+                            <th>NTN</th>
+                            <th>City</th>
                             <th>Phone</th>
-                            <th>Email</th>
-                            <th class="text-end">Opening Balance</th>
+                            <th class="text-end">Opening</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -29,9 +31,11 @@
                     <tbody>
                         @forelse($customers as $customer)
                             <tr>
+                                <td class="text-gray-900">{{ $customer->displayName() }}</td>
                                 <td class="text-gray-900">{{ $customer->name }}</td>
-                                <td class="text-gray-900">{{ $customer->phone }}</td>
-                                <td class="text-gray-900">{{ $customer->email }}</td>
+                                <td class="text-gray-900">{{ $customer->ntn ?: '—' }}</td>
+                                <td class="text-gray-900">{{ $customer->city ?: '—' }}</td>
+                                <td class="text-gray-900">{{ $customer->mobile ?: $customer->phone }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $customer->opening_balance, 2) }}</td>
                                 <td class="text-gray-900">{{ $customer->is_active ? 'Active' : 'Inactive' }}</td>
                                 <td class="text-end">
@@ -45,7 +49,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-gray-600">No customers yet.</td>
+                                <td colspan="8" class="text-center text-gray-600">No customers yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

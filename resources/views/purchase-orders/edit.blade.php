@@ -24,7 +24,3 @@
     </div>
 @endsection
 
-@section('scripts')
-    @stack('page_scripts')
-@endsection
-

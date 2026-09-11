@@ -68,7 +68,6 @@
                                 <option value="">Select type…</option>
                                 <option value="customer">Customer</option>
                                 <option value="supplier">Supplier</option>
-                                <option value="investor">Investor</option>
                                 <option value="expense">Expense Account</option>
                             </select>
                         </div>
@@ -108,7 +107,7 @@
                     </div>
                     <div class="modal-body">
                         <p class="text-muted small mb-3">
-                            Lists every voucher: customer, supplier, investor, expense, and other — cash receive, cash payment, and bank payments.
+                            Lists every voucher: customer, supplier, expense, and other — cash receive, cash payment, and bank payments.
                         </p>
                         <div class="row">
                             <div class="col-md-6 mb-3">

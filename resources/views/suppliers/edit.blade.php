@@ -40,6 +40,13 @@
                         <input name="vat_number" value="{{ old('vat_number', $supplier->vat_number) }}" class="form-control @error('vat_number') is-invalid @enderror">
                         @error('vat_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">City</label>
+                        @include('partials.pakistan-city-select', [
+                            'selectId' => 'supplier_city',
+                            'selectedCity' => old('city', $supplier->city),
+                        ])
+                    </div>
                 </div>
 
                 <div class="mb-3">

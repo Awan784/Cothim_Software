@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo(function () {
-            return auth()->user()?->isPlatformAdmin() ? '/platform' : '/get-started';
+            return auth()->user()?->isPlatformAdmin() ? '/platform' : '/dashboard';
         });
 
         $middleware->alias([

@@ -37,6 +37,7 @@ class SupplierController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'vat_number' => ['nullable', 'string', 'max:32'],
+            'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string'],
             'opening_balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
@@ -44,6 +45,7 @@ class SupplierController extends Controller
 
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
+        $data['city'] = ($data['city'] ?? '') === '' ? null : $data['city'];
 
         Supplier::create($data);
 
@@ -129,6 +131,7 @@ class SupplierController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'vat_number' => ['nullable', 'string', 'max:32'],
+            'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string'],
             'opening_balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
@@ -136,6 +139,7 @@ class SupplierController extends Controller
 
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['is_active'] = (bool) ($data['is_active'] ?? false);
+        $data['city'] = ($data['city'] ?? '') === '' ? null : $data['city'];
 
         $supplier->update($data);
 

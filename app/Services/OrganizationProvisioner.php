@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\BankAccount;
+use App\Models\CashAccount;
 use App\Models\ExpenseAccount;
 use App\Models\NominalAccount;
 use App\Models\Organization;
@@ -16,6 +18,7 @@ class OrganizationProvisioner
         try {
             $this->seedChartOfAccounts();
             $this->seedExpenseAccounts();
+            $this->seedShopCashAccount();
         } finally {
             if ($previous) {
                 app()->instance('current_organization_id', $previous);
@@ -64,6 +67,20 @@ class OrganizationProvisioner
                 ]
             );
         }
+    }
+
+    private function seedShopCashAccount(): void
+    {
+        BankAccount::ensureShopCash();
+
+        CashAccount::firstOrCreate(
+            ['name' => 'Shop Cash'],
+            [
+                'opening_balance' => 0,
+                'current_balance' => 0,
+                'is_active' => true,
+            ]
+        );
     }
 
     private function seedExpenseAccounts(): void

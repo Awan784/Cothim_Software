@@ -56,7 +56,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('get-started')->with('success', 'Welcome to '.config('ams.product_name').'. Your 14-day free trial has started.');
+        return redirect()->route('dashboard')->with('success', 'Welcome to '.config('ams.product_name').'.');
     }
 
     public function processLoginRequest(Request $request): RedirectResponse
@@ -86,6 +86,6 @@ class AuthController extends Controller
             return redirect()->intended(route('platform.home'));
         }
 
-        return redirect()->intended(route('get-started'));
+        return redirect()->intended(route('dashboard'));
     }
 }

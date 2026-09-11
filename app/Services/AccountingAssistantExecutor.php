@@ -24,7 +24,10 @@ use RuntimeException;
 
 class AccountingAssistantExecutor
 {
-    public function __construct(private CashVoucherService $vouchers) {}
+    public function __construct(
+        private CashVoucherService $vouchers,
+        private InventoryService $inventory,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $pending
@@ -269,9 +272,7 @@ class AccountingAssistantExecutor
             throw new InvalidArgumentException('Purchase order needs at least one item.');
         }
 
-        $poNo = 'PO-'.now()->format('Ymd-His').'-'.random_int(100, 999);
-
-        $po = DB::transaction(function () use ($payload, $items, $poNo) {
+        $po = DB::transaction(function () use ($payload, $items) {
             $supplier = Supplier::whereKey($payload['supplier_id'])->lockForUpdate()->firstOrFail();
             $total = 0.0;
             foreach ($items as $row) {
@@ -279,7 +280,7 @@ class AccountingAssistantExecutor
             }
 
             $order = PurchaseOrder::create([
-                'po_no' => $poNo,
+                'po_no' => PurchaseOrder::nextNumber(),
                 'supplier_id' => $supplier->id,
                 'po_date' => $payload['po_date'] ?? now()->toDateString(),
                 'notes' => $payload['notes'] ?? 'Created via assistant',
@@ -301,14 +302,13 @@ class AccountingAssistantExecutor
                 ]);
 
                 if (! empty($row['stock_item_id'])) {
-                    StockMovement::create([
-                        'stock_item_id' => $row['stock_item_id'],
-                        'type' => 'in',
-                        'quantity' => $qty,
+                    $this->inventory->receive((int) $row['stock_item_id'], $qty, [
                         'unit_cost' => $unitPrice,
                         'moved_at' => $order->po_date,
                         'reference' => $order->po_no,
                         'notes' => $row['item_name'] ?? 'Purchase order',
+                        'source_type' => 'purchase_order',
+                        'source_id' => $order->id,
                     ]);
                 }
             }

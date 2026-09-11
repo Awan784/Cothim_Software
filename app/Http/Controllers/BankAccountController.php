@@ -13,7 +13,9 @@ class BankAccountController extends Controller
      */
     public function index()
     {
-        $bankAccounts = BankAccount::orderBy('name')->get();
+        BankAccount::ensureShopCash();
+
+        $bankAccounts = BankAccount::orderByDesc('is_cash')->orderBy('name')->get();
 
         return view('bank-accounts.index', compact('bankAccounts'));
     }
@@ -42,6 +44,7 @@ class BankAccountController extends Controller
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['current_balance'] = $data['opening_balance'];
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
+        $data['is_cash'] = false;
 
         BankAccount::create($data);
 
@@ -108,6 +111,10 @@ class BankAccountController extends Controller
      */
     public function destroy(BankAccount $bankAccount)
     {
+        if ($bankAccount->is_cash) {
+            return back()->with('error', 'The shop cash account cannot be deleted.');
+        }
+
         $bankAccount->delete();
 
         return back()->with('success', 'Bank account deleted.');

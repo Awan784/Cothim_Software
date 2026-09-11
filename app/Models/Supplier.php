@@ -15,6 +15,7 @@ class Supplier extends Model
         'phone',
         'email',
         'address',
+        'city',
         'vat_number',
         'opening_balance',
         'current_balance',

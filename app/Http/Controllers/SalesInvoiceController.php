@@ -149,7 +149,8 @@ class SalesInvoiceController extends Controller
             'type' => ['required', 'in:simplified,standard'],
             'notes' => ['nullable', 'string'],
             'lines' => ['required', 'array', 'min:1'],
-            'lines.*.description' => ['required', 'string', 'max:255'],
+            'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
+            'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
             'lines.*.vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
@@ -157,8 +158,21 @@ class SalesInvoiceController extends Controller
 
         $data['lines'] = array_values(array_filter(
             $data['lines'],
-            fn ($line) => filled($line['description'] ?? null)
+            fn ($line) => filled($line['description'] ?? null) || filled($line['stock_item_id'] ?? null)
         ));
+
+        foreach ($data['lines'] as &$line) {
+            if (empty($line['stock_item_id'])) {
+                $line['stock_item_id'] = null;
+                continue;
+            }
+
+            $item = StockItem::whereKey($line['stock_item_id'])->first();
+            if ($item && blank($line['description'] ?? null)) {
+                $line['description'] = $item->name;
+            }
+        }
+        unset($line);
 
         return $data;
     }
@@ -170,7 +184,8 @@ class SalesInvoiceController extends Controller
     {
         return StockItem::query()
             ->where('is_active', true)
+            ->with('variants')
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'unit', 'sale_price']);
+            ->get(['id', 'name', 'sku', 'unit', 'sale_price', 'quantity', 'has_variants']);
     }
 }

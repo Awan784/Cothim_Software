@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Models\InboxItem;
 use App\Models\User;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Gate;
@@ -30,18 +29,11 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('template.*', function ($view) {
             $settings = app(SettingsService::class);
-            $inboxNew = 0;
-            try {
-                $inboxNew = InboxItem::query()->where('status', 'new')->count();
-            } catch (\Throwable) {
-                $inboxNew = 0;
-            }
 
             $view->with('shell', [
                 'company' => $settings->companyName(),
                 'plan' => $settings->plan(),
                 'trialDays' => $settings->trialDaysLeft(),
-                'inboxNew' => $inboxNew,
             ]);
         });
     }

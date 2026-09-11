@@ -11,34 +11,26 @@ class CheckModulePermission
     /** @var list<string> */
     private const SKIP_ROUTES = [
         'logout',
-        'locale.switch',
     ];
 
     /** @var array<string, array{0: string, 1: string}> */
     private const ROUTE_MAP = [
         'dashboard' => ['dashboard', 'view'],
-        'get-started' => ['get-started', 'view'],
         'assistant.chat' => ['dashboard', 'view'],
         'assistant.confirm' => ['dashboard', 'view'],
         'assistant.cancel' => ['dashboard', 'view'],
         'invoices.issue' => ['invoices', 'update'],
         'invoices.pay' => ['invoices', 'update'],
         'invoices.print' => ['invoices', 'view'],
-        'bills.post' => ['bills', 'update'],
-        'bills.pay' => ['bills', 'update'],
-        'inbox.post-expense' => ['inbox', 'update'],
-        'inbox.post-bill' => ['inbox', 'update'],
-        'inbox.reject' => ['inbox', 'update'],
         'settings.company' => ['settings', 'view'],
         'settings.company.update' => ['settings', 'update'],
-        'settings.plans' => ['settings', 'view'],
-        'settings.plans.select' => ['settings', 'update'],
         'reports.party-ledger' => ['reports', 'view'],
         'reports.party-ledger.accounts' => ['reports', 'view'],
         'reports.cash-register' => ['reports', 'view'],
         'reports.journal-report' => ['reports', 'view'],
         'reports.show' => ['reports', 'view'],
         'cash-vouchers.print' => ['cash-vouchers', 'view'],
+        'purchase-orders.print' => ['purchase-orders', 'view'],
         'bank-accounts.balance' => ['bank-accounts', 'view'],
     ];
 
@@ -100,9 +92,6 @@ class CheckModulePermission
 
         if ($module === 'reports') {
             return ['reports', 'view'];
-        }
-        if ($module === 'get-started') {
-            return ['get-started', 'view'];
         }
         if ($module === 'settings') {
             return ['settings', $routeAction === 'update' || $routeAction === 'select' ? 'update' : 'view'];

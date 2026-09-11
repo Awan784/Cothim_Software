@@ -7,7 +7,6 @@ use App\Models\BankAccount;
 use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\ExpenseAccount;
-use App\Models\Investor;
 use App\Models\Supplier;
 use App\Services\CashVoucherService;
 use App\Services\SettingsService;
@@ -44,7 +43,7 @@ class CashVoucherController extends Controller
             $typeFilter = null;
         }
 
-        $allowedAccountTypes = ['customer', 'supplier', 'investor', 'expense', 'other'];
+        $allowedAccountTypes = ['customer', 'supplier', 'expense', 'other'];
         if (in_array($accountTypeFilter, $allowedAccountTypes, true)) {
             $query->where('account_type', $accountTypeFilter);
 
@@ -62,7 +61,6 @@ class CashVoucherController extends Controller
 
         $customers = Customer::orderBy('name')->get(['id', 'name']);
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
-        $investors = Investor::orderBy('name')->get(['id', 'name']);
         $expenseAccounts = ExpenseAccount::orderBy('name')->get(['id', 'name']);
 
         return view('cash-vouchers.index', compact(
@@ -72,7 +70,6 @@ class CashVoucherController extends Controller
             'accountIdFilter',
             'customers',
             'suppliers',
-            'investors',
             'expenseAccounts',
         ));
     }
@@ -84,13 +81,12 @@ class CashVoucherController extends Controller
     {
         $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
-        $investors = Investor::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
         $cashAccountId = $this->defaultCashAccountId();
         $cashBalance = (float) CashAccount::whereKey($cashAccountId)->value('current_balance');
 
-        return view('cash-vouchers.create', compact('customers', 'suppliers', 'investors', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
+        return view('cash-vouchers.create', compact('customers', 'suppliers', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
     }
 
     /**
@@ -102,7 +98,7 @@ class CashVoucherController extends Controller
             'type' => ['required', 'in:receive,payment'],
             'payment_method' => ['required', 'in:cash,bank'],
             'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
-            'account_type' => ['required', 'in:customer,supplier,investor,expense,other'],
+            'account_type' => ['required', 'in:customer,supplier,expense,other'],
             'account_id' => ['nullable', 'integer'],
             'other_name' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'gt:0'],
@@ -175,13 +171,12 @@ class CashVoucherController extends Controller
     {
         $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
-        $investors = Investor::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
         $cashAccountId = $this->defaultCashAccountId();
         $cashBalance = (float) CashAccount::whereKey($cashAccountId)->value('current_balance');
 
-        return view('cash-vouchers.edit', compact('cashVoucher', 'customers', 'suppliers', 'investors', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
+        return view('cash-vouchers.edit', compact('cashVoucher', 'customers', 'suppliers', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
     }
 
     /**
@@ -193,7 +188,7 @@ class CashVoucherController extends Controller
             'type' => ['required', 'in:receive,payment'],
             'payment_method' => ['required', 'in:cash,bank'],
             'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
-            'account_type' => ['required', 'in:customer,supplier,investor,expense,other'],
+            'account_type' => ['required', 'in:customer,supplier,expense,other'],
             'account_id' => ['nullable', 'integer'],
             'other_name' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'gt:0'],

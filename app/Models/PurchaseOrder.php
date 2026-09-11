@@ -33,5 +33,21 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(PurchaseOrderItem::class);
     }
+
+    public static function nextNumber(): string
+    {
+        $max = 1000;
+
+        foreach (static::query()->where('po_no', 'like', 'PO-%')->lockForUpdate()->pluck('po_no') as $poNo) {
+            if (preg_match('/^PO-(\d+)$/', (string) $poNo, $match)) {
+                $n = (int) $match[1];
+                if ($n > $max) {
+                    $max = $n;
+                }
+            }
+        }
+
+        return 'PO-'.($max + 1);
+    }
 }
 

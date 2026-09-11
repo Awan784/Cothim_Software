@@ -77,7 +77,7 @@
     <div class="col-md-4 mb-3">
         <label class="form-label">Account Type</label>
         <select name="account_type" class="form-select @error('account_type') is-invalid @enderror" required id="account_type">
-            @foreach(['customer' => 'Customer', 'supplier' => 'Supplier', 'investor' => 'Investor', 'expense' => 'Expense', 'other' => 'Other'] as $k => $label)
+            @foreach(['customer' => 'Customer', 'supplier' => 'Supplier', 'expense' => 'Expense', 'other' => 'Other'] as $k => $label)
                 <option value="{{ $k }}" {{ $selectedAccountType === $k ? 'selected' : '' }}>
                     {{ $label }}
                 </option>
@@ -138,7 +138,6 @@
             const accountOptions = {
                 customer: @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()),
                 supplier: @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()),
-                investor: @json($investors->map(fn ($i) => ['id' => $i->id, 'name' => $i->name])->values()),
                 expense: @json(($expenseAccounts ?? collect())->map(fn ($e) => ['id' => $e->id, 'name' => $e->name])->values()),
             };
 
@@ -176,7 +175,7 @@
             function rebuildAccountSelect() {
                 const t = typeSelect.value;
                 const list = accountOptions[t] || [];
-                const labels = { customer: 'customer', supplier: 'supplier', investor: 'investor', expense: 'expense' };
+                const labels = { customer: 'customer', supplier: 'supplier', expense: 'expense' };
 
                 accountSelect.innerHTML = '<option value="">Select ' + (labels[t] || 'account') + '</option>';
                 list.forEach(function (item) {

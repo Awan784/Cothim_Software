@@ -1,15 +1,15 @@
 <nav id="sidebarMenu" class="sidebar ams-sidebar d-lg-block collapse" data-simplebar>
     @php
         $company = $shell['company'] ?? config('ams.product_name');
-        $inboxNew = (int) ($shell['inboxNew'] ?? 0);
-        $isSales = request()->routeIs('invoices.*') || request()->routeIs('customers.*');
-        $isPurchases = request()->routeIs('bills.*') || request()->routeIs('purchase-orders.*') || request()->routeIs('suppliers.*');
-        $isAccounting = request()->routeIs('cash-vouchers.*') || request()->routeIs('journal-vouchers.*') || request()->routeIs('bank-accounts.*') || request()->routeIs('nominal-accounts.*') || request()->routeIs('expense-accounts.*') || request()->routeIs('investors.*');
-        $isStock = request()->routeIs('stock-categories.*') || request()->routeIs('stock-items.*') || request()->routeIs('stock-movements.*');
+        $isAccounts = request()->routeIs('customers.*') || request()->routeIs('salesmen.*') || request()->routeIs('suppliers.*') || request()->routeIs('bank-accounts.*');
+        $isSales = request()->routeIs('invoices.*');
+        $isPurchases = request()->routeIs('purchase-orders.*');
+        $isAccounting = request()->routeIs('cash-vouchers.*') || request()->routeIs('journal-vouchers.*');
+        $isStock = request()->routeIs('stock-categories.*') || request()->routeIs('stock-items.*');
         $isSettings = request()->routeIs('settings.*') || request()->routeIs('users.*');
     @endphp
     <div class="sidebar-inner px-3 pt-3 pb-4 d-flex flex-column" style="min-height:100%">
-        <a href="{{ route('get-started') }}" class="ams-brand mb-3">
+        <a href="{{ route('dashboard') }}" class="ams-brand mb-3">
             <span class="ams-brand-mark">W</span>
             <span class="ams-brand-name">{{ config('ams.product_name') }}</span>
         </a>
@@ -20,21 +20,45 @@
 
         <ul class="nav flex-column flex-grow-1">
             <li class="nav-item">
-                <a href="{{ route('get-started') }}" class="nav-link {{ request()->routeIs('get-started') ? 'active' : '' }}">
-                    <span class="sidebar-text">{{ __('Get started') }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('inbox.index') }}" class="nav-link {{ request()->routeIs('inbox.*') ? 'active' : '' }}">
-                    <span class="sidebar-text">{{ __('Inbox') }}</span>
-                    @if($inboxNew > 0)<span class="badge bg-primary ms-auto">{{ $inboxNew }}</span>@endif
-                </a>
-            </li>
-            <li class="nav-item">
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <span class="sidebar-text">Dashboard</span>
                 </a>
             </li>
+
+            <li class="nav-item">
+                <a href="#stockMenu" data-bs-toggle="collapse" class="nav-link {{ $isStock ? 'active' : '' }}" aria-expanded="{{ $isStock ? 'true' : 'false' }}">
+                    <span class="sidebar-text">{{ __('Inventory') }}</span>
+                    <span class="link-arrow ms-auto">▸</span>
+                </a>
+                <div class="multi-level collapse {{ $isStock ? 'show' : '' }}" id="stockMenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('stock-categories.*') ? 'active' : '' }}" href="{{ route('stock-categories.index') }}"><span class="sidebar-text">Categories</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('stock-items.*') ? 'active' : '' }}" href="{{ route('stock-items.index') }}"><span class="sidebar-text">Items</span></a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a href="#accountsMenu" data-bs-toggle="collapse" class="nav-link {{ $isAccounts ? 'active' : '' }}" aria-expanded="{{ $isAccounts ? 'true' : 'false' }}">
+                    <span class="sidebar-text">Accounts</span>
+                    <span class="link-arrow ms-auto">▸</span>
+                </a>
+                <div class="multi-level collapse {{ $isAccounts ? 'show' : '' }}" id="accountsMenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}"><span class="sidebar-text">Customers</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('salesmen.*') ? 'active' : '' }}" href="{{ route('salesmen.index') }}"><span class="sidebar-text">Salesmen</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}" href="{{ route('suppliers.index') }}"><span class="sidebar-text">Suppliers</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('bank-accounts.*') ? 'active' : '' }}" href="{{ route('bank-accounts.index') }}"><span class="sidebar-text">Bank Accounts</span></a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a href="{{ route('expense-accounts.index') }}" class="nav-link {{ request()->routeIs('expense-accounts.*') ? 'active' : '' }}">
+                    <span class="sidebar-text">Expenses</span>
+                </a>
+            </li>
+
             <li class="nav-item">
                 <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                     <span class="sidebar-text">{{ __('Reports') }}</span>
@@ -49,7 +73,6 @@
                 <div class="multi-level collapse {{ $isSales ? 'show' : '' }}" id="salesMenu">
                     <ul class="nav flex-column">
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}"><span class="sidebar-text">Invoices</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}"><span class="sidebar-text">Customers</span></a></li>
                     </ul>
                 </div>
             </li>
@@ -61,9 +84,7 @@
                 </a>
                 <div class="multi-level collapse {{ $isPurchases ? 'show' : '' }}" id="purchasesMenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('bills.*') ? 'active' : '' }}" href="{{ route('bills.index') }}"><span class="sidebar-text">Bills</span></a></li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}" href="{{ route('purchase-orders.index') }}"><span class="sidebar-text">Purchase orders</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}" href="{{ route('suppliers.index') }}"><span class="sidebar-text">Suppliers</span></a></li>
                     </ul>
                 </div>
             </li>
@@ -77,24 +98,6 @@
                     <ul class="nav flex-column">
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('cash-vouchers.*') ? 'active' : '' }}" href="{{ route('cash-vouchers.index') }}"><span class="sidebar-text">Cash vouchers</span></a></li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('journal-vouchers.*') ? 'active' : '' }}" href="{{ route('journal-vouchers.index') }}"><span class="sidebar-text">Journals</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('bank-accounts.*') ? 'active' : '' }}" href="{{ route('bank-accounts.index') }}"><span class="sidebar-text">Bank accounts</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('nominal-accounts.*') ? 'active' : '' }}" href="{{ route('nominal-accounts.index') }}"><span class="sidebar-text">Chart of accounts</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('expense-accounts.*') ? 'active' : '' }}" href="{{ route('expense-accounts.index') }}"><span class="sidebar-text">Expenses</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('investors.*') ? 'active' : '' }}" href="{{ route('investors.index') }}"><span class="sidebar-text">Investors</span></a></li>
-                    </ul>
-                </div>
-            </li>
-
-            <li class="nav-item">
-                <a href="#stockMenu" data-bs-toggle="collapse" class="nav-link {{ $isStock ? 'active' : '' }}" aria-expanded="{{ $isStock ? 'true' : 'false' }}">
-                    <span class="sidebar-text">{{ __('Inventory') }}</span>
-                    <span class="link-arrow ms-auto">▸</span>
-                </a>
-                <div class="multi-level collapse {{ $isStock ? 'show' : '' }}" id="stockMenu">
-                    <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('stock-items.*') ? 'active' : '' }}" href="{{ route('stock-items.index') }}"><span class="sidebar-text">Items</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('stock-categories.*') ? 'active' : '' }}" href="{{ route('stock-categories.index') }}"><span class="sidebar-text">Categories</span></a></li>
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('stock-movements.*') ? 'active' : '' }}" href="{{ route('stock-movements.index') }}"><span class="sidebar-text">Movements</span></a></li>
                     </ul>
                 </div>
             </li>
@@ -109,11 +112,6 @@
             <li class="nav-item">
                 <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <span class="sidebar-text">{{ __('Users') }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('settings.plans') }}" class="nav-link {{ request()->routeIs('settings.plans') ? 'active' : '' }}">
-                    <span class="sidebar-text">{{ __('Plans') }}</span>
                 </a>
             </li>
             @if(auth()->user()?->isPlatformAdmin())

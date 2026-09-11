@@ -5,7 +5,6 @@
         ? $oldItems
         : ($isEdit ? $purchaseOrder->items->map(fn ($i) => [
             'stock_item_id' => $i->stock_item_id,
-            'item_name' => $i->item_name,
             'unit' => $i->unit,
             'unit_price' => $i->unit_price,
             'quantity' => $i->quantity,
@@ -50,35 +49,35 @@
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
-            <strong>Items</strong>
-            <span class="text-muted small ms-2">Select stock or enter a manual item name</span>
+            <strong>Inventory items</strong>
+            <span class="text-muted small ms-2">Saving a purchase adds quantity to stock</span>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">Add Item</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="addPoLine">Add item</button>
     </div>
     <div class="table-responsive">
-        <table class="table table-flush mb-0" id="itemsTable">
+        <table class="table table-flush mb-0" id="poLinesTable">
             <thead class="thead-light">
                 <tr>
-                    <th style="min-width: 280px;">Stock / Manual Item</th>
-                    <th style="min-width: 100px;">Unit</th>
-                    <th class="text-end" style="min-width: 120px;">Unit Price</th>
-                    <th class="text-end" style="min-width: 100px;">Qty</th>
-                    <th style="min-width: 180px;">Note</th>
-                    <th class="text-end" style="min-width: 100px;">Line Total</th>
+                    <th style="min-width: 280px;">Item</th>
+                    <th style="min-width: 90px;">Unit</th>
+                    <th class="text-end" style="min-width: 120px;">Cost</th>
+                    <th class="text-end" style="min-width: 90px;">Qty</th>
+                    <th style="min-width: 160px;">Note</th>
+                    <th class="text-end" style="min-width: 100px;">Line total</th>
                     <th class="text-end" style="width: 80px;"></th>
                 </tr>
             </thead>
-            <tbody id="itemsBody">
+            <tbody>
                 @forelse($items as $idx => $row)
                     @include('purchase-orders._row', ['idx' => $idx, 'row' => $row, 'stockItems' => $stockItems])
                 @empty
-                    @include('purchase-orders._row', ['idx' => 0, 'row' => [], 'stockItems' => $stockItems])
+                    @include('purchase-orders._row', ['idx' => 0, 'row' => ['quantity' => '1'], 'stockItems' => $stockItems])
                 @endforelse
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="5" class="text-end"><strong>Total</strong></td>
-                    <td class="text-end"><strong id="grandTotal">0.00</strong></td>
+                    <td class="text-end"><strong id="poGrandTotal">0.00</strong></td>
                     <td></td>
                 </tr>
             </tfoot>
@@ -86,101 +85,95 @@
     </div>
 </div>
 
-@push('page_scripts')
-    <script>
-        (function () {
-            const items = @json($stockItems->map(fn ($i) => ['id' => $i->id, 'unit' => $i->unit, 'name' => $i->name])->values());
-            const unitById = Object.fromEntries(items.map(i => [String(i.id), i.unit || '']));
-            const nameById = Object.fromEntries(items.map(i => [String(i.id), i.name || '']));
+<script>
+(function () {
+    var table = document.getElementById('poLinesTable');
+    if (!table) return;
 
-            const body = document.getElementById('itemsBody');
-            const addBtn = document.getElementById('addItemBtn');
-            const grandTotalEl = document.getElementById('grandTotal');
+    function money(n) {
+        return (Math.round(n * 100) / 100).toFixed(2);
+    }
 
-            function recalc() {
-                let grand = 0;
-                body.querySelectorAll('tr[data-row]').forEach((tr) => {
-                    const price = parseFloat(tr.querySelector('[data-unit-price]').value || '0');
-                    const qty = parseFloat(tr.querySelector('[data-qty]').value || '0');
-                    const line = price * qty;
-                    tr.querySelector('[data-line-total]').textContent = line.toFixed(2);
-                    grand += line;
-                });
-                grandTotalEl.textContent = grand.toFixed(2);
+    function applyItem(row) {
+        var select = row.querySelector('.po-item');
+        var opt = select.options[select.selectedIndex];
+        var unit = opt ? (opt.getAttribute('data-unit') || '') : '';
+        var cost = opt ? (opt.getAttribute('data-cost') || '') : '';
+        var qty = opt ? (opt.getAttribute('data-qty') || '0') : '0';
+        var onHand = row.querySelector('.po-on-hand');
+        var unitInput = row.querySelector('.po-unit');
+        var priceInput = row.querySelector('.po-price');
+
+        if (select.value && opt) {
+            unitInput.value = unit;
+            if (!priceInput.dataset.touched) {
+                priceInput.value = cost;
             }
+            onHand.textContent = 'On hand: ' + qty + ' ' + String(unit).toUpperCase();
+        } else {
+            unitInput.value = '';
+            onHand.textContent = 'On hand: —';
+        }
+    }
 
-            function syncManualField(tr) {
-                const itemSelect = tr.querySelector('[data-stock-item]');
-                const manualInput = tr.querySelector('[data-item-name]');
-                const hasStock = !!itemSelect.value;
+    function recalc() {
+        var grand = 0;
+        table.querySelectorAll('.po-line').forEach(function (row) {
+            var price = parseFloat(row.querySelector('.po-price').value) || 0;
+            var qty = parseFloat(row.querySelector('.po-qty').value) || 0;
+            var line = price * qty;
+            row.querySelector('.po-line-total').textContent = money(line);
+            grand += line;
+        });
+        document.getElementById('poGrandTotal').textContent = money(grand);
+    }
 
-                if (hasStock) {
-                    manualInput.placeholder = 'Optional — overrides stock name';
-                    manualInput.removeAttribute('required');
-                    if (!manualInput.value.trim()) {
-                        manualInput.value = nameById[String(itemSelect.value)] || '';
-                    }
-                } else {
-                    manualInput.placeholder = 'Required — type item name';
-                    manualInput.setAttribute('required', 'required');
-                }
-            }
+    table.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('po-item')) return;
+        var row = e.target.closest('.po-line');
+        var priceInput = row.querySelector('.po-price');
+        priceInput.dataset.touched = '';
+        priceInput.value = '';
+        applyItem(row);
+        recalc();
+    });
 
-            function bindRow(tr) {
-                const itemSelect = tr.querySelector('[data-stock-item]');
-                const unitInput = tr.querySelector('[data-unit]');
-                const manualInput = tr.querySelector('[data-item-name]');
+    table.addEventListener('input', function (e) {
+        if (e.target.classList.contains('po-price')) {
+            e.target.dataset.touched = '1';
+        }
+        recalc();
+    });
 
-                itemSelect.addEventListener('change', () => {
-                    const id = itemSelect.value;
-                    if (id) {
-                        if (!unitInput.value) {
-                            unitInput.value = unitById[String(id)] || '';
-                        }
-                        if (!manualInput.value.trim()) {
-                            manualInput.value = nameById[String(id)] || '';
-                        }
-                    } else {
-                        manualInput.value = '';
-                    }
-                    syncManualField(tr);
-                });
-
-                manualInput.addEventListener('input', () => {
-                    if (itemSelect.value && manualInput.value.trim() !== (nameById[String(itemSelect.value)] || '')) {
-                        // user customized manual name while stock selected — keep both
-                    }
-                });
-
-                tr.querySelectorAll('input').forEach((i) => {
-                    i.addEventListener('input', recalc);
-                });
-
-                tr.querySelector('[data-remove]').addEventListener('click', () => {
-                    tr.remove();
-                    recalc();
-                });
-
-                syncManualField(tr);
-            }
-
-            body.querySelectorAll('tr[data-row]').forEach(bindRow);
+    table.addEventListener('click', function (e) {
+        if (!e.target.classList.contains('po-remove')) return;
+        var rows = table.querySelectorAll('.po-line');
+        if (rows.length > 1) {
+            e.target.closest('.po-line').remove();
             recalc();
+        }
+    });
 
-            addBtn.addEventListener('click', () => {
-                const idx = body.querySelectorAll('tr[data-row]').length;
-                const tpl = document.getElementById('rowTemplate').innerHTML.replaceAll('__INDEX__', String(idx));
-                const wrap = document.createElement('tbody');
-                wrap.innerHTML = tpl.trim();
-                const tr = wrap.querySelector('tr');
-                body.appendChild(tr);
-                bindRow(tr);
-                recalc();
-            });
-        })();
-    </script>
+    document.getElementById('addPoLine').addEventListener('click', function () {
+        var i = table.querySelectorAll('.po-line').length;
+        var tr = table.querySelector('.po-line').cloneNode(true);
+        tr.querySelectorAll('input, select').forEach(function (el) {
+            el.name = el.name.replace(/items\[\d+]/, 'items[' + i + ']');
+            if (el.classList.contains('po-qty')) el.value = '1';
+            else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+            else el.value = '';
+            delete el.dataset.touched;
+        });
+        tr.querySelector('.po-on-hand').textContent = 'On hand: —';
+        tr.querySelector('.po-line-total').textContent = '0.00';
+        var err = tr.querySelector('.invalid-feedback');
+        if (err) err.remove();
+        tr.querySelector('.po-item').classList.remove('is-invalid');
+        table.querySelector('tbody').appendChild(tr);
+        recalc();
+    });
 
-    <script type="text/template" id="rowTemplate">
-        @include('purchase-orders._row', ['idx' => '__INDEX__', 'row' => ['stock_item_id' => '', 'item_name' => '', 'unit' => '', 'unit_price' => '', 'quantity' => '', 'note' => ''], 'stockItems' => $stockItems])
-    </script>
-@endpush
+    table.querySelectorAll('.po-line').forEach(applyItem);
+    recalc();
+})();
+</script>

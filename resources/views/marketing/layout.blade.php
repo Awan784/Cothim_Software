@@ -29,12 +29,11 @@
                 <a href="{{ route('home') }}#product">{{ __('Products') }}</a>
                 <a href="{{ route('home') }}#industries">{{ __('Industries') }}</a>
                 <a href="{{ route('pricing') }}">{{ __('Pricing') }}</a>
-                <a href="{{ route('locale.switch', wafi_is_rtl() ? 'en' : 'ar') }}">{{ wafi_is_rtl() ? 'English' : 'عربي' }}</a>
                 @auth
                     @if(auth()->user()->isPlatformAdmin())
                         <a href="{{ route('platform.home') }}">{{ __('Platform admin') }}</a>
                     @endif
-                    <a href="{{ route('get-started') }}">{{ __('Open app') }}</a>
+                    <a href="{{ route('dashboard') }}">{{ __('Open app') }}</a>
                 @else
                     <a href="{{ route('login') }}">{{ __('Login') }}</a>
                     <a class="wafi-btn wafi-btn-orange" href="{{ route('register') }}">{{ __('Start now for free') }}</a>

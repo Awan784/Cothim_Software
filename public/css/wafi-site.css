@@ -145,6 +145,12 @@ a { color: inherit; }
     padding: 3rem 1rem;
     background: linear-gradient(180deg, #eef2ff, #fff);
 }
+body.wafi-auth-page {
+    background: #eef2ff;
+}
+body.wafi-auth-page .wafi-auth {
+    min-height: calc(100vh - 73px);
+}
 .wafi-auth-card {
     width: min(460px, 100%);
     background: #fff;

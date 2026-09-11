@@ -20,8 +20,7 @@
                 <span>{{ config('ams.product_name') }} · {{ __('Platform admin') }}</span>
             </a>
             <div class="d-flex gap-2 align-items-center">
-                <a class="btn btn-sm btn-outline-secondary" href="{{ route('locale.switch', wafi_is_rtl() ? 'en' : 'ar') }}">{{ wafi_is_rtl() ? 'English' : 'عربي' }}</a>
-                <a class="btn btn-sm btn-outline-primary" href="{{ route('get-started') }}">{{ __('Open app') }}</a>
+                <a class="btn btn-sm btn-outline-primary" href="{{ route('dashboard') }}">{{ __('Open app') }}</a>
                 <a class="btn btn-sm btn-secondary" href="{{ route('logout') }}">{{ __('Sign out') }}</a>
             </div>
         </div>

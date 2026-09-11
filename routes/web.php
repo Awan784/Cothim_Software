@@ -7,35 +7,23 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CashVoucherController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseAccountController;
-use App\Http\Controllers\GetStartedController;
-use App\Http\Controllers\InboxController;
-use App\Http\Controllers\InvestorController;
 use App\Http\Controllers\JournalVoucherController;
-use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\MarketingController;
-use App\Http\Controllers\NominalAccountController;
 use App\Http\Controllers\PlatformAdminController;
-use App\Http\Controllers\PurchaseBillController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SalesInvoiceController;
+use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StockCategoryController;
 use App\Http\Controllers\StockItemController;
-use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [MarketingController::class, 'home'])->name('home');
-Route::get('/pricing', [MarketingController::class, 'pricing'])->name('pricing');
-Route::get('/locale/{locale}', LocaleController::class)->name('locale.switch');
-
 Route::middleware('guest')->group(function () {
+    Route::get('/', [AuthController::class, 'showLogin'])->name('home');
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'processLoginRequest']);
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
 });
 
 Route::middleware(['auth', 'platform'])->prefix('platform')->name('platform.')->group(function () {
@@ -49,31 +37,15 @@ Route::middleware(['auth', 'platform'])->prefix('platform')->name('platform.')->
 });
 
 Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
-    Route::get('/get-started', GetStartedController::class)->name('get-started');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
-    Route::get('/inbox/create', [InboxController::class, 'create'])->name('inbox.create');
-    Route::post('/inbox', [InboxController::class, 'store'])->name('inbox.store');
-    Route::get('/inbox/{inbox}', [InboxController::class, 'show'])->name('inbox.show');
-    Route::post('/inbox/{inbox}/expense', [InboxController::class, 'postExpense'])->name('inbox.post-expense');
-    Route::post('/inbox/{inbox}/bill', [InboxController::class, 'postBill'])->name('inbox.post-bill');
-    Route::post('/inbox/{inbox}/reject', [InboxController::class, 'reject'])->name('inbox.reject');
-    Route::delete('/inbox/{inbox}', [InboxController::class, 'destroy'])->name('inbox.destroy');
 
     Route::post('/invoices/{invoice}/issue', [SalesInvoiceController::class, 'issue'])->name('invoices.issue');
     Route::post('/invoices/{invoice}/pay', [SalesInvoiceController::class, 'pay'])->name('invoices.pay');
     Route::get('/invoices/{invoice}/print', [SalesInvoiceController::class, 'print'])->name('invoices.print');
     Route::resource('invoices', SalesInvoiceController::class);
 
-    Route::post('/bills/{bill}/post', [PurchaseBillController::class, 'post'])->name('bills.post');
-    Route::post('/bills/{bill}/pay', [PurchaseBillController::class, 'pay'])->name('bills.pay');
-    Route::resource('bills', PurchaseBillController::class);
-
     Route::get('/settings/company', [SettingsController::class, 'company'])->name('settings.company');
     Route::post('/settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company.update');
-    Route::get('/settings/plans', [SettingsController::class, 'plans'])->name('settings.plans');
-    Route::post('/settings/plans', [SettingsController::class, 'selectPlan'])->name('settings.plans.select');
     Route::post('/assistant/chat', [AssistantController::class, 'chat'])->name('assistant.chat');
     Route::post('/assistant/confirm', [AssistantController::class, 'confirm'])->name('assistant.confirm');
     Route::post('/assistant/cancel', [AssistantController::class, 'cancel'])->name('assistant.cancel');
@@ -82,7 +54,7 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
         auth()->logout();
         request()->session()->invalidate();
         request()->session()->regenerateToken();
-        return redirect()->route('home')->with("success", "Logout Successfully");
+        return redirect()->route('login')->with("success", "Logout Successfully");
     })->name("logout");
 
     Route::resource('users', UserController::class)->except(['show']);
@@ -90,16 +62,16 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     // Stock
     Route::resource('stock-categories', StockCategoryController::class);
     Route::resource('stock-items', StockItemController::class);
-    Route::resource('stock-movements', StockMovementController::class);
+    Route::get('purchase-orders/{purchase_order}/print', [PurchaseOrderController::class, 'print'])
+        ->name('purchase-orders.print');
     Route::resource('purchase-orders', PurchaseOrderController::class);
 
     // Accounts
     Route::resource('customers', CustomerController::class);
+    Route::resource('salesmen', SalesmanController::class);
     Route::resource('suppliers', SupplierController::class);
-    Route::resource('investors', InvestorController::class);
     Route::resource('bank-accounts', BankAccountController::class);
     Route::get('bank-accounts/{bankAccount}/balance', [BankAccountController::class, 'balance'])->name('bank-accounts.balance');
-    Route::resource('nominal-accounts', NominalAccountController::class);
     Route::resource('expense-accounts', ExpenseAccountController::class);
 
     // Cash (separate module)

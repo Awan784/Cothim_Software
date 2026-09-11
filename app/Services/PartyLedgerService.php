@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\ExpenseAccount;
-use App\Models\Investor;
 use App\Models\JournalVoucherLine;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
@@ -18,7 +17,6 @@ class PartyLedgerService
     public const ACCOUNT_TYPES = [
         'customer' => 'Customer',
         'supplier' => 'Supplier',
-        'investor' => 'Investor',
         'expense' => 'Expense Account',
     ];
 
@@ -29,7 +27,6 @@ class PartyLedgerService
         $query = match ($accountType) {
             'customer' => Customer::query(),
             'supplier' => Supplier::query(),
-            'investor' => Investor::query(),
             'expense' => ExpenseAccount::query(),
         };
 
@@ -46,7 +43,6 @@ class PartyLedgerService
         $prefix = match ($accountType) {
             'customer' => 1000,
             'supplier' => 2000,
-            'investor' => 3000,
             'expense' => 4000,
             default => 0,
         };
@@ -212,9 +208,6 @@ class PartyLedgerService
         } elseif ($accountType === 'supplier') {
             $debit = $voucher->type === 'payment' ? $amount : 0.0;
             $credit = $voucher->type === 'receive' ? $amount : 0.0;
-        } elseif ($accountType === 'investor') {
-            $debit = $voucher->type === 'payment' ? $amount : 0.0;
-            $credit = $voucher->type === 'receive' ? $amount : 0.0;
         } elseif ($accountType === 'expense') {
             $debit = $voucher->type === 'payment' ? $amount : 0.0;
             $credit = $voucher->type === 'receive' ? $amount : 0.0;
@@ -238,7 +231,7 @@ class PartyLedgerService
     {
         return match ($accountType) {
             'customer', 'expense' => $debit - $credit,
-            'supplier', 'investor' => $credit - $debit,
+            'supplier' => $credit - $debit,
             default => 0.0,
         };
     }
@@ -273,7 +266,6 @@ class PartyLedgerService
         $exists = match ($accountType) {
             'customer' => Customer::whereKey($accountId)->exists(),
             'supplier' => Supplier::whereKey($accountId)->exists(),
-            'investor' => Investor::whereKey($accountId)->exists(),
             'expense' => ExpenseAccount::whereKey($accountId)->exists(),
             default => false,
         };

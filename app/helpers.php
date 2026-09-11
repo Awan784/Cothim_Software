@@ -30,6 +30,22 @@ if (! function_exists('ams_datetime_input')) {
     }
 }
 
+if (! function_exists('ams_num')) {
+    function ams_num(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '0';
+        }
+
+        $number = (float) $value;
+        if (abs($number - round($number)) < 0.0000001) {
+            return number_format($number, 0, '.', ',');
+        }
+
+        return rtrim(rtrim(number_format($number, 2, '.', ','), '0'), '.');
+    }
+}
+
 if (! function_exists('can_module')) {
     function can_module(string $module, string $action): bool
     {

@@ -31,7 +31,7 @@
                 @forelse($rows as $i => $row)
                     <tr class="tax-line">
                         <td>
-                            @include('partials.tax-line-description', ['index' => $i, 'selected' => $row['description'] ?? '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
+                            @include('partials.tax-line-description', ['index' => $i, 'row' => $row, 'selected' => $row['description'] ?? '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
                         </td>
                         <td><input name="lines[{{ $i }}][quantity]" class="form-control form-control-sm text-end line-qty" value="{{ $row['quantity'] ?? 1 }}"></td>
                         <td><input name="lines[{{ $i }}][unit_price]" class="form-control form-control-sm text-end line-price" value="{{ $row['unit_price'] ?? 0 }}"></td>
@@ -43,7 +43,7 @@
                 @empty
                     <tr class="tax-line">
                         <td>
-                            @include('partials.tax-line-description', ['index' => 0, 'selected' => '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
+                            @include('partials.tax-line-description', ['index' => 0, 'row' => [], 'selected' => '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
                         </td>
                         <td><input name="lines[0][quantity]" class="form-control form-control-sm text-end line-qty" value="1"></td>
                         <td><input name="lines[0][unit_price]" class="form-control form-control-sm text-end line-price" value="0"></td>
@@ -86,8 +86,12 @@
     function applyItemPrice(select) {
         var opt = select.options[select.selectedIndex];
         var price = opt ? opt.getAttribute('data-price') : '';
-        var priceInput = select.closest('tr').querySelector('.line-price');
+        var desc = opt ? opt.getAttribute('data-description') : '';
+        var row = select.closest('tr');
+        var priceInput = row.querySelector('.line-price');
+        var descInput = row.querySelector('.line-description');
         if (priceInput && price !== null && price !== '') priceInput.value = price;
+        if (descInput) descInput.value = desc || '';
     }
     function recalc() {
         var sub = 0, vat = 0;
@@ -130,6 +134,13 @@
         });
         table.querySelector('tbody').appendChild(tr);
         recalc();
+    });
+    table.querySelectorAll('.line-item').forEach(function (select) {
+        var opt = select.options[select.selectedIndex];
+        var descInput = select.closest('tr').querySelector('.line-description');
+        if (descInput && opt && !descInput.value) {
+            descInput.value = opt.getAttribute('data-description') || '';
+        }
     });
     recalc();
 })();

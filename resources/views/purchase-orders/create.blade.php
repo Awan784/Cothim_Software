@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-0">Create Purchase Order</h1>
-                <p class="mb-0">Create supplier purchase note.</p>
+                <p class="mb-0">Buy inventory items. Quantity is added to stock on save.</p>
             </div>
             <div>
                 <a href="{{ route('purchase-orders.index') }}" class="btn btn-sm btn-secondary">Back</a>
@@ -21,9 +21,5 @@
             </form>
         </div>
     </div>
-@endsection
-
-@section('scripts')
-    @stack('page_scripts')
 @endsection
 

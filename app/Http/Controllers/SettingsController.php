@@ -34,27 +34,4 @@ class SettingsController extends Controller
 
         return back()->with('success', 'Company and tax settings saved.');
     }
-
-    public function plans(): View
-    {
-        return view('settings.plans', [
-            'plan' => $this->settings->plan(),
-            'trialEndsAt' => $this->settings->trialEndsAt(),
-            'daysLeft' => $this->settings->trialDaysLeft(),
-        ]);
-    }
-
-    public function selectPlan(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'plan' => ['required', 'in:trial,plus,pro'],
-        ]);
-
-        $this->settings->set('plan', $data['plan']);
-        if ($data['plan'] === 'trial' && ! $this->settings->trialEndsAt()) {
-            $this->settings->set('trial_ends_at', now()->addDays(14)->toDateString());
-        }
-
-        return back()->with('success', 'Plan updated to '.ucfirst($data['plan']).'.');
-    }
 }

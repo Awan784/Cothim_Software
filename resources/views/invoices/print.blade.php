@@ -19,7 +19,13 @@
     <h1>Tax invoice {{ $invoice->invoice_no }}</h1>
     <p class="muted">{{ $settings->companyName() }} · VAT {{ $settings->get('company_vat_number') ?: '—' }} · CR {{ $settings->get('company_cr_number') ?: '—' }}</p>
     <p>{{ $settings->get('company_address') }}</p>
-    <p><strong>Customer:</strong> {{ $invoice->customer?->name }} @if($invoice->customer?->vat_number) (VAT {{ $invoice->customer->vat_number }}) @endif</p>
+    <p><strong>Customer:</strong> {{ $invoice->customer?->displayName() }}
+        @if($invoice->customer?->ntn) · NTN {{ $invoice->customer->ntn }}@endif
+        @if($invoice->customer?->strn ?: $invoice->customer?->vat_number) · STRN {{ $invoice->customer->strn ?: $invoice->customer->vat_number }}@endif
+    </p>
+    @if($invoice->customer?->address || $invoice->customer?->city)
+        <p class="muted">{{ collect([$invoice->customer?->address, $invoice->customer?->area, $invoice->customer?->city])->filter()->join(', ') }}</p>
+    @endif
     <p><strong>Date:</strong> {{ ams_date($invoice->invoice_date) }} · <strong>Type:</strong> {{ $invoice->type }}</p>
     <table>
         <thead>
