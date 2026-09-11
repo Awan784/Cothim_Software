@@ -1,0 +1,213 @@
+:root {
+    --wafi-indigo: #5b5ce2;
+    --wafi-indigo-dark: #4338ca;
+    --wafi-orange: #f97316;
+    --wafi-text: #111827;
+    --wafi-muted: #6b7280;
+    --wafi-line: #eef0f4;
+    --wafi-bg: #f7f8fc;
+}
+
+* { box-sizing: border-box; }
+body.wafi-site {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--wafi-text);
+    background: #fff;
+}
+a { color: inherit; }
+.wafi-wrap { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; }
+
+.wafi-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--wafi-line);
+}
+.wafi-nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 72px;
+    gap: 1rem;
+}
+.wafi-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 800;
+    text-decoration: none;
+    font-size: 1.15rem;
+}
+.wafi-logo-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--wafi-indigo);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.wafi-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.wafi-nav-links a { text-decoration: none; color: #374151; }
+.wafi-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.55rem 1.05rem;
+    font-weight: 700;
+    text-decoration: none !important;
+    border: 1px solid transparent;
+}
+.wafi-btn-orange { background: var(--wafi-orange); color: #fff !important; }
+.wafi-btn-indigo { background: var(--wafi-indigo); color: #fff !important; }
+.wafi-btn-ghost { background: #fff; border-color: #e5e7eb; color: #111827 !important; }
+.wafi-btn-lg { padding: 0.8rem 1.3rem; font-size: 1rem; }
+
+.wafi-hero { padding: 4.5rem 0 3.5rem; background: linear-gradient(180deg, #eef2ff 0%, #fff 70%); }
+.wafi-hero-inner { display: grid; grid-template-columns: 1.15fr .85fr; gap: 3rem; align-items: center; }
+.wafi-kicker { color: var(--wafi-indigo-dark); font-weight: 700; margin: 0 0 0.75rem; }
+.wafi-hero h1 { font-size: clamp(2rem, 4vw, 3.1rem); line-height: 1.15; margin: 0 0 1rem; letter-spacing: -0.03em; }
+.wafi-lead { font-size: 1.1rem; color: var(--wafi-muted); margin: 0 0 1.5rem; max-width: 36rem; }
+.wafi-hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.wafi-note { color: var(--wafi-muted); font-size: 0.9rem; margin: 0.9rem 0 0; }
+
+.wafi-hero-card {
+    background: #fff;
+    border: 1px solid var(--wafi-line);
+    border-radius: 24px;
+    padding: 1.25rem;
+    box-shadow: 0 24px 50px rgba(67, 56, 202, 0.12);
+}
+.wafi-app-preview { background: #f8fafc; border-radius: 16px; padding: 1rem; }
+.wafi-app-bar { font-weight: 700; margin-bottom: 1rem; color: var(--wafi-indigo-dark); }
+.wafi-app-row { display: flex; justify-content: space-between; padding: 0.65rem 0; border-bottom: 1px solid #e5e7eb; }
+.wafi-qr {
+    width: 72px;
+    height: 72px;
+    margin: 1rem 0 0 auto;
+    background: repeating-linear-gradient(90deg, #111 0 5px, transparent 5px 10px),
+        repeating-linear-gradient(0deg, #111 0 5px, transparent 5px 10px);
+    opacity: 0.85;
+}
+
+.wafi-trust { padding: 1.25rem 0; border-top: 1px solid var(--wafi-line); border-bottom: 1px solid var(--wafi-line); color: var(--wafi-muted); text-align: center; }
+.wafi-section { padding: 4rem 0; }
+.wafi-section h1, .wafi-section h2 { letter-spacing: -0.03em; margin-top: 0; }
+.wafi-section-lead { color: var(--wafi-muted); max-width: 38rem; }
+.wafi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
+.wafi-grid article {
+    background: var(--wafi-bg);
+    border: 1px solid var(--wafi-line);
+    border-radius: 16px;
+    padding: 1.25rem;
+}
+.wafi-grid h3 { margin: 0 0 0.4rem; }
+.wafi-grid p { margin: 0; color: var(--wafi-muted); }
+
+.wafi-cta { background: #111827; color: #fff; padding: 3rem 0; }
+.wafi-cta-inner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.wafi-cta h2, .wafi-cta p { margin: 0.2rem 0; }
+
+.wafi-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
+.wafi-plans article {
+    border: 1px solid var(--wafi-line);
+    border-radius: 18px;
+    padding: 1.4rem;
+    background: #fff;
+}
+.wafi-plans .is-featured { border-color: #c7d2fe; box-shadow: 0 0 0 3px rgba(91,92,226,.1); }
+.wafi-price { font-size: 1.4rem; font-weight: 800; margin: 0.3rem 0; }
+.wafi-plans ul { padding-left: 1.1rem; color: #374151; }
+.wafi-plans .wafi-btn { margin-top: 0.75rem; }
+
+.wafi-footer { border-top: 1px solid var(--wafi-line); padding: 2.5rem 0 1.5rem; background: #fafbff; }
+.wafi-footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1.5rem; }
+.wafi-footer a { display: block; text-decoration: none; color: #4b5563; margin: 0.3rem 0; }
+.wafi-footer h4 { margin: 0 0 0.5rem; }
+.wafi-copy { margin-top: 2rem; color: #9ca3af; font-size: 0.85rem; }
+.wafi-flash { background: #ecfdf5; color: #065f46; text-align: center; padding: 0.7rem; }
+
+.wafi-auth {
+    min-height: calc(100vh - 72px);
+    display: grid;
+    place-items: center;
+    padding: 3rem 1rem;
+    background: linear-gradient(180deg, #eef2ff, #fff);
+}
+.wafi-auth-card {
+    width: min(460px, 100%);
+    background: #fff;
+    border: 1px solid var(--wafi-line);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 20px 50px rgba(17,24,39,.06);
+}
+.wafi-auth-card h1 { margin: 0 0 0.35rem; font-size: 1.6rem; }
+.wafi-auth-card .muted { color: var(--wafi-muted); margin: 0 0 1.25rem; }
+.wafi-field { margin-bottom: 0.95rem; }
+.wafi-field label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.35rem; }
+.wafi-field input {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.55rem 0.8rem;
+    background: #f9fafb;
+    font-size: 0.95rem;
+}
+.wafi-field input:focus { outline: none; background: #fff; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(91,92,226,.15); }
+.wafi-auth-card .wafi-btn { width: 100%; min-height: 46px; border: 0; cursor: pointer; font-size: 1rem; }
+.wafi-topbar { background: #eef2ff; color: #312e81; font-size: 0.85rem; }
+.wafi-topbar-inner { display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; }
+.wafi-topbar a { font-weight: 700; text-decoration: none; }
+.wafi-hero-card img, .wafi-split img { width: 100%; border-radius: 18px; display: block; }
+.wafi-trust-inner { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.wafi-split { padding: 4rem 0; }
+.wafi-split-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; }
+.wafi-split-alt { background: #f7f8fc; }
+.wafi-pills { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.25rem; }
+.wafi-pills span { background: #fff; border: 1px solid var(--wafi-line); border-radius: 999px; padding: 0.4rem 0.85rem; font-weight: 600; }
+.wafi-demo { padding: 4rem 0; background: #111827; color: #fff; }
+.wafi-demo .wafi-section-lead { color: #d1d5db; }
+.wafi-player { position: relative; margin-top: 1.5rem; border-radius: 18px; overflow: hidden; background: #000; }
+.wafi-player img { width: 100%; display: block; min-height: 280px; object-fit: cover; }
+.wafi-play {
+    position: absolute; inset: 42% auto auto 50%; transform: translate(-50%, -50%);
+    width: 72px; height: 72px; border: 0; border-radius: 50%; background: var(--wafi-orange);
+    color: #fff; font-size: 1.4rem; cursor: pointer; box-shadow: 0 10px 24px rgba(0,0,0,.3);
+}
+.wafi-player-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.9rem 1rem; background: rgba(17,24,39,.86); }
+.wafi-city { position: relative; min-height: 380px; }
+.wafi-city img { width: 100%; height: 380px; object-fit: cover; display: block; }
+.wafi-city-copy { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #fff; background: rgba(17,24,39,.45); padding: 2rem; }
+.wafi-wa {
+    position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 40;
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    background: #22c55e; color: #fff !important; text-decoration: none;
+    border-radius: 999px; padding: 0.7rem 1rem; font-weight: 700;
+    box-shadow: 0 12px 28px rgba(34,197,94,.35);
+}
+body.is-rtl { font-family: Cairo, "Segoe UI", sans-serif; }
+body.is-rtl .wafi-wa { right: auto; left: 1.1rem; }
+body.is-rtl .wafi-play { transform: translate(50%, -50%); left: auto; right: 50%; }
+
+.wafi-alert { padding: 0.75rem 0.9rem; border-radius: 10px; margin-bottom: 1rem; font-size: 0.9rem; }
+.wafi-alert-error { background: #fff1f2; color: #9f1239; }
+.wafi-alert-ok { background: #ecfdf5; color: #065f46; }
+.wafi-alert-warn { background: #fffbeb; color: #92400e; }
+
+@media (max-width: 900px) {
+    .wafi-hero-inner, .wafi-grid, .wafi-plans, .wafi-footer-grid, .wafi-split-inner { grid-template-columns: 1fr; }
+    .wafi-nav-links a:not(.wafi-btn):not([href*="locale"]) { display: none; }
+}

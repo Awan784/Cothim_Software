@@ -1,0 +1,4 @@
+[24-Mar-2025 20:22:26 America/Boise] PHP Fatal error:  Uncaught Error: Class "Illuminate\Support\Facades\Route" not found in /home1/nkrlicmy/public_html/routes/web.php:9
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/routes/web.php on line 9

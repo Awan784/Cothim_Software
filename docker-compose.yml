@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: ./docker/php
+    container_name: laravel_app
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www:cached
+      - vendor_data:/var/www/vendor
+    ports:
+      - "9000:9000"
+    depends_on:
+      - mysql
+
+  nginx:
+    image: nginx:alpine
+    container_name: laravel_nginx
+    ports:
+      - "8090:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini  # 👈 Add this line
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:5.7
+    container_name: laravel_mysql
+    restart: unless-stopped
+    ports:
+      - "3360:3306"
+    env_file:
+      - ./docker/.env.mysql
+    volumes:
+      - dbdata:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: laravel_phpmyadmin
+    restart: always
+    ports:
+      - 8091:80
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+
+volumes:
+  dbdata:
+  vendor_data:

@@ -1,0 +1,96 @@
+[02-Feb-2025 18:46:05 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/app.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/app.php on line 16
+[10-Feb-2025 14:29:06 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[12-Feb-2025 20:23:01 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/services.php:18
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/services.php on line 18
+[13-Feb-2025 00:36:49 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/app.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/app.php on line 16
+[13-Feb-2025 11:38:41 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[13-Feb-2025 11:38:42 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[18-Feb-2025 05:38:42 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/app.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/app.php on line 16
+[19-Feb-2025 22:31:20 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/app.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/app.php on line 16
+[19-Feb-2025 23:08:31 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[19-Feb-2025 23:27:17 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[25-Feb-2025 02:13:10 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/cache.php:18
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/cache.php on line 18
+[25-Feb-2025 15:54:46 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/cache.php:18
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/cache.php on line 18
+[28-Feb-2025 02:13:23 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/cache.php:18
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/cache.php on line 18
+[24-Mar-2025 20:22:23 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/app.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/app.php on line 16
+[24-Mar-2025 20:22:24 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[10-Jul-2025 17:08:06 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/app.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/app.php on line 16
+[10-Jul-2025 17:08:08 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/auth.php:17
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/auth.php on line 17
+[10-Jul-2025 17:08:54 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/cache.php:18
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/cache.php on line 18
+[10-Jul-2025 17:09:27 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
+[10-Jul-2025 17:10:01 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/filesystems.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/filesystems.php on line 16
+[10-Jul-2025 17:10:22 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/queue.php:16
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/queue.php on line 16
+[10-Jul-2025 17:10:54 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/services.php:18
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/services.php on line 18
+[10-Jul-2025 17:10:54 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/session.php:21
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/session.php on line 21
+[09-Aug-2025 01:10:54 America/Boise] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home1/nkrlicmy/public_html/config/database.php:19
+Stack trace:
+#0 {main}
+  thrown in /home1/nkrlicmy/public_html/config/database.php on line 19
