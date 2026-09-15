@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CashVoucher;
-use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Services\PartyLedgerService;
+use App\Services\SettingsService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class SupplierController extends Controller
 {
@@ -44,6 +46,7 @@ class SupplierController extends Controller
         ]);
 
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
+        $data['current_balance'] = $data['opening_balance'];
         $data['is_active'] = (bool) ($data['is_active'] ?? true);
         $data['city'] = ($data['city'] ?? '') === '' ? null : $data['city'];
 
@@ -55,62 +58,22 @@ class SupplierController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Supplier $supplier)
+    public function show(Supplier $supplier, PartyLedgerService $ledger): View
     {
-        $purchaseOrders = PurchaseOrder::where('supplier_id', $supplier->id)
-            ->orderByDesc('po_date')
-            ->orderByDesc('id')
-            ->get();
+        $from = Carbon::parse('2000-01-01')->startOfDay();
+        $to = now()->endOfDay();
+        $result = $ledger->ledger('supplier', (int) $supplier->id, $from, $to);
 
-        $cashVouchers = CashVoucher::where('account_type', 'supplier')
-            ->where('account_id', $supplier->id)
-            ->orderByDesc('voucher_date')
-            ->orderByDesc('id')
-            ->get();
-
-        $entries = collect();
-
-        foreach ($purchaseOrders as $po) {
-            $entries->push([
-                'date' => $po->po_date,
-                'ref' => $po->po_no,
-                'type' => 'purchase',
-                'description' => 'Purchase order',
-                'debit' => 0.0,
-                'credit' => (float) $po->total_amount,
-            ]);
-        }
-
-        foreach ($cashVouchers as $v) {
-            $entries->push([
-                'date' => $v->voucher_date,
-                'ref' => $v->voucher_no,
-                'type' => 'cash_'.$v->type,
-                'description' => 'Cash voucher ('.strtoupper($v->type).')',
-                // For supplier payable:
-                // - payment reduces payable -> debit
-                // - receive increases payable -> credit
-                'debit' => $v->type === 'payment' ? (float) $v->amount : 0.0,
-                'credit' => $v->type === 'receive' ? (float) $v->amount : 0.0,
-            ]);
-        }
-
-        $entries = $entries
-            ->sortBy([
-                ['date', 'asc'],
-                ['ref', 'asc'],
-            ])
-            ->values();
-
-        $running = 0.0;
-        $entries = $entries->map(function ($e) use (&$running) {
-            $running += ((float) $e['credit']) - ((float) $e['debit']);
-            $e['balance'] = $running;
-
-            return $e;
-        });
-
-        return view('suppliers.show', compact('supplier', 'entries'));
+        return view('suppliers.show', [
+            'supplier' => $supplier,
+            'settings' => app(SettingsService::class),
+            'entries' => $result['entries'],
+            'openingBalance' => $result['openingBalance'],
+            'closingBalance' => $result['closingBalance'],
+            'totalDebit' => $result['totalDebit'],
+            'totalCredit' => $result['totalCredit'],
+            'printedAt' => now(),
+        ]);
     }
 
     /**
@@ -140,6 +103,8 @@ class SupplierController extends Controller
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['is_active'] = (bool) ($data['is_active'] ?? false);
         $data['city'] = ($data['city'] ?? '') === '' ? null : $data['city'];
+        $openingDelta = $data['opening_balance'] - (float) $supplier->opening_balance;
+        $data['current_balance'] = (float) $supplier->current_balance + $openingDelta;
 
         $supplier->update($data);
 

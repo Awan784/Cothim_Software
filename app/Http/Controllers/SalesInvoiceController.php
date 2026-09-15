@@ -8,6 +8,7 @@ use App\Models\SalesInvoice;
 use App\Models\StockItem;
 use App\Services\SalesInvoiceService;
 use App\Services\SettingsService;
+use App\Support\AmountInWords;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -39,16 +40,24 @@ class SalesInvoiceController extends Controller
         $data = $this->validated($request);
 
         try {
-            $invoice = $this->invoices->saveDraft(null, $data, $data['lines'], $request->user());
+            $invoice = $this->invoices->generate($data, $data['lines'], $request->user());
         } catch (InvalidArgumentException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('invoices.show', $invoice)->with('success', 'Draft invoice saved.');
+        return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice generated.');
     }
 
     public function show(SalesInvoice $invoice, SettingsService $settings): View
     {
+        if ($invoice->isDraft()) {
+            try {
+                $invoice = $this->invoices->issue($invoice);
+            } catch (InvalidArgumentException $e) {
+                session()->now('error', $e->getMessage());
+            }
+        }
+
         $invoice->load(['customer', 'lines']);
         $banks = BankAccount::orderBy('name')->get();
 
@@ -119,11 +128,13 @@ class SalesInvoiceController extends Controller
 
     public function print(SalesInvoice $invoice, SettingsService $settings): View
     {
-        $invoice->load(['customer', 'lines']);
+        $invoice->load(['customer', 'lines.stockItem']);
 
         return view('invoices.print', [
             'invoice' => $invoice,
             'settings' => $settings,
+            'amountInWords' => AmountInWords::rupees((float) $invoice->total),
+            'printedAt' => now(),
         ]);
     }
 
@@ -153,6 +164,7 @@ class SalesInvoiceController extends Controller
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
+            'lines.*.discount_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
             'lines.*.vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
         ]);
 
@@ -162,6 +174,8 @@ class SalesInvoiceController extends Controller
         ));
 
         foreach ($data['lines'] as &$line) {
+            $line['discount_rate'] = $line['discount_rate'] ?? 0;
+
             if (empty($line['stock_item_id'])) {
                 $line['stock_item_id'] = null;
                 continue;

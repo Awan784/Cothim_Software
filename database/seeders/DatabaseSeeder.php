@@ -12,8 +12,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $organization = Organization::create([
-            'name' => 'Demo company',
-            'slug' => Organization::uniqueSlug('Demo company'),
+            'name' => 'Contimade Traders',
+            'slug' => Organization::uniqueSlug('Contimade Traders'),
             'plan' => Organization::PLAN_TRIAL,
             'trial_ends_at' => now()->addDays(14)->toDateString(),
             'default_vat_rate' => 15,
@@ -34,5 +34,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         app(OrganizationProvisioner::class)->provision($organization);
+
+        $this->call(TabItmHedSeeder::class);
+        $this->call(TabEmpHedSeeder::class);
+        $this->call(TabMesHedSeeder::class);
+        $this->call(TabManAccSupplierSeeder::class);
     }
 }

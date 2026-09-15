@@ -10,9 +10,11 @@ use App\Http\Controllers\ExpenseAccountController;
 use App\Http\Controllers\JournalVoucherController;
 use App\Http\Controllers\PlatformAdminController;
 use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SalesInvoiceController;
 use App\Http\Controllers\SalesmanController;
+use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StockCategoryController;
 use App\Http\Controllers\StockItemController;
@@ -43,6 +45,9 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     Route::post('/invoices/{invoice}/pay', [SalesInvoiceController::class, 'pay'])->name('invoices.pay');
     Route::get('/invoices/{invoice}/print', [SalesInvoiceController::class, 'print'])->name('invoices.print');
     Route::resource('invoices', SalesInvoiceController::class);
+    Route::get('sales-returns/{sales_return}/print', [SalesReturnController::class, 'print'])
+        ->name('sales-returns.print');
+    Route::resource('sales-returns', SalesReturnController::class);
 
     Route::get('/settings/company', [SettingsController::class, 'company'])->name('settings.company');
     Route::post('/settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company.update');
@@ -65,6 +70,9 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     Route::get('purchase-orders/{purchase_order}/print', [PurchaseOrderController::class, 'print'])
         ->name('purchase-orders.print');
     Route::resource('purchase-orders', PurchaseOrderController::class);
+    Route::get('purchase-returns/{purchase_return}/print', [PurchaseReturnController::class, 'print'])
+        ->name('purchase-returns.print');
+    Route::resource('purchase-returns', PurchaseReturnController::class);
 
     // Accounts
     Route::resource('customers', CustomerController::class);

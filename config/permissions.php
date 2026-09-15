@@ -17,6 +17,8 @@ return [
         'cash-vouchers' => 'Cash Vouchers',
         'journal-vouchers' => 'Journal Vouchers',
         'purchase-orders' => 'Purchase Orders',
+        'purchase-returns' => 'Purchase Returns',
+        'sales-returns' => 'Sales Returns',
         'reports' => 'Reports',
     ],
 

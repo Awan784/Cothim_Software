@@ -40,6 +40,7 @@ class SalesInvoiceService
                 'type' => $data['type'] ?? 'simplified',
                 'notes' => $data['notes'] ?? null,
                 'subtotal' => $computed['subtotal'],
+                'discount_amount' => $computed['discount_amount'],
                 'vat_amount' => $computed['vat_amount'],
                 'total' => $computed['total'],
             ];
@@ -67,6 +68,8 @@ class SalesInvoiceService
                     'description' => $line['description'] ?? 'Item',
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
+                    'discount_rate' => $line['discount_rate'],
+                    'discount_amount' => $line['discount_amount'],
                     'vat_rate' => $line['vat_rate'],
                     'line_net' => $line['line_net'],
                     'vat_amount' => $line['vat_amount'],
@@ -76,6 +79,19 @@ class SalesInvoiceService
             }
 
             return $invoice->fresh(['lines', 'customer']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array<string, mixed>>  $lines
+     */
+    public function generate(array $data, array $lines, User $user): SalesInvoice
+    {
+        return DB::transaction(function () use ($data, $lines, $user) {
+            $invoice = $this->saveDraft(null, $data, $lines, $user);
+
+            return $this->issue($invoice);
         });
     }
 

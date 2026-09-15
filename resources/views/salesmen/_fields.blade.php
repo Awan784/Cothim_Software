@@ -11,7 +11,7 @@
         @include('partials.pakistan-city-select', [
             'selectId' => 'salesman_city',
             'selectedCity' => old('city', $s->city),
-            'required' => true,
+            'required' => false,
         ])
         @error('city') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
     </div>

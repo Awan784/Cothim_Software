@@ -28,15 +28,15 @@
                     </thead>
                     <tbody>
                         @forelse($suppliers as $supplier)
-                            <tr>
+                            <tr class="supplier-row" data-href="{{ route('suppliers.show', $supplier) }}" tabindex="0">
                                 <td class="text-gray-900">
-                                    <a href="{{ route('suppliers.show', $supplier) }}">{{ $supplier->name }}</a>
+                                    <a href="{{ route('suppliers.show', $supplier) }}" class="supplier-open">{{ $supplier->name }}</a>
                                 </td>
                                 <td class="text-gray-900">{{ $supplier->phone }}</td>
                                 <td class="text-gray-900">{{ $supplier->email }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $supplier->opening_balance, 2) }}</td>
                                 <td class="text-gray-900">{{ $supplier->is_active ? 'Active' : 'Inactive' }}</td>
-                                <td class="text-end">
+                                <td class="text-end supplier-row-actions">
                                     <a href="{{ route('suppliers.edit', $supplier) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                                     <form action="{{ route('suppliers.destroy', $supplier) }}" method="post" class="d-inline">
                                         @csrf
@@ -56,4 +56,20 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <style>
+        .supplier-row { cursor: pointer; }
+        .supplier-row:hover { filter: brightness(0.97); }
+        .supplier-open { font-weight: 600; text-decoration: none; }
+    </style>
+    <script>
+        document.addEventListener('click', function (event) {
+            const row = event.target.closest('.supplier-row');
+            if (!row) return;
+            if (event.target.closest('.supplier-row-actions, a, button, form')) return;
+            window.location.href = row.dataset.href;
+        });
+    </script>
+@endpush
 

@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-1">Purchase bills</h1>
-                <p class="mb-0 text-muted">Supplier bills with recoverable VAT.</p>
+                <p class="mb-0 text-muted">Supplier bills with recoverable tax.</p>
             </div>
             <a href="{{ route('bills.create') }}" class="btn btn-primary">New bill</a>
         </div>
@@ -19,7 +19,7 @@
                             <th>Supplier</th>
                             <th>Date</th>
                             <th>Status</th>
-                            <th class="text-end">VAT</th>
+                            <th class="text-end">Tax</th>
                             <th class="text-end">Total</th>
                             <th class="text-end">Due</th>
                             <th></th>

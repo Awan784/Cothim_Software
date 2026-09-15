@@ -18,7 +18,7 @@
         </div>
         <div class="card p-4 mb-3">
             <table class="table">
-                <thead><tr><th>Description</th><th class="text-end">Qty</th><th class="text-end">VAT</th><th class="text-end">Total</th></tr></thead>
+                <thead><tr><th>Description</th><th class="text-end">Qty</th><th class="text-end">Tax</th><th class="text-end">Total</th></tr></thead>
                 <tbody>
                     @foreach($bill->lines as $line)
                         <tr>
@@ -31,7 +31,7 @@
                 </tbody>
                 <tfoot>
                     <tr><td colspan="3" class="text-end">Subtotal</td><td class="text-end">{{ number_format((float) $bill->subtotal, 2) }}</td></tr>
-                    <tr><td colspan="3" class="text-end">VAT</td><td class="text-end">{{ number_format((float) $bill->vat_amount, 2) }}</td></tr>
+                    <tr><td colspan="3" class="text-end">Tax</td><td class="text-end">{{ number_format((float) $bill->vat_amount, 2) }}</td></tr>
                     <tr><td colspan="3" class="text-end"><strong>Total</strong></td><td class="text-end"><strong>{{ number_format((float) $bill->total, 2) }}</strong></td></tr>
                     <tr><td colspan="3" class="text-end">Due</td><td class="text-end">{{ number_format($bill->balanceDue(), 2) }}</td></tr>
                 </tfoot>

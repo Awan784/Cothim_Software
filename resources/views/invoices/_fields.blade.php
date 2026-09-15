@@ -7,6 +7,7 @@
             'description' => $l->description,
             'quantity' => $l->quantity,
             'unit_price' => $l->unit_price,
+            'discount_rate' => $l->discount_rate,
             'vat_rate' => $l->vat_rate,
         ])->all();
     }
@@ -50,4 +51,5 @@
         'vatRate' => $vatRate,
         'stockItems' => $stockItems ?? collect(),
         'useItemSelect' => true,
+        'showDiscount' => true,
     ])

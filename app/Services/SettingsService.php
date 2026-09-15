@@ -102,7 +102,7 @@ class SettingsService
 
     public function companyName(): string
     {
-        return (string) ($this->get('company_name') ?: config('ams.product_name', 'Wafi'));
+        return (string) ($this->get('company_name') ?: config('ams.product_name', 'Contimade Traders'));
     }
 
     public function vatRate(): float

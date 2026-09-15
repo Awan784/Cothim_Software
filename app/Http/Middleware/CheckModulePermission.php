@@ -31,6 +31,8 @@ class CheckModulePermission
         'reports.show' => ['reports', 'view'],
         'cash-vouchers.print' => ['cash-vouchers', 'view'],
         'purchase-orders.print' => ['purchase-orders', 'view'],
+        'purchase-returns.print' => ['purchase-returns', 'view'],
+        'sales-returns.print' => ['sales-returns', 'view'],
         'bank-accounts.balance' => ['bank-accounts', 'view'],
     ];
 

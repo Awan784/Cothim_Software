@@ -12,8 +12,8 @@ return [
     */
     'show_delete_buttons' => (bool) env('AMS_SHOW_DELETE', false),
 
-    'product_name' => env('AMS_PRODUCT_NAME', 'Wafi'),
-    'company_name' => env('AMS_COMPANY_NAME', env('APP_NAME', 'Wafi')),
+    'product_name' => env('AMS_PRODUCT_NAME', 'Contimade Traders'),
+    'company_name' => env('AMS_COMPANY_NAME', env('APP_NAME', 'Contimade Traders')),
     'default_vat_rate' => 15,
     'trial_days' => 14,
     'whatsapp' => env('AMS_WHATSAPP', '966500000000'),

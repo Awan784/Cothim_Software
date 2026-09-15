@@ -106,7 +106,13 @@
             border-radius: 6px;
             font-size: 0.9rem;
         }
-        .party-summary span strong { color: #1a1a2e; }
+        .party-summary span.balance-highlight {
+            background: #fff;
+            border: 1px solid #17a2b8;
+            border-radius: 6px;
+            padding: 0.35rem 0.7rem;
+        }
+        .party-summary span.balance-highlight strong { color: #0f6f80; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -172,7 +178,7 @@
         <span>Party Ledger — {{ $partyName }}</span>
         <div class="toolbar-actions">
             <button type="button" class="btn btn-print" onclick="window.print()">Print / Save as PDF</button>
-            <a href="{{ route('reports.index') }}" class="btn btn-back">Back to Reports</a>
+            <a href="{{ $backUrl }}" class="btn btn-back">{{ $backLabel }}</a>
         </div>
     </div>
 
@@ -196,12 +202,20 @@
             <h2 class="report-company-title">{{ $companyName }}</h2>
             <h3 class="report-title">Party Ledger</h3>
 
+            @php
+                $balanceLabel = match ($accountType ?? '') {
+                    'supplier' => 'Payable Balance',
+                    'customer' => 'Receivable Balance',
+                    default => 'Closing Balance',
+                };
+            @endphp
             <div class="party-summary">
                 <span><strong>Code:</strong> {{ $partyCode }}</span>
                 <span><strong>Party:</strong> {{ $partyName }}</span>
                 <span><strong>Type:</strong> {{ $accountTypeLabel }}</span>
                 <span><strong>Period:</strong> {{ ams_date($fromDate) }} — {{ ams_date($toDate) }}</span>
-                <span><strong>Closing Balance:</strong> {{ number_format($closingBalance, 2) }}</span>
+                <span><strong>Opening Balance:</strong> {{ number_format((float) $openingBalance, 2) }}</span>
+                <span class="balance-highlight"><strong>{{ $balanceLabel }}:</strong> {{ number_format((float) $closingBalance, 2) }}</span>
             </div>
 
             <table>
@@ -219,7 +233,7 @@
                 <tbody>
                     @forelse($entries as $entry)
                         <tr @class([
-                            'row-bf' => !empty($entry['is_brought_forward']),
+                            'row-bf' => !empty($entry['is_brought_forward']) || !empty($entry['is_opening']),
                             'row-receive' => empty($entry['is_brought_forward']) && ($entry['tone'] ?? '') === 'receive',
                             'row-payment' => empty($entry['is_brought_forward']) && ($entry['tone'] ?? '') === 'payment',
                         ])>

@@ -243,6 +243,10 @@ class CashVoucherController extends Controller
 
             $this->vouchers->applyPartyBalance($cashVoucher, $oldAmount, $oldType, false);
 
+            if (($data['type'] ?? $oldType) !== $oldType) {
+                $data['voucher_no'] = CashVoucher::nextNumber((string) $data['type']);
+            }
+
             // Update voucher
             $cashVoucher->update($data);
 
@@ -256,10 +260,6 @@ class CashVoucherController extends Controller
 
             if (($cashVoucher->payment_method ?? 'cash') === 'cash') {
                 $newCash = CashAccount::whereKey($cashVoucher->cash_account_id)->lockForUpdate()->firstOrFail();
-
-                if ($newType === 'payment' && (float) $newCash->current_balance < $newAmount) {
-                    throw new \RuntimeException('No balance in this cash account.');
-                }
 
                 if ($newType === 'receive') {
                     $newCash->increment('current_balance', $newAmount);

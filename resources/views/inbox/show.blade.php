@@ -60,7 +60,7 @@
                     </div>
 
                     <div class="card p-4 mb-3">
-                        <h2 class="h6">Post as supplier bill (with VAT)</h2>
+                        <h2 class="h6">Post as supplier bill (with tax)</h2>
                         <form method="post" action="{{ route('inbox.post-bill', $inbox) }}">
                             @csrf
                             <div class="mb-2">
@@ -73,7 +73,7 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Gross amount (incl. VAT)</label>
+                                <label class="form-label">Gross amount (incl. tax)</label>
                                 <input name="amount" class="form-control" required value="{{ $inbox->extracted_amount ?? '' }}">
                             </div>
                             <button class="btn btn-outline-primary btn-sm" type="submit">Create bill</button>

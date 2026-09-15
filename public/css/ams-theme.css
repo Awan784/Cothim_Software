@@ -1,4 +1,4 @@
-/* Elite Events Marque — global UI polish & animations */
+/* Contimade Traders — global UI polish & animations */
 
 #sidebarMenu .nav-item:first-child .sidebar-text {
     font-size: 0.72rem;
@@ -1257,6 +1257,66 @@ body.ams-light {
     border-radius: 999px;
     font-weight: 600;
     letter-spacing: 0.02em;
+}
+
+.ams-status-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 4.6rem;
+    padding: 0.28rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+.ams-status-tag.is-paid {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.ams-status-tag.is-issued {
+    background: #fef3c7;
+    color: #b45309;
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55);
+    animation: ams-status-pulse 1.6s ease-in-out infinite;
+}
+
+.ams-status-tag.is-overdue {
+    background: #ffe4e6;
+    color: #be123c;
+    animation: ams-status-blink 1s ease-in-out infinite;
+}
+
+.ams-status-tag.is-draft {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+@keyframes ams-status-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+    }
+    50% {
+        transform: scale(1.04);
+        box-shadow: 0 0 0 7px rgba(245, 158, 11, 0);
+    }
+}
+
+@keyframes ams-status-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.42; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ams-status-tag.is-issued,
+    .ams-status-tag.is-overdue {
+        animation: none;
+    }
 }
 
 /* Modals */

@@ -16,7 +16,7 @@
     <nav class="navbar navbar-expand bg-white border-bottom">
         <div class="container-fluid px-4 py-2 d-flex justify-content-between">
             <a class="ams-brand" href="{{ route('platform.home') }}">
-                <span class="ams-brand-mark">W</span>
+                <span class="ams-brand-mark">{{ mb_strtoupper(mb_substr(config('ams.product_name'), 0, 1)) }}</span>
                 <span>{{ config('ams.product_name') }} · {{ __('Platform admin') }}</span>
             </a>
             <div class="d-flex gap-2 align-items-center">

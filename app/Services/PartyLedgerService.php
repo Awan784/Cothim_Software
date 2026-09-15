@@ -7,6 +7,9 @@ use App\Models\Customer;
 use App\Models\ExpenseAccount;
 use App\Models\JournalVoucherLine;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseReturn;
+use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Models\Supplier;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -55,6 +58,7 @@ class PartyLedgerService
      *     entries: \Illuminate\Support\Collection<int, array<string, mixed>>,
      *     broughtForward: float,
      *     closingBalance: float,
+     *     openingBalance: float,
      *     totalDebit: float,
      *     totalCredit: float
      * }
@@ -64,9 +68,13 @@ class PartyLedgerService
         $this->assertAccountType($accountType);
         $this->assertPartyExists($accountType, $accountId);
 
+        $openingBalance = $this->openingBalance($accountType, $accountId);
+
         $all = $this->collectEntries($accountType, $accountId)
             ->sortBy([
-                ['date', 'asc'],
+                ['sort_group', 'asc'],
+                ['sort_date', 'asc'],
+                ['sort_seq', 'asc'],
                 ['sort_key', 'asc'],
             ])
             ->values();
@@ -128,7 +136,9 @@ class PartyLedgerService
                 'credit' => $credit,
                 'balance' => $running,
                 'is_brought_forward' => false,
+                'is_opening' => ! empty($entry['is_opening']),
                 'tone' => $entry['tone'] ?? null,
+                'source' => $entry['source'] ?? null,
             ]);
         }
 
@@ -136,6 +146,7 @@ class PartyLedgerService
             'entries' => $entries,
             'broughtForward' => $broughtForward,
             'closingBalance' => $running,
+            'openingBalance' => $openingBalance,
             'totalDebit' => $totalDebit,
             'totalCredit' => $totalCredit,
         ];
@@ -144,11 +155,74 @@ class PartyLedgerService
     private function collectEntries(string $accountType, int $accountId): Collection
     {
         $entries = collect();
+        $opening = $this->openingBalance($accountType, $accountId);
+
+        if (abs($opening) > 0.005) {
+            [$debit, $credit] = $this->splitBalanceForDisplay($accountType, $opening);
+            $openingDate = $this->openingDate($accountType, $accountId);
+            $entries->push([
+                'date' => $openingDate,
+                'sort_group' => 0,
+                'sort_date' => $openingDate->format('Y-m-d'),
+                'sort_seq' => 0,
+                'sort_key' => '0-opening',
+                'ref' => 'OB',
+                'description' => 'Opening Balance',
+                'notes' => '',
+                'debit' => $debit,
+                'credit' => $credit,
+                'tone' => null,
+                'source' => 'opening',
+                'is_opening' => true,
+            ]);
+        }
+
+        if ($accountType === 'customer') {
+            foreach (SalesInvoice::where('customer_id', $accountId)->where('status', '!=', 'draft')->get() as $invoice) {
+                $date = $invoice->invoice_date instanceof Carbon ? $invoice->invoice_date : Carbon::parse($invoice->invoice_date);
+                $entries->push([
+                    'date' => $date,
+                    'sort_group' => 1,
+                    'sort_date' => $date->format('Y-m-d'),
+                    'sort_seq' => (int) ($invoice->created_at?->timestamp ?? $invoice->id),
+                    'sort_key' => 'si-'.$invoice->id,
+                    'ref' => $invoice->invoice_no ?: 'INV-'.$invoice->id,
+                    'description' => 'Sales invoice',
+                    'notes' => (string) ($invoice->notes ?? ''),
+                    'debit' => (float) $invoice->total,
+                    'credit' => 0.0,
+                    'tone' => null,
+                    'source' => 'sale',
+                ]);
+            }
+
+            foreach (SalesReturn::where('customer_id', $accountId)->get() as $sr) {
+                $date = $sr->return_date instanceof Carbon ? $sr->return_date : Carbon::parse($sr->return_date);
+                $entries->push([
+                    'date' => $date,
+                    'sort_group' => 1,
+                    'sort_date' => $date->format('Y-m-d'),
+                    'sort_seq' => (int) ($sr->created_at?->timestamp ?? $sr->id),
+                    'sort_key' => 'sr-'.$sr->id,
+                    'ref' => $sr->return_no,
+                    'description' => 'Sales return',
+                    'notes' => (string) ($sr->notes ?? ''),
+                    'debit' => 0.0,
+                    'credit' => (float) $sr->total_amount,
+                    'tone' => null,
+                    'source' => 'sales_return',
+                ]);
+            }
+        }
 
         if ($accountType === 'supplier') {
             foreach (PurchaseOrder::where('supplier_id', $accountId)->get() as $po) {
+                $date = $po->po_date instanceof Carbon ? $po->po_date : Carbon::parse($po->po_date);
                 $entries->push([
-                    'date' => $po->po_date,
+                    'date' => $date,
+                    'sort_group' => 1,
+                    'sort_date' => $date->format('Y-m-d'),
+                    'sort_seq' => (int) ($po->created_at?->timestamp ?? $po->id),
                     'sort_key' => 'po-'.$po->id,
                     'ref' => $po->po_no,
                     'description' => 'Purchase order',
@@ -156,6 +230,25 @@ class PartyLedgerService
                     'debit' => 0.0,
                     'credit' => (float) $po->total_amount,
                     'tone' => null,
+                    'source' => 'purchase',
+                ]);
+            }
+
+            foreach (PurchaseReturn::where('supplier_id', $accountId)->get() as $pr) {
+                $date = $pr->return_date instanceof Carbon ? $pr->return_date : Carbon::parse($pr->return_date);
+                $entries->push([
+                    'date' => $date,
+                    'sort_group' => 1,
+                    'sort_date' => $date->format('Y-m-d'),
+                    'sort_seq' => (int) ($pr->created_at?->timestamp ?? $pr->id),
+                    'sort_key' => 'pr-'.$pr->id,
+                    'ref' => $pr->return_no,
+                    'description' => 'Purchase return',
+                    'notes' => (string) ($pr->notes ?? ''),
+                    'debit' => (float) $pr->total_amount,
+                    'credit' => 0.0,
+                    'tone' => null,
+                    'source' => 'purchase_return',
                 ]);
             }
         }
@@ -180,6 +273,9 @@ class PartyLedgerService
 
             $entries->push([
                 'date' => $voucher->voucher_date,
+                'sort_group' => 1,
+                'sort_date' => ($voucher->voucher_date instanceof Carbon ? $voucher->voucher_date : Carbon::parse($voucher->voucher_date))->format('Y-m-d'),
+                'sort_seq' => (int) ($voucher->created_at?->timestamp ?? $voucher->id),
                 'sort_key' => 'jv-'.$line->id,
                 'ref' => $voucher->voucher_no,
                 'description' => $line->line_note ?: 'Journal voucher',
@@ -187,6 +283,7 @@ class PartyLedgerService
                 'debit' => (float) $line->debit,
                 'credit' => (float) $line->credit,
                 'tone' => (float) $line->debit > 0 ? 'payment' : ((float) $line->credit > 0 ? 'receive' : null),
+                'source' => 'journal',
             ]);
         }
 
@@ -215,8 +312,13 @@ class PartyLedgerService
 
         $paymentLabel = ucfirst($voucher->payment_method ?? 'cash');
 
+        $date = $voucher->voucher_date instanceof Carbon ? $voucher->voucher_date : Carbon::parse($voucher->voucher_date);
+
         return [
-            'date' => $voucher->voucher_date,
+            'date' => $date,
+            'sort_group' => 1,
+            'sort_date' => $date->format('Y-m-d'),
+            'sort_seq' => (int) ($voucher->created_at?->timestamp ?? $voucher->id),
             'sort_key' => 'cv-'.$voucher->id,
             'ref' => $voucher->voucher_no,
             'description' => 'Cash voucher ('.strtoupper($voucher->type).', '.$paymentLabel.')',
@@ -224,6 +326,7 @@ class PartyLedgerService
             'debit' => $debit,
             'credit' => $credit,
             'tone' => $voucher->type,
+            'source' => 'cash',
         ];
     }
 
@@ -252,6 +355,30 @@ class PartyLedgerService
             $balance < 0 ? abs($balance) : 0.0,
             $balance > 0 ? $balance : 0.0,
         ];
+    }
+
+    private function openingBalance(string $accountType, int $accountId): float
+    {
+        return match ($accountType) {
+            'customer' => (float) (Customer::whereKey($accountId)->value('opening_balance') ?? 0),
+            'supplier' => (float) (Supplier::whereKey($accountId)->value('opening_balance') ?? 0),
+            default => 0.0,
+        };
+    }
+
+    private function openingDate(string $accountType, int $accountId): Carbon
+    {
+        $createdAt = match ($accountType) {
+            'customer' => Customer::whereKey($accountId)->value('created_at'),
+            'supplier' => Supplier::whereKey($accountId)->value('created_at'),
+            default => null,
+        };
+
+        if ($createdAt) {
+            return Carbon::parse($createdAt)->startOfDay();
+        }
+
+        return Carbon::parse('2000-01-01')->startOfDay();
     }
 
     private function assertAccountType(string $accountType): void

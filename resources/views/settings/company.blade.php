@@ -24,7 +24,7 @@
                         <input name="company_cr_number" class="form-control" value="{{ old('company_cr_number', $settings['company_cr_number'] ?? '') }}">
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Default VAT %</label>
+                        <label class="form-label">Default Tax %</label>
                         <input name="default_vat_rate" class="form-control" value="{{ old('default_vat_rate', $settings['default_vat_rate'] ?? 15) }}">
                     </div>
                 </div>

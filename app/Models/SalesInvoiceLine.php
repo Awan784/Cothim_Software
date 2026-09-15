@@ -13,6 +13,8 @@ class SalesInvoiceLine extends Model
         'description',
         'quantity',
         'unit_price',
+        'discount_rate',
+        'discount_amount',
         'vat_rate',
         'line_net',
         'vat_amount',
@@ -23,6 +25,8 @@ class SalesInvoiceLine extends Model
     protected $casts = [
         'quantity' => 'float',
         'unit_price' => 'float',
+        'discount_rate' => 'float',
+        'discount_amount' => 'float',
         'vat_rate' => 'float',
         'line_net' => 'float',
         'vat_amount' => 'float',

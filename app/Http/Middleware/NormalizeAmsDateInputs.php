@@ -13,6 +13,7 @@ class NormalizeAmsDateInputs
     private const DATE_FIELDS = [
         'voucher_date',
         'po_date',
+        'return_date',
         'expense_date',
         'from_date',
         'to_date',

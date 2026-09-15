@@ -31,6 +31,28 @@ class CashVoucher extends Model
         'voucher_date' => 'date',
     ];
 
+    public static function prefixFor(string $type): string
+    {
+        return $type === 'receive' ? 'CRV' : 'CPV';
+    }
+
+    public static function nextNumber(string $type): string
+    {
+        $prefix = self::prefixFor($type);
+        $max = 100;
+
+        foreach (static::query()->where('voucher_no', 'like', $prefix.'-%')->lockForUpdate()->pluck('voucher_no') as $voucherNo) {
+            if (preg_match('/^'.preg_quote($prefix, '/').'-(\d+)$/', (string) $voucherNo, $match)) {
+                $n = (int) $match[1];
+                if ($n > $max) {
+                    $max = $n;
+                }
+            }
+        }
+
+        return $prefix.'-'.($max + 1);
+    }
+
     public function cashAccount(): BelongsTo
     {
         return $this->belongsTo(CashAccount::class);

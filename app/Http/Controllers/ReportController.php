@@ -76,13 +76,17 @@ class ReportController extends Controller
             'printedAt' => now(),
             'partyName' => $ledger->partyName($data['account_type'], (int) $data['account_id']),
             'partyCode' => $ledger->partyCode($data['account_type'], (int) $data['account_id']),
+            'accountType' => $data['account_type'],
             'accountTypeLabel' => PartyLedgerService::ACCOUNT_TYPES[$data['account_type']],
             'fromDate' => $from,
             'toDate' => $to,
             'entries' => $result['entries'],
+            'openingBalance' => $result['openingBalance'],
             'closingBalance' => $result['closingBalance'],
             'totalDebit' => $result['totalDebit'],
             'totalCredit' => $result['totalCredit'],
+            'backUrl' => route('reports.index'),
+            'backLabel' => 'Back to Reports',
         ]);
     }
 

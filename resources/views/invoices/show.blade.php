@@ -1,27 +1,16 @@
 @extends('template.layout')
-@section('title', $invoice->invoice_no ?: 'Draft invoice')
+@section('title', $invoice->invoice_no ?: 'Sales invoice')
 
 @section('content')
     <div class="pb-4">
         <div class="py-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
-                <h1 class="h4 mb-1">{{ $invoice->invoice_no ?: 'Draft invoice' }}</h1>
-                <p class="mb-0 text-muted">{{ $invoice->customer?->name }} · {{ $invoice->status }} · ZATCA {{ $invoice->zatca_status }}</p>
+                <h1 class="h4 mb-1">{{ $invoice->invoice_no ?: 'Sales invoice' }}</h1>
+                <p class="mb-0 text-muted">{{ $invoice->customer?->name }} · {{ $invoice->status }}</p>
             </div>
             <div class="d-flex gap-2">
-                @if($invoice->isDraft())
-                    <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                    <form method="post" action="{{ route('invoices.issue', $invoice) }}">
-                        @csrf
-                        <button class="btn btn-sm btn-primary" type="submit">Issue invoice</button>
-                    </form>
-                @else
-                    <a href="{{ route('invoices.print', $invoice) }}" class="btn btn-sm btn-primary" target="_blank">Print / QR</a>
-                    @php
-                        $waNumber = $invoice->customer?->phone ?: ($settings->get('whatsapp') ?? config('ams.whatsapp'));
-                        $waText = 'Invoice '.($invoice->invoice_no ?: '').' total '.number_format((float) $invoice->total, 2).' SAR. View: '.route('invoices.show', $invoice);
-                    @endphp
-                    <a class="btn btn-sm btn-success" target="_blank" rel="noopener" href="{{ wafi_whatsapp_url($waText, $waNumber) }}">WhatsApp</a>
+                @if(! $invoice->isDraft())
+                    <a href="{{ route('invoices.print', $invoice) }}" class="btn btn-sm btn-primary" target="_blank">Print</a>
                 @endif
                 <a href="{{ route('invoices.index') }}" class="btn btn-sm btn-secondary">Back</a>
             </div>
@@ -35,8 +24,9 @@
                             <th>Description</th>
                             <th class="text-end">Qty</th>
                             <th class="text-end">Price</th>
-                            <th class="text-end">VAT %</th>
-                            <th class="text-end">VAT</th>
+                            <th class="text-end">Disc %</th>
+                            <th class="text-end">Tax %</th>
+                            <th class="text-end">Tax</th>
                             <th class="text-end">Total</th>
                         </tr>
                     </thead>
@@ -46,18 +36,22 @@
                                 <td>{{ $line->description }}</td>
                                 <td class="text-end">{{ number_format((float) $line->quantity, 3) }}</td>
                                 <td class="text-end">{{ number_format((float) $line->unit_price, 2) }}</td>
-                                <td class="text-end">{{ number_format((float) $line->vat_rate, 2) }}</td>
+                                <td class="text-end">{{ number_format((float) $line->discount_rate, 2) }}%</td>
+                                <td class="text-end">{{ number_format((float) $line->vat_rate, 2) }}%</td>
                                 <td class="text-end">{{ number_format((float) $line->vat_amount, 2) }}</td>
                                 <td class="text-end">{{ number_format((float) $line->line_total, 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
                     <tfoot>
-                        <tr><td colspan="5" class="text-end">Subtotal</td><td class="text-end">{{ number_format((float) $invoice->subtotal, 2) }}</td></tr>
-                        <tr><td colspan="5" class="text-end">VAT</td><td class="text-end">{{ number_format((float) $invoice->vat_amount, 2) }}</td></tr>
-                        <tr><td colspan="5" class="text-end"><strong>Total</strong></td><td class="text-end"><strong>{{ number_format((float) $invoice->total, 2) }}</strong></td></tr>
-                        <tr><td colspan="5" class="text-end">Paid</td><td class="text-end">{{ number_format((float) $invoice->amount_paid, 2) }}</td></tr>
-                        <tr><td colspan="5" class="text-end">Due</td><td class="text-end">{{ number_format($invoice->balanceDue(), 2) }}</td></tr>
+                        <tr><td colspan="6" class="text-end">Subtotal</td><td class="text-end">{{ number_format((float) $invoice->subtotal + (float) $invoice->discount_amount, 2) }}</td></tr>
+                        @if((float) $invoice->discount_amount > 0)
+                            <tr><td colspan="6" class="text-end">Discount</td><td class="text-end">{{ number_format((float) $invoice->discount_amount, 2) }}</td></tr>
+                        @endif
+                        <tr><td colspan="6" class="text-end">Tax</td><td class="text-end">{{ number_format((float) $invoice->vat_amount, 2) }}</td></tr>
+                        <tr><td colspan="6" class="text-end"><strong>Total</strong></td><td class="text-end"><strong>{{ number_format((float) $invoice->total, 2) }}</strong></td></tr>
+                        <tr><td colspan="6" class="text-end">Paid</td><td class="text-end">{{ number_format((float) $invoice->amount_paid, 2) }}</td></tr>
+                        <tr><td colspan="6" class="text-end">Due</td><td class="text-end">{{ number_format($invoice->balanceDue(), 2) }}</td></tr>
                     </tfoot>
                 </table>
             </div>

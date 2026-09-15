@@ -13,8 +13,8 @@
                     <div class="ams-start-art ams-start-art--invoice">
                         <span class="ams-qr-mark"></span>
                     </div>
-                    <h2>Create your first invoice</h2>
-                    <p>Get paid faster with VAT and a ZATCA Phase 1 QR code.</p>
+                    <h2>Create sales invoice</h2>
+                    <p>Add items, discount, and tax on a sales invoice.</p>
                     @if($hasInvoice)
                         <span class="ams-start-done">Done</span>
                     @endif

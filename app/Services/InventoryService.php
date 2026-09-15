@@ -3,9 +3,10 @@
 namespace App\Services;
 
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseReturn;
+use App\Models\SalesReturn;
 use App\Models\StockItem;
 use App\Models\StockMovement;
-use InvalidArgumentException;
 
 class InventoryService
 {
@@ -14,7 +15,7 @@ class InventoryService
      */
     public function receive(int $stockItemId, float $quantity, array $meta = []): void
     {
-        $this->adjust($stockItemId, $quantity, false);
+        $this->adjust($stockItemId, $quantity);
         $this->move($stockItemId, 'in', $quantity, $meta);
     }
 
@@ -23,7 +24,7 @@ class InventoryService
      */
     public function issue(int $stockItemId, float $quantity, array $meta = []): void
     {
-        $this->adjust($stockItemId, -$quantity, true);
+        $this->adjust($stockItemId, -$quantity);
         $this->move($stockItemId, 'out', $quantity, $meta);
     }
 
@@ -33,7 +34,7 @@ class InventoryService
 
         foreach ($purchaseOrder->items as $item) {
             if ($item->stock_item_id) {
-                $this->adjust((int) $item->stock_item_id, -((float) $item->quantity), false);
+                $this->adjust((int) $item->stock_item_id, -((float) $item->quantity));
             }
         }
 
@@ -43,18 +44,42 @@ class InventoryService
             ->delete();
     }
 
-    private function adjust(int $stockItemId, float $delta, bool $requireStock): void
+    public function revertPurchaseReturn(PurchaseReturn $purchaseReturn): void
     {
-        $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
-        $next = round((float) $item->quantity + $delta, 2);
+        $purchaseReturn->loadMissing('items');
 
-        if ($requireStock && $next < -0.0001) {
-            throw new InvalidArgumentException(
-                'Not enough stock for '.$item->name.'. Available: '.number_format((float) $item->quantity, 2)
-            );
+        foreach ($purchaseReturn->items as $item) {
+            if ($item->stock_item_id) {
+                $this->adjust((int) $item->stock_item_id, (float) $item->quantity);
+            }
         }
 
-        $item->quantity = $next;
+        StockMovement::query()
+            ->where('source_type', 'purchase_return')
+            ->where('source_id', $purchaseReturn->id)
+            ->delete();
+    }
+
+    public function revertSalesReturn(SalesReturn $salesReturn): void
+    {
+        $salesReturn->loadMissing('items');
+
+        foreach ($salesReturn->items as $item) {
+            if ($item->stock_item_id) {
+                $this->adjust((int) $item->stock_item_id, -((float) $item->quantity));
+            }
+        }
+
+        StockMovement::query()
+            ->where('source_type', 'sales_return')
+            ->where('source_id', $salesReturn->id)
+            ->delete();
+    }
+
+    private function adjust(int $stockItemId, float $delta): void
+    {
+        $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
+        $item->quantity = round((float) $item->quantity + $delta, 2);
         $item->save();
     }
 

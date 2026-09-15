@@ -35,7 +35,6 @@ class CashVoucherService
     public function create(array $data): CashVoucher
     {
         $data['cash_account_id'] = $this->defaultCashAccountId();
-        $data['voucher_no'] = $data['voucher_no'] ?? ('CV-'.now()->format('Ymd-His').'-'.random_int(100, 999));
 
         if (($data['payment_method'] ?? '') === 'bank' && empty($data['bank_account_id'])) {
             throw new InvalidArgumentException('Please select a bank account.');
@@ -59,15 +58,12 @@ class CashVoucherService
         return DB::transaction(function () use ($data) {
             $amount = (float) $data['amount'];
             $type = $data['type'];
+            $data['voucher_no'] = $data['voucher_no'] ?? CashVoucher::nextNumber($type);
 
             $voucher = CashVoucher::create($data);
 
             if ($voucher->payment_method === 'cash') {
                 $cash = CashAccount::whereKey($voucher->cash_account_id)->lockForUpdate()->firstOrFail();
-
-                if ($type === 'payment' && (float) $cash->current_balance < $amount) {
-                    throw new RuntimeException('No balance in this cash account.');
-                }
 
                 if ($type === 'receive') {
                     $cash->increment('current_balance', $amount);

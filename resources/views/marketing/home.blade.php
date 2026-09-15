@@ -56,7 +56,7 @@
 
 <section class="wafi-demo" id="demo">
     <div class="wafi-wrap">
-        <h2>{{ __('See Wafi in action') }}</h2>
+        <h2>{{ __('See :name in action', ['name' => config('ams.product_name')]) }}</h2>
         <p class="wafi-section-lead">{{ __('video.lead') }}</p>
         <div class="wafi-player" id="wafiPlayer">
             <img id="wafiPlayerFrame" src="{{ asset('images/marketing/wafi-hero-app.png') }}" alt="{{ __('Watch demo') }}">

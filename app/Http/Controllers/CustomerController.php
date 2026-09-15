@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Services\PartyLedgerService;
+use App\Services\SettingsService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -33,9 +36,22 @@ class CustomerController extends Controller
         return redirect()->route('customers.index')->with('success', 'Customer created.');
     }
 
-    public function show(Customer $customer): RedirectResponse
+    public function show(Customer $customer, PartyLedgerService $ledger): View
     {
-        return redirect()->route('customers.edit', $customer);
+        $from = Carbon::parse('2000-01-01')->startOfDay();
+        $to = now()->endOfDay();
+        $result = $ledger->ledger('customer', (int) $customer->id, $from, $to);
+
+        return view('customers.show', [
+            'customer' => $customer,
+            'settings' => app(SettingsService::class),
+            'entries' => $result['entries'],
+            'openingBalance' => $result['openingBalance'],
+            'closingBalance' => $result['closingBalance'],
+            'totalDebit' => $result['totalDebit'],
+            'totalCredit' => $result['totalCredit'],
+            'printedAt' => now(),
+        ]);
     }
 
     public function edit(Customer $customer): View

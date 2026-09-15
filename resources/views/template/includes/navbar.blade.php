@@ -2,15 +2,15 @@
     @php
         $company = $shell['company'] ?? config('ams.product_name');
         $isAccounts = request()->routeIs('customers.*') || request()->routeIs('salesmen.*') || request()->routeIs('suppliers.*') || request()->routeIs('bank-accounts.*');
-        $isSales = request()->routeIs('invoices.*');
-        $isPurchases = request()->routeIs('purchase-orders.*');
+        $isSales = request()->routeIs('invoices.*') || request()->routeIs('sales-returns.*');
+        $isPurchases = request()->routeIs('purchase-orders.*') || request()->routeIs('purchase-returns.*');
         $isAccounting = request()->routeIs('cash-vouchers.*') || request()->routeIs('journal-vouchers.*');
         $isStock = request()->routeIs('stock-categories.*') || request()->routeIs('stock-items.*');
         $isSettings = request()->routeIs('settings.*') || request()->routeIs('users.*');
     @endphp
     <div class="sidebar-inner px-3 pt-3 pb-4 d-flex flex-column" style="min-height:100%">
         <a href="{{ route('dashboard') }}" class="ams-brand mb-3">
-            <span class="ams-brand-mark">W</span>
+            <span class="ams-brand-mark">{{ mb_strtoupper(mb_substr(config('ams.product_name'), 0, 1)) }}</span>
             <span class="ams-brand-name">{{ config('ams.product_name') }}</span>
         </a>
         <div class="ams-org-switch mb-3">{{ $company }}</div>
@@ -72,7 +72,8 @@
                 </a>
                 <div class="multi-level collapse {{ $isSales ? 'show' : '' }}" id="salesMenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}"><span class="sidebar-text">Invoices</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}"><span class="sidebar-text">Sales invoices</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" href="{{ route('sales-returns.index') }}"><span class="sidebar-text">Sales returns</span></a></li>
                     </ul>
                 </div>
             </li>
@@ -85,6 +86,7 @@
                 <div class="multi-level collapse {{ $isPurchases ? 'show' : '' }}" id="purchasesMenu">
                     <ul class="nav flex-column">
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}" href="{{ route('purchase-orders.index') }}"><span class="sidebar-text">Purchase orders</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('purchase-returns.*') ? 'active' : '' }}" href="{{ route('purchase-returns.index') }}"><span class="sidebar-text">Purchase returns</span></a></li>
                     </ul>
                 </div>
             </li>

@@ -21,6 +21,7 @@ class SalesInvoice extends Model
         'type',
         'status',
         'subtotal',
+        'discount_amount',
         'vat_amount',
         'total',
         'amount_paid',
@@ -37,6 +38,7 @@ class SalesInvoice extends Model
         'due_date' => 'date',
         'issued_at' => 'datetime',
         'subtotal' => 'float',
+        'discount_amount' => 'float',
         'vat_amount' => 'float',
         'total' => 'float',
         'amount_paid' => 'float',
@@ -60,6 +62,44 @@ class SalesInvoice extends Model
     public function isDraft(): bool
     {
         return $this->status === 'draft';
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->status === 'paid' || $this->balanceDue() <= 0.009;
+    }
+
+    public function isOverdue(): bool
+    {
+        return ! $this->isPaid()
+            && ! $this->isDraft()
+            && $this->due_date
+            && $this->due_date->copy()->endOfDay()->isPast();
+    }
+
+    public function listStatus(): string
+    {
+        if ($this->isPaid()) {
+            return 'paid';
+        }
+        if ($this->isDraft()) {
+            return 'draft';
+        }
+        if ($this->isOverdue()) {
+            return 'overdue';
+        }
+
+        return 'issued';
+    }
+
+    public function listStatusLabel(): string
+    {
+        return match ($this->listStatus()) {
+            'paid' => 'Paid',
+            'draft' => 'Draft',
+            'overdue' => 'Overdue',
+            default => 'Issued',
+        };
     }
 
     public function balanceDue(): float
