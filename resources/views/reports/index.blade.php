@@ -15,6 +15,7 @@
                             'party-ledger' => 'partyLedgerModal',
                             'cash-register' => 'cashRegisterModal',
                             'journal-report' => 'journalReportModal',
+                            'salesman-commission' => 'salesmanCommissionModal',
                             default => null,
                         };
                     @endphp
@@ -155,6 +156,46 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary" style="background:#e85d82;border-color:#e85d82;">View Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="salesmanCommissionModal" tabindex="-1" aria-labelledby="salesmanCommissionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="get" action="{{ route('reports.salesman-commission') }}" target="_blank">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="salesmanCommissionModalLabel">Salesman Commission</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Confirmed salesman invoices with company retain and commission snapshots.
+                        </p>
+                        <div class="mb-3">
+                            <label for="sc_salesman_id" class="form-label">Salesman</label>
+                            <select name="salesman_id" id="sc_salesman_id" class="form-select">
+                                <option value="">All salesmen</option>
+                                @foreach($salesmen as $salesman)
+                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sc_from_date" class="form-label">From Date</label>
+                                <x-ams-date-input name="from_date" id="sc_from_date" :value="now()->startOfMonth()" required />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sc_to_date" class="form-label">To Date</label>
+                                <x-ams-date-input name="to_date" id="sc_to_date" :value="now()" required />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">View Report</button>
                     </div>
                 </form>
             </div>

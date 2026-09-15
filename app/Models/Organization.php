@@ -23,6 +23,8 @@ class Organization extends Model
         'cr_number',
         'address',
         'default_vat_rate',
+        'company_retain_percent',
+        'salesman_commission_percent',
         'zatca_environment',
         'status',
         'whatsapp',
@@ -32,6 +34,8 @@ class Organization extends Model
     protected $casts = [
         'trial_ends_at' => 'date',
         'default_vat_rate' => 'float',
+        'company_retain_percent' => 'float',
+        'salesman_commission_percent' => 'float',
     ];
 
     public function users(): HasMany

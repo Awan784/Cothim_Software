@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\SalesInvoice;
+use App\Models\Salesman;
 use App\Models\Supplier;
 use App\Services\CashRegisterService;
 use App\Services\JournalReportService;
@@ -22,6 +24,7 @@ class ReportController extends Controller
             ['slug' => 'party-ledger', 'title' => 'Party Ledger', 'color' => 'teal'],
             ['slug' => 'cash-register', 'title' => 'Cash Register', 'color' => 'green'],
             ['slug' => 'journal-report', 'title' => 'Journal Report', 'color' => 'pink'],
+            ['slug' => 'salesman-commission', 'title' => 'Salesman Commission', 'color' => 'orange'],
         ];
     }
 
@@ -29,6 +32,7 @@ class ReportController extends Controller
     {
         return view('reports.index', [
             'reports' => self::catalog(),
+            'salesmen' => Salesman::query()->orderBy('name')->get(['id', 'name', 'city']),
         ]);
     }
 
@@ -136,6 +140,41 @@ class ReportController extends Controller
             'closingBalance' => $result['closingBalance'],
             'totalCashIn' => $result['totalCashIn'],
             'totalCashOut' => $result['totalCashOut'],
+        ]);
+    }
+
+    public function salesmanCommission(Request $request): View
+    {
+        $data = $request->validate([
+            'from_date' => ['required', 'date'],
+            'to_date' => ['required', 'date', 'after_or_equal:from_date'],
+            'salesman_id' => ['nullable', 'integer', 'exists:salesmen,id'],
+        ]);
+
+        $from = Carbon::parse($data['from_date'])->startOfDay();
+        $to = Carbon::parse($data['to_date'])->endOfDay();
+
+        $query = SalesInvoice::with(['customer', 'salesman'])
+            ->where('status', '!=', 'draft')
+            ->whereNotNull('salesman_id')
+            ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()]);
+
+        if (! empty($data['salesman_id'])) {
+            $query->where('salesman_id', $data['salesman_id']);
+        }
+
+        $invoices = $query->orderBy('invoice_date')->orderBy('id')->get();
+
+        return view('reports.salesman-commission', [
+            'companyName' => app(SettingsService::class)->companyName(),
+            'printedAt' => now(),
+            'fromDate' => $from,
+            'toDate' => $to,
+            'salesman' => ! empty($data['salesman_id']) ? Salesman::query()->find($data['salesman_id']) : null,
+            'invoices' => $invoices,
+            'totalSales' => (float) $invoices->sum('total'),
+            'totalRetain' => (float) $invoices->sum('company_retain_amount'),
+            'totalCommission' => (float) $invoices->sum('salesman_commission_amount'),
         ]);
     }
 

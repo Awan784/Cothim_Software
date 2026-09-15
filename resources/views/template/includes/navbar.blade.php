@@ -2,7 +2,7 @@
     @php
         $company = $shell['company'] ?? config('ams.product_name');
         $isAccounts = request()->routeIs('customers.*') || request()->routeIs('salesmen.*') || request()->routeIs('suppliers.*') || request()->routeIs('bank-accounts.*');
-        $isSales = request()->routeIs('invoices.*') || request()->routeIs('sales-returns.*');
+        $isSales = request()->routeIs('invoices.*') || request()->routeIs('sales-returns.*') || request()->routeIs('sales-orders.*');
         $isPurchases = request()->routeIs('purchase-orders.*') || request()->routeIs('purchase-returns.*');
         $isAccounting = request()->routeIs('cash-vouchers.*') || request()->routeIs('journal-vouchers.*');
         $isStock = request()->routeIs('stock-categories.*') || request()->routeIs('stock-items.*');
@@ -73,6 +73,12 @@
                 <div class="multi-level collapse {{ $isSales ? 'show' : '' }}" id="salesMenu">
                     <ul class="nav flex-column">
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}"><span class="sidebar-text">Sales invoices</span></a></li>
+                        <li class="nav-item">
+                            <a class="nav-link d-flex align-items-center justify-content-between {{ request()->routeIs('sales-orders.*') ? 'active' : '' }}" href="{{ route('sales-orders.index') }}">
+                                <span class="sidebar-text">Sales orders</span>
+                                <span class="ams-nav-badge" id="amsPendingOrderBadge" @if(($pendingSalesOrders ?? 0) < 1) hidden @endif>{{ $pendingSalesOrders ?? 0 }}</span>
+                            </a>
+                        </li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" href="{{ route('sales-returns.index') }}"><span class="sidebar-text">Sales returns</span></a></li>
                     </ul>
                 </div>

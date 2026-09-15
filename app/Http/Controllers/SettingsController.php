@@ -26,6 +26,8 @@ class SettingsController extends Controller
             'company_cr_number' => ['nullable', 'string', 'max:32'],
             'company_address' => ['nullable', 'string', 'max:2000'],
             'default_vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
+            'company_retain_percent' => ['required', 'numeric', 'gte:0', 'lte:100'],
+            'salesman_commission_percent' => ['required', 'numeric', 'gte:0', 'lte:100'],
             'zatca_environment' => ['required', 'in:sandbox,production'],
             'whatsapp' => ['nullable', 'string', 'max:32'],
         ]);

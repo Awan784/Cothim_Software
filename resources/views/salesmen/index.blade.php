@@ -25,6 +25,7 @@
                             <th class="text-end">Shops in city</th>
                             <th class="text-end">Monthly target</th>
                             <th class="text-end">This month</th>
+                            <th class="text-end">Commission %</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -33,7 +34,10 @@
                         @forelse($salesmen as $salesman)
                             @php
                                 $shops = (int) ($shopsByCity[$salesman->city] ?? 0);
-                                $achieved = (float) ($monthSalesByCity[$salesman->city] ?? 0);
+                                $bySalesman = $monthSalesBySalesman[$salesman->id] ?? null;
+                                $achieved = $bySalesman
+                                    ? (float) $bySalesman->month_sales
+                                    : (float) ($monthSalesByCity[$salesman->city] ?? 0);
                             @endphp
                             <tr>
                                 <td class="text-gray-900">{{ $salesman->name }}</td>
@@ -43,6 +47,7 @@
                                 <td class="text-gray-900 text-end">{{ $shops }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $salesman->monthly_target, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format($achieved, 2) }}</td>
+                                <td class="text-gray-900 text-end">{{ $salesman->commission_percent !== null ? number_format((float) $salesman->commission_percent, 2).'%' : 'Default' }}</td>
                                 <td class="text-gray-900">{{ $salesman->is_active ? 'Active' : 'Inactive' }}</td>
                                 <td class="text-end">
                                     <a href="{{ route('salesmen.edit', $salesman) }}" class="btn btn-sm btn-outline-primary">Edit</a>
@@ -55,7 +60,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center text-gray-600">No salesmen yet.</td>
+                                <td colspan="10" class="text-center text-gray-600">No salesmen yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

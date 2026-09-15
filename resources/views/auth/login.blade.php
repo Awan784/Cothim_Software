@@ -5,7 +5,7 @@
 <section class="wafi-auth">
     <div class="wafi-auth-card">
         <h1>{{ __('Sign in to :name', ['name' => config('ams.product_name')]) }}</h1>
-        <p class="muted">{{ __('Use your company workspace email.') }}</p>
+        <p class="muted">{{ __('Use your company email, or salesman username.') }}</p>
 
         @if (session('success'))
             <div class="wafi-alert wafi-alert-ok">{{ session('success') }}</div>
@@ -24,8 +24,8 @@
         <form method="post" action="{{ url('/login') }}">
             @csrf
             <div class="wafi-field">
-                <label for="email">{{ __('Email') }}</label>
-                <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus placeholder="you@company.com">
+                <label for="login">{{ __('Email or username') }}</label>
+                <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus placeholder="you@company.com or username" autocomplete="username">
             </div>
             <div class="wafi-field">
                 <label for="password">{{ __('Password') }}</label>

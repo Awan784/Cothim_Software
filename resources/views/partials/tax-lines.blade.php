@@ -13,7 +13,11 @@
     </div>
     @if($useItemSelect && $stockItems->isEmpty())
         <div class="px-3 pt-3">
-            <p class="small text-muted mb-0">No active stock items yet. <a href="{{ route('stock-items.create') }}">Add an item</a> first, then select it here.</p>
+            @if(auth('salesman')->check())
+                <p class="small text-muted mb-0">No stock items available. Ask admin to add items first.</p>
+            @else
+                <p class="small text-muted mb-0">No active stock items yet. <a href="{{ route('stock-items.create') }}">Add an item</a> first, then select it here.</p>
+            @endif
         </div>
     @endif
     <div class="table-responsive">

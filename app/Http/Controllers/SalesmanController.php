@@ -23,9 +23,11 @@ class SalesmanController extends Controller
             ->groupBy('city')
             ->pluck('shops', 'city');
 
+        $monthRange = [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()];
+
         $monthSalesByCity = SalesInvoice::query()
             ->where('status', '!=', 'draft')
-            ->whereBetween('invoice_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
+            ->whereBetween('invoice_date', $monthRange)
             ->join('customers', function ($join) {
                 $join->on('customers.id', '=', 'sales_invoices.customer_id');
                 if ($orgId = organization_id()) {
@@ -38,7 +40,16 @@ class SalesmanController extends Controller
             ->groupBy('customers.city')
             ->pluck('month_sales', 'city');
 
-        return view('salesmen.index', compact('salesmen', 'shopsByCity', 'monthSalesByCity'));
+        $monthSalesBySalesman = SalesInvoice::query()
+            ->where('status', '!=', 'draft')
+            ->whereBetween('invoice_date', $monthRange)
+            ->whereNotNull('salesman_id')
+            ->selectRaw('salesman_id, SUM(total) as month_sales, SUM(salesman_commission_amount) as month_commission')
+            ->groupBy('salesman_id')
+            ->get()
+            ->keyBy('salesman_id');
+
+        return view('salesmen.index', compact('salesmen', 'shopsByCity', 'monthSalesByCity', 'monthSalesBySalesman'));
     }
 
     public function create(): View
@@ -67,7 +78,15 @@ class SalesmanController extends Controller
         $monthSales = (float) SalesInvoice::query()
             ->where('status', '!=', 'draft')
             ->whereBetween('invoice_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
-            ->whereHas('customer', fn ($query) => $query->where('city', $salesman->city))
+            ->where(function ($query) use ($salesman) {
+                $query->where('salesman_id', $salesman->id);
+                if ($salesman->city) {
+                    $query->orWhere(function ($cityQuery) use ($salesman) {
+                        $cityQuery->whereNull('salesman_id')
+                            ->whereHas('customer', fn ($customer) => $customer->where('city', $salesman->city));
+                    });
+                }
+            })
             ->sum('total');
 
         return view('salesmen.edit', compact('salesman', 'cityCustomers', 'monthSales'));
@@ -108,10 +127,14 @@ class SalesmanController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'city' => ['nullable', 'string', 'max:100'],
             'monthly_target' => ['nullable', 'numeric', 'min:0'],
+            'commission_percent' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $data['monthly_target'] = (float) ($data['monthly_target'] ?? 0);
+        $data['commission_percent'] = filled($data['commission_percent'] ?? null)
+            ? (float) $data['commission_percent']
+            : null;
         $data['is_active'] = $request->boolean('is_active');
 
         foreach (['phone', 'mobile', 'email', 'city'] as $field) {

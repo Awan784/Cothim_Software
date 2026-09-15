@@ -45,6 +45,19 @@ class SalesInvoiceService
                 'total' => $computed['total'],
             ];
 
+            foreach ([
+                'salesman_id',
+                'sales_order_id',
+                'company_retain_percent',
+                'salesman_commission_percent',
+                'company_retain_amount',
+                'salesman_commission_amount',
+            ] as $field) {
+                if (array_key_exists($field, $data)) {
+                    $payload[$field] = $data[$field];
+                }
+            }
+
             if ($invoice) {
                 if (! $invoice->isDraft()) {
                     throw new InvalidArgumentException('Issued invoices cannot be edited. Create a credit note instead.');

@@ -3,17 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Organization;
+use App\Models\Salesman;
 use App\Models\User;
 use App\Services\OrganizationProvisioner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showLogin(): View
+    public function showLogin(): View|RedirectResponse
     {
+        if (Auth::guard('salesman')->check()) {
+            return redirect()->route('salesman.dashboard');
+        }
+
         return view('auth.login');
     }
 
@@ -61,31 +67,59 @@ class AuthController extends Controller
 
     public function processLoginRequest(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $data = $request->validate([
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
+        $login = trim($data['login']);
+        $password = $data['password'];
 
-        if (! $user || ! $user->is_active) {
-            return back()
-                ->withInput($request->only('email'))
-                ->with('error', 'This account is inactive or does not exist.');
+        $user = User::query()->where('email', $login)->first();
+        if ($user) {
+            if (! $user->is_active) {
+                return back()
+                    ->withInput($request->only('login'))
+                    ->with('error', 'This account is inactive or does not exist.');
+            }
+
+            if (Hash::check($password, $user->password)) {
+                Auth::guard('salesman')->logout();
+                Auth::guard('web')->login($user, $request->boolean('remember'));
+                $request->session()->regenerate();
+
+                if ($user->isPlatformAdmin()) {
+                    return redirect()->intended(route('platform.home'));
+                }
+
+                return redirect()->intended(route('dashboard'));
+            }
         }
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()
-                ->withInput($request->only('email'))
-                ->with('error', 'Wrong email or password.');
+        $salesmen = Salesman::query()
+            ->withoutGlobalScopes()
+            ->where(function ($query) use ($login) {
+                $query->where('username', $login);
+                if (str_contains($login, '@')) {
+                    $query->orWhere('email', $login);
+                }
+            })
+            ->get();
+
+        foreach ($salesmen as $salesman) {
+            if (! $salesman->is_active || ! Hash::check($password, (string) $salesman->password)) {
+                continue;
+            }
+
+            Auth::guard('web')->logout();
+            Auth::guard('salesman')->login($salesman);
+            $request->session()->regenerate();
+
+            return redirect()->route('salesman.dashboard');
         }
 
-        $request->session()->regenerate();
-
-        if ($request->user()->isPlatformAdmin()) {
-            return redirect()->intended(route('platform.home'));
-        }
-
-        return redirect()->intended(route('dashboard'));
+        return back()
+            ->withInput($request->only('login'))
+            ->with('error', 'Wrong email, username, or password.');
     }
 }

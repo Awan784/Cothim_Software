@@ -19,6 +19,7 @@ return [
         'purchase-orders' => 'Purchase Orders',
         'purchase-returns' => 'Purchase Returns',
         'sales-returns' => 'Sales Returns',
+        'sales-orders' => 'Sales Orders',
         'reports' => 'Reports',
     ],
 

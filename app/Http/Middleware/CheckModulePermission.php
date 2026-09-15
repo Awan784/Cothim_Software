@@ -33,7 +33,11 @@ class CheckModulePermission
         'purchase-orders.print' => ['purchase-orders', 'view'],
         'purchase-returns.print' => ['purchase-returns', 'view'],
         'sales-returns.print' => ['sales-returns', 'view'],
+        'sales-orders.pending-feed' => ['sales-orders', 'view'],
+        'sales-orders.confirm' => ['sales-orders', 'update'],
+        'sales-orders.reject' => ['sales-orders', 'update'],
         'bank-accounts.balance' => ['bank-accounts', 'view'],
+        'reports.salesman-commission' => ['reports', 'view'],
     ];
 
     /** @var array<string, string> */

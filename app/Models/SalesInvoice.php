@@ -16,6 +16,8 @@ class SalesInvoice extends Model
         'invoice_no',
         'uuid',
         'customer_id',
+        'salesman_id',
+        'sales_order_id',
         'invoice_date',
         'due_date',
         'type',
@@ -24,6 +26,10 @@ class SalesInvoice extends Model
         'discount_amount',
         'vat_amount',
         'total',
+        'company_retain_percent',
+        'salesman_commission_percent',
+        'company_retain_amount',
+        'salesman_commission_amount',
         'amount_paid',
         'notes',
         'zatca_qr_payload',
@@ -41,12 +47,26 @@ class SalesInvoice extends Model
         'discount_amount' => 'float',
         'vat_amount' => 'float',
         'total' => 'float',
+        'company_retain_percent' => 'float',
+        'salesman_commission_percent' => 'float',
+        'company_retain_amount' => 'float',
+        'salesman_commission_amount' => 'float',
         'amount_paid' => 'float',
     ];
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function salesman(): BelongsTo
+    {
+        return $this->belongsTo(Salesman::class);
+    }
+
+    public function salesOrder(): BelongsTo
+    {
+        return $this->belongsTo(SalesOrder::class);
     }
 
     public function lines(): HasMany

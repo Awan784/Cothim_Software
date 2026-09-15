@@ -8,6 +8,7 @@ use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\ExpenseAccount;
 use App\Models\PurchaseOrder;
+use App\Models\SalesOrder;
 use App\Models\Supplier;
 use Illuminate\View\View;
 
@@ -55,6 +56,13 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
+        $pendingSalesOrders = SalesOrder::with(['customer', 'salesman'])
+            ->where('status', SalesOrder::STATUS_PENDING)
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get();
+        $pendingSalesOrdersCount = SalesOrder::query()->where('status', SalesOrder::STATUS_PENDING)->count();
+
         return view('dashboard', compact(
             'customersCount',
             'suppliersCount',
@@ -71,6 +79,8 @@ class DashboardController extends Controller
             'purchaseOrdersCount',
             'purchaseOrdersTotal',
             'recentPurchaseOrders',
+            'pendingSalesOrders',
+            'pendingSalesOrdersCount',
         ));
     }
 }

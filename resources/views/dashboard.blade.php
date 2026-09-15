@@ -3,9 +3,61 @@
 
 @section('content')
     <div class="pb-4 ams-dashboard">
-        <div class="py-4 ams-page-header">
-            <h1 class="h4 mb-1">Dashboard</h1>
-            <p class="mb-0 text-gray-600">Accounts overview and recent activity.</p>
+        <div class="ams-dash-hero">
+            <div>
+                <p class="ams-dash-kicker">{{ ams_date(now()) }}</p>
+                <h1>Dashboard</h1>
+                <p>Accounts overview and live salesman orders.</p>
+            </div>
+            <div class="ams-dash-hero-pills">
+                <span class="ams-dash-pill">{{ number_format((int) $customersCount) }} customers</span>
+                <span class="ams-dash-pill">Cash {{ number_format((float) $cashBalance, 2) }}</span>
+                <span class="ams-dash-pill">Bank {{ number_format((float) $totalBankBalance, 2) }}</span>
+            </div>
+        </div>
+
+        <div id="amsLiveOrdersBanner" class="alert alert-warning ams-live-orders-banner d-flex justify-content-between align-items-center mb-3 text-decoration-none" role="status" @if(($pendingSalesOrdersCount ?? 0) < 1) hidden @endif>
+            <span>
+                <strong id="amsLiveOrdersBannerCount">{{ $pendingSalesOrdersCount ?? 0 }}</strong>
+                salesman order<span id="amsLiveOrdersBannerPlural">{{ ($pendingSalesOrdersCount ?? 0) === 1 ? '' : 's' }}</span>
+                waiting for confirmation.
+            </span>
+            <a href="{{ route('sales-orders.index') }}" class="alert-link">Review →</a>
+        </div>
+
+        <div id="amsLiveOrdersPanel" class="card mb-3" @if(($pendingSalesOrders ?? collect())->isEmpty()) hidden @endif>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>New salesman orders</strong>
+                <span class="ams-status-tag is-pending" id="amsLiveOrdersTag">Live</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-flush mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>No.</th>
+                            <th>Salesman</th>
+                            <th>Customer</th>
+                            <th class="text-end">Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="amsLiveOrdersBody">
+                        @forelse($pendingSalesOrders as $order)
+                            <tr data-order-id="{{ $order->id }}">
+                                <td class="fw-semibold"><a href="{{ route('sales-orders.show', $order) }}">{{ $order->order_no }}</a></td>
+                                <td>{{ $order->salesman?->name ?: '—' }}</td>
+                                <td>{{ $order->customer?->displayName() ?: '—' }}</td>
+                                <td class="text-end">{{ ams_num($order->total) }}</td>
+                                <td class="text-end"><a class="btn btn-sm btn-primary" href="{{ route('sales-orders.show', $order) }}">Open</a></td>
+                            </tr>
+                        @empty
+                            <tr id="amsLiveOrdersEmpty">
+                                <td colspan="5" class="text-center text-muted">No pending salesman orders.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="row g-3 mb-3">

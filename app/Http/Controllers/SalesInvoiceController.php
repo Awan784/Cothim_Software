@@ -58,7 +58,7 @@ class SalesInvoiceController extends Controller
             }
         }
 
-        $invoice->load(['customer', 'lines']);
+        $invoice->load(['customer', 'lines', 'salesman']);
         $banks = BankAccount::orderBy('name')->get();
 
         return view('invoices.show', compact('invoice', 'banks', 'settings'));

@@ -17,7 +17,7 @@
     <link type="text/css" href="{{ asset('vendor/notyf/notyf.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/choices.js/public/assets/styles/choices.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('css/volt.css') }}" rel="stylesheet">
-    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=5" rel="stylesheet">
+    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=9" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     @if(wafi_is_rtl())
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -26,9 +26,14 @@
     @stack('styles')
 </head>
 
+@php
+    $actor = auth()->user() ?? auth('salesman')->user();
+    $isSalesmanShell = $actor instanceof \App\Models\Salesman;
+    $homeRoute = $isSalesmanShell ? 'salesman.dashboard' : 'dashboard';
+@endphp
 <body class="ams-light {{ wafi_is_rtl() ? 'is-rtl' : '' }}">
     <nav class="px-4 navbar navbar-light ams-mobile-nav col-12 d-lg-none">
-        <a class="navbar-brand me-lg-5" href="{{ route('dashboard') }}">
+        <a class="navbar-brand me-lg-5" href="{{ route($homeRoute) }}">
             <img class="navbar-brand-dark" src="{{ asset('assets/img/brand/light.svg') }}" alt="Logo">
             <img class="navbar-brand-light" src="{{ asset('assets/img/brand/dark.svg') }}" alt="Logo">
         </a>
@@ -40,7 +45,7 @@
             </button>
         </div>
     </nav>
-    @include('template.includes.navbar')
+    @include($isSalesmanShell ? 'template.includes.salesman-navbar' : 'template.includes.navbar')
     <main class="content">
         <nav class="pb-0 navbar navbar-top navbar-expand ams-topbar ps-0 pe-2">
             <div class="px-0 container-fluid">
@@ -57,13 +62,21 @@
                         </button>
                     </div>
                     <ul class="navbar-nav align-items-center">
-                        @if(auth()->user()?->isPlatformAdmin())
+                        @if(! $isSalesmanShell)
+                            <li class="nav-item me-2" id="amsPendingOrderTopItem" @if(($pendingSalesOrders ?? 0) < 1) hidden @endif>
+                                <a class="btn btn-sm btn-warning" href="{{ route('sales-orders.index') }}">
+                                    <span id="amsPendingOrderTopCount">{{ $pendingSalesOrders ?? 0 }}</span>
+                                    <span id="amsPendingOrderTopLabel">pending order{{ ($pendingSalesOrders ?? 0) === 1 ? '' : 's' }}</span>
+                                </a>
+                            </li>
+                        @endif
+                        @if($actor?->isPlatformAdmin())
                             <li class="nav-item me-2">
                                 <a class="btn btn-sm btn-outline-primary" href="{{ route('platform.home') }}">{{ __('Platform admin') }}</a>
                             </li>
                         @endif
                         <li class="nav-item d-none d-md-block me-2">
-                            <span class="small text-muted">{{ auth()->user()?->name }}</span>
+                            <span class="small text-muted">{{ $actor?->name }}</span>
                         </li>
                         <li class="nav-item ms-lg-3">
                             <a href="{{ route('logout') }}"
@@ -91,7 +104,8 @@
 
     </main>
 
-    @include('template.includes.assistant-widget')
+    {{-- Accounts Assistant hidden for now --}}
+    {{-- @include('template.includes.assistant-widget') --}}
 
     @stack('modals')
 
@@ -103,7 +117,16 @@
     <script src="{{ asset('assets/js/volt.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="{{ asset('js/ams-ui.js') }}"></script>
-    <script src="{{ asset('js/ams-assistant.js') }}?v=2"></script>
+    @if(! $isSalesmanShell)
+        <audio id="amsOrderRingtone" src="{{ asset('sounds/order-ring.wav') }}" preload="auto" loop playsinline autoplay muted></audio>
+        <script>
+            window.amsOrderAlerts = {
+                feedUrl: @json(route('sales-orders.pending-feed')),
+                indexUrl: @json(route('sales-orders.index')),
+            };
+        </script>
+        <script src="{{ asset('js/ams-order-alerts.js') }}?v=3"></script>
+    @endif
     <script>
         (function () {
             if (!window.simpleDatatables || !window.simpleDatatables.DataTable) return;

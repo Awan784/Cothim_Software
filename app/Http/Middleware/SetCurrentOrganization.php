@@ -10,10 +10,14 @@ class SetCurrentOrganization
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $user = $request->user()
+            ?? $request->user('salesman');
+
         if ($user?->organization_id) {
-            $org = $user->organization;
             app()->instance('current_organization_id', (int) $user->organization_id);
+            $org = $user->relationLoaded('organization')
+                ? $user->organization
+                : \App\Models\Organization::query()->find($user->organization_id);
             if ($org) {
                 app()->instance('current_organization', $org);
             }

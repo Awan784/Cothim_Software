@@ -85,13 +85,26 @@ if (! function_exists('wafi_is_rtl')) {
 if (! function_exists('organization_id')) {
     function organization_id(): ?int
     {
+        static $resolving = false;
+
         if (app()->bound('current_organization_id')) {
             $id = app('current_organization_id');
 
             return $id ? (int) $id : null;
         }
 
-        $id = auth()->user()?->organization_id ?? null;
+        if ($resolving) {
+            return null;
+        }
+
+        $resolving = true;
+        try {
+            $id = auth()->user()?->organization_id
+                ?? auth('salesman')->user()?->organization_id
+                ?? null;
+        } finally {
+            $resolving = false;
+        }
 
         return $id ? (int) $id : null;
     }

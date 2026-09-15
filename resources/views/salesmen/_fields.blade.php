@@ -55,10 +55,18 @@
     </div>
 </div>
 
-<div class="mb-3">
-    <label class="form-label">Monthly target</label>
-    <input name="monthly_target" value="{{ old('monthly_target', $s->monthly_target ?? 0) }}" class="form-control @error('monthly_target') is-invalid @enderror">
-    @error('monthly_target') <div class="invalid-feedback">{{ $message }}</div> @enderror
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Monthly target</label>
+        <input name="monthly_target" value="{{ old('monthly_target', $s->monthly_target ?? 0) }}" class="form-control @error('monthly_target') is-invalid @enderror">
+        @error('monthly_target') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Commission % override</label>
+        <input name="commission_percent" value="{{ old('commission_percent', $s->commission_percent) }}" class="form-control @error('commission_percent') is-invalid @enderror" placeholder="Company default">
+        <div class="form-text">Leave blank to use the company salesman commission %. Applied to the remaining amount after company retain.</div>
+        @error('commission_percent') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
 </div>
 
 <div class="form-check mb-3">

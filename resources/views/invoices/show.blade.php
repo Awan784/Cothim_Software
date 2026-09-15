@@ -50,6 +50,11 @@
                         @endif
                         <tr><td colspan="6" class="text-end">Tax</td><td class="text-end">{{ number_format((float) $invoice->vat_amount, 2) }}</td></tr>
                         <tr><td colspan="6" class="text-end"><strong>Total</strong></td><td class="text-end"><strong>{{ number_format((float) $invoice->total, 2) }}</strong></td></tr>
+                        @if($invoice->salesman_id)
+                            <tr><td colspan="6" class="text-end">Salesman</td><td class="text-end">{{ $invoice->salesman?->name ?: '—' }}</td></tr>
+                            <tr><td colspan="6" class="text-end">Company retain ({{ number_format((float) $invoice->company_retain_percent, 2) }}%)</td><td class="text-end">{{ number_format((float) $invoice->company_retain_amount, 2) }}</td></tr>
+                            <tr><td colspan="6" class="text-end">Commission ({{ number_format((float) $invoice->salesman_commission_percent, 2) }}% of remaining)</td><td class="text-end">{{ number_format((float) $invoice->salesman_commission_amount, 2) }}</td></tr>
+                        @endif
                         <tr><td colspan="6" class="text-end">Paid</td><td class="text-end">{{ number_format((float) $invoice->amount_paid, 2) }}</td></tr>
                         <tr><td colspan="6" class="text-end">Due</td><td class="text-end">{{ number_format($invoice->balanceDue(), 2) }}</td></tr>
                     </tfoot>
