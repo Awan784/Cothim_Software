@@ -1,13 +1,17 @@
 <nav id="sidebarMenu" class="sidebar ams-sidebar d-lg-block collapse" data-simplebar>
     @php
-        $company = $shell['company'] ?? config('ams.product_name');
+        $product = (string) config('ams.product_name');
+        $brandParts = preg_split('/\s+/', $product, 2) ?: [$product];
+        $brandTop = strtoupper($brandParts[0] ?? $product);
+        $brandBottom = strtoupper($brandParts[1] ?? '');
     @endphp
     <div class="sidebar-inner px-3 pt-3 pb-4 d-flex flex-column" style="min-height:100%">
-        <a href="{{ route('salesman.dashboard') }}" class="ams-brand mb-3">
-            <span class="ams-brand-mark">{{ mb_strtoupper(mb_substr(config('ams.product_name'), 0, 1)) }}</span>
-            <span class="ams-brand-name">{{ config('ams.product_name') }}</span>
+        <a href="{{ route('salesman.dashboard') }}" class="ams-brand ams-brand-stack mb-3">
+            <span class="ams-brand-text">{{ $brandTop }}</span>
+            @if($brandBottom !== '')
+                <span class="ams-brand-sub">{{ $brandBottom }}</span>
+            @endif
         </a>
-        <div class="ams-org-switch mb-3">{{ $company }}</div>
 
         <ul class="nav flex-column flex-grow-1">
             <li class="nav-item">

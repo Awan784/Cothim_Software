@@ -10,7 +10,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     @endif
-    <link rel="stylesheet" href="{{ asset('css/wafi-site.css') }}?v=5">
+    <link rel="stylesheet" href="{{ asset('css/wafi-site.css') }}?v=7">
 </head>
 <body class="wafi-site {{ wafi_is_rtl() ? 'is-rtl' : '' }}">
     <div class="wafi-topbar">

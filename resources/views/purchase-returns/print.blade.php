@@ -203,21 +203,7 @@
     <div class="page-wrap">
         <div class="sheet">
             <header class="header">
-                <div>
-                    <h1 class="company-name">{{ $settings->companyName() }}</h1>
-                    <p class="company-meta">
-                        {{ $settings->get('company_address') ?: '' }}
-                        @if($settings->get('company_vat_number'))
-                            <br>NTN / VAT {{ $settings->get('company_vat_number') }}
-                        @endif
-                        @if($settings->get('company_cr_number'))
-                            · CR {{ $settings->get('company_cr_number') }}
-                        @endif
-                        @if($settings->get('whatsapp'))
-                            <br>Phone / WhatsApp {{ $settings->get('whatsapp') }}
-                        @endif
-                    </p>
-                </div>
+                <x-print-company-brand :settings="$settings" />
                 <div class="doc-meta">
                     <p class="doc-label">Purchase return</p>
                     <p class="doc-no">{{ $purchaseReturn->return_no }}</p>
@@ -229,7 +215,7 @@
                 <div>
                     <div class="party-label">Returned by</div>
                     <div class="party-name">{{ $settings->companyName() }}</div>
-                    <div class="party-meta">{{ $settings->get('company_address') ?: '—' }}</div>
+                    <div class="party-meta">{{ $settings->contactLine() }}</div>
                 </div>
                 <div>
                     <div class="party-label">Supplier</div>

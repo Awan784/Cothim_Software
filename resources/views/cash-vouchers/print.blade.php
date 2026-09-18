@@ -186,11 +186,7 @@
     <div class="page-wrap">
         <div class="receipt">
             <header class="receipt-header">
-                <div class="brand">
-                    <img src="{{ asset('assets/img/brand/dark.svg') }}" alt="">
-                    <p class="company-name">{{ $companyName }}</p>
-                    <p class="company-sub">Cash Voucher</p>
-                </div>
+                <x-print-company-brand :settings="$settings" compact />
                 <div class="voucher-meta">
                     <div><strong>Voucher No:</strong> {{ $voucher->voucher_no }}</div>
                     <div><strong>Date:</strong> {{ ams_date($voucher->voucher_date) }}</div>

@@ -8,7 +8,9 @@ use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\ExpenseAccount;
 use App\Models\PurchaseOrder;
+use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
+use App\Models\StockItem;
 use App\Models\Supplier;
 use Illuminate\View\View;
 
@@ -63,6 +65,29 @@ class DashboardController extends Controller
             ->get();
         $pendingSalesOrdersCount = SalesOrder::query()->where('status', SalesOrder::STATUS_PENDING)->count();
 
+        $stockItemsCount = StockItem::count();
+        $invoicesCount = SalesInvoice::count();
+        $userName = auth()->user()?->name ?: 'there';
+
+        $today = now()->toDateString();
+        $monthStart = now()->startOfMonth()->toDateString();
+        $todayCashReceive = (float) CashVoucher::query()
+            ->where('type', 'receive')
+            ->whereDate('voucher_date', $today)
+            ->sum('amount');
+        $todayCashPayment = (float) CashVoucher::query()
+            ->where('type', 'payment')
+            ->whereDate('voucher_date', $today)
+            ->sum('amount');
+        $monthCashReceive = (float) CashVoucher::query()
+            ->where('type', 'receive')
+            ->whereDate('voucher_date', '>=', $monthStart)
+            ->sum('amount');
+        $monthCashPayment = (float) CashVoucher::query()
+            ->where('type', 'payment')
+            ->whereDate('voucher_date', '>=', $monthStart)
+            ->sum('amount');
+
         return view('dashboard', compact(
             'customersCount',
             'suppliersCount',
@@ -81,6 +106,13 @@ class DashboardController extends Controller
             'recentPurchaseOrders',
             'pendingSalesOrders',
             'pendingSalesOrdersCount',
+            'stockItemsCount',
+            'invoicesCount',
+            'userName',
+            'todayCashReceive',
+            'todayCashPayment',
+            'monthCashReceive',
+            'monthCashPayment',
         ));
     }
 }

@@ -22,6 +22,8 @@ class Organization extends Model
         'vat_number',
         'cr_number',
         'address',
+        'phone',
+        'logo_path',
         'default_vat_rate',
         'company_retain_percent',
         'salesman_commission_percent',

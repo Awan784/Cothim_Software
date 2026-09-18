@@ -154,6 +154,7 @@ class CashVoucherController extends Controller
 
         return view('cash-vouchers.print', [
             'voucher' => $cashVoucher,
+            'settings' => app(SettingsService::class),
             'companyName' => app(SettingsService::class)->companyName(),
             'printedAt' => now(),
             'isReceive' => $isReceive,

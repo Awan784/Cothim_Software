@@ -20,7 +20,9 @@ class AuthController extends Controller
             return redirect()->route('salesman.dashboard');
         }
 
-        return view('auth.login');
+        return view('auth.login', [
+            'brandLogo' => $this->brandLogoUrl(),
+        ]);
     }
 
     public function showRegister(): View
@@ -121,5 +123,20 @@ class AuthController extends Controller
         return back()
             ->withInput($request->only('login'))
             ->with('error', 'Wrong email, username, or password.');
+    }
+
+    private function brandLogoUrl(): ?string
+    {
+        $path = Organization::query()
+            ->whereNotNull('logo_path')
+            ->where('logo_path', '!=', '')
+            ->orderBy('id')
+            ->value('logo_path');
+
+        if (! is_string($path) || $path === '' || ! is_file(public_path($path))) {
+            return null;
+        }
+
+        return asset($path);
     }
 }

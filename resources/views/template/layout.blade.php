@@ -11,13 +11,16 @@
     <link rel="manifest" href="{{ asset('assets/img/favicon/site.webmanifest') }}">
     <link rel="mask-icon" href="{{ asset('assets/img/favicon/safari-pinned-tab.svg') }}" color="#ffffff">
     <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="theme-color" content="#5b5ce2">
+    <meta name="theme-color" content="#0c1b2e">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/sweetalert2/dist/sweetalert2.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/notyf/notyf.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/choices.js/public/assets/styles/choices.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('css/volt.css') }}" rel="stylesheet">
-    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=9" rel="stylesheet">
+    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=13" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     @if(wafi_is_rtl())
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -30,12 +33,18 @@
     $actor = auth()->user() ?? auth('salesman')->user();
     $isSalesmanShell = $actor instanceof \App\Models\Salesman;
     $homeRoute = $isSalesmanShell ? 'salesman.dashboard' : 'dashboard';
+    $product = (string) config('ams.product_name');
+    $brandParts = preg_split('/\s+/', $product, 2) ?: [$product];
+    $brandTop = strtoupper($brandParts[0] ?? $product);
+    $brandBottom = strtoupper($brandParts[1] ?? '');
 @endphp
 <body class="ams-light {{ wafi_is_rtl() ? 'is-rtl' : '' }}">
-    <nav class="px-4 navbar navbar-light ams-mobile-nav col-12 d-lg-none">
-        <a class="navbar-brand me-lg-5" href="{{ route($homeRoute) }}">
-            <img class="navbar-brand-dark" src="{{ asset('assets/img/brand/light.svg') }}" alt="Logo">
-            <img class="navbar-brand-light" src="{{ asset('assets/img/brand/dark.svg') }}" alt="Logo">
+    <nav class="px-4 navbar navbar-dark ams-mobile-nav col-12 d-lg-none">
+        <a class="ams-brand ams-brand-stack me-lg-5" href="{{ route($homeRoute) }}">
+            <span class="ams-brand-text">{{ $brandTop }}</span>
+            @if($brandBottom !== '')
+                <span class="ams-brand-sub">{{ $brandBottom }}</span>
+            @endif
         </a>
         <div class="d-flex align-items-center">
             <button class="navbar-toggler d-lg-none collapsed" type="button"
