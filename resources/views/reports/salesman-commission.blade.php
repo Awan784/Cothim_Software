@@ -104,6 +104,19 @@
         table.items tfoot tr.less td.lbl { text-align: right; font-weight: 800; }
         table.items tfoot tr.net td { background: #f3f3f3; font-weight: 800; }
         .empty { text-align: center; padding: 14px 8px; color: #444; }
+        .footer {
+            margin-top: 18px;
+            padding-top: 10px;
+            border-top: 1px solid #d1d5db;
+            font-size: 10px;
+            color: #6b7280;
+            text-align: center;
+        }
+        .footer .print-credit {
+            font-size: 11px;
+            color: #111;
+            margin-bottom: 4px;
+        }
         @media print {
             body { background: #fff; }
             .toolbar { display: none !important; }
@@ -224,6 +237,7 @@
                     </tr>
                 </tfoot>
             </table>
+            @include('partials.print-footer')
         </div>
     </div>
 </body>

@@ -186,6 +186,11 @@
             color: #9ca3af;
             text-align: center;
         }
+        .footer .print-credit {
+            font-size: 11px;
+            color: #374151;
+            margin-bottom: 4px;
+        }
         @media print {
             body { background: #fff; }
             .toolbar { display: none !important; }
@@ -323,7 +328,7 @@
                 <span><i class="swatch swatch-payment"></i> Cash paid</span>
             </div>
 
-            <p class="footer">Printed {{ ams_datetime($printedAt) }}</p>
+            @include('partials.print-footer')
         </div>
     </div>
 </body>

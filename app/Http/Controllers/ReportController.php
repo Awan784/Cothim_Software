@@ -8,9 +8,11 @@ use App\Models\ExpenseAccount;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceLine;
 use App\Models\Salesman;
 use App\Models\SalesOrder;
 use App\Models\SalesReturn;
+use App\Models\StockCategory;
 use App\Models\StockItem;
 use App\Models\Supplier;
 use App\Services\CashRegisterService;
@@ -44,6 +46,7 @@ class ReportController extends Controller
             ['slug' => 'sales-returns', 'title' => 'Sales Returns', 'color' => 'pink', 'group' => 'Sales', 'filter' => 'dates'],
             ['slug' => 'salesman-report', 'title' => 'Salesman Report', 'color' => 'orange', 'group' => 'Sales', 'filter' => 'dates_salesman'],
             ['slug' => 'salesman-commission', 'title' => 'Salesman Commission', 'color' => 'orange', 'group' => 'Sales', 'filter' => 'salesman-commission'],
+            ['slug' => 'salesman-product', 'title' => 'Salesman Product Sales', 'color' => 'green', 'group' => 'Sales', 'filter' => 'salesman-product'],
             ['slug' => 'purchase-orders', 'title' => 'Purchase Orders', 'color' => 'navy', 'group' => 'Purchases', 'filter' => 'dates'],
             ['slug' => 'purchase-returns', 'title' => 'Purchase Returns', 'color' => 'purple', 'group' => 'Purchases', 'filter' => 'dates'],
             ['slug' => 'expenses', 'title' => 'Expenses', 'color' => 'amber', 'group' => 'Expenses & Period', 'filter' => 'dates'],
@@ -56,6 +59,14 @@ class ReportController extends Controller
         return view('reports.index', [
             'reports' => collect(self::catalog()),
             'salesmen' => Salesman::query()->orderBy('name')->get(['id', 'name', 'city']),
+            'stockCategories' => StockCategory::query()->orderBy('name')->get(['id', 'name']),
+            'stockItems' => StockItem::query()->orderBy('name')->get(['id', 'name', 'stock_category_id']),
+            'salesmanCities' => Salesman::query()
+                ->whereNotNull('city')
+                ->where('city', '!=', '')
+                ->orderBy('city')
+                ->distinct()
+                ->pluck('city'),
         ]);
     }
 
@@ -76,6 +87,7 @@ class ReportController extends Controller
             'sales-orders' => $this->salesOrdersReport($item, $request),
             'sales-returns' => $this->salesReturnsReport($item, $request),
             'salesman-report' => $this->salesmanReport($item, $request),
+            'salesman-product' => $this->salesmanProductReport($item, $request),
             'purchase-orders' => $this->purchaseOrdersReport($item, $request),
             'purchase-returns' => $this->purchaseReturnsReport($item, $request),
             'expenses' => $this->expensesReport($item, $request),
@@ -707,6 +719,194 @@ class ReportController extends Controller
             ],
             'empty' => 'No salesmen found.',
         ]));
+    }
+
+    private function salesmanProductReport(array $item, Request $request): View
+    {
+        $request->validate([
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'salesman_id' => ['nullable', 'integer', 'exists:salesmen,id'],
+            'stock_category_id' => ['nullable', 'integer', 'exists:stock_categories,id'],
+            'stock_item_id' => ['nullable', 'integer', 'exists:stock_items,id'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'group_by' => ['nullable', 'in:category,salesman'],
+        ]);
+
+        [$from, $to] = $this->period($request);
+        $salesmanId = $request->integer('salesman_id') ?: null;
+        $categoryId = $request->integer('stock_category_id') ?: null;
+        $itemId = $request->integer('stock_item_id') ?: null;
+        $city = trim((string) $request->input('city', ''));
+        $groupBy = $request->input('group_by') === 'salesman' ? 'salesman' : 'category';
+
+        $lines = SalesInvoiceLine::query()
+            ->with([
+                'invoice.salesman',
+                'invoice.salesOrder.salesman',
+                'invoice.customer',
+                'stockItem.stockCategory',
+            ])
+            ->whereHas('invoice', function ($query) use ($from, $to, $salesmanId, $city) {
+                $query->where('status', '!=', 'draft');
+                $this->constrainInvoicePeriod($query, $from, $to);
+                if ($salesmanId) {
+                    $query->where(function ($inner) use ($salesmanId) {
+                        $inner->where('salesman_id', $salesmanId)
+                            ->orWhereHas('salesOrder', fn ($order) => $order->where('salesman_id', $salesmanId));
+                    });
+                }
+                if ($city !== '') {
+                    $query->where(function ($inner) use ($city) {
+                        $inner->whereHas('salesman', fn ($salesman) => $salesman->where('city', $city))
+                            ->orWhereHas('salesOrder.salesman', fn ($salesman) => $salesman->where('city', $city));
+                    });
+                }
+            })
+            ->when($categoryId, fn ($query) => $query->whereHas('stockItem', fn ($itemQuery) => $itemQuery->where('stock_category_id', $categoryId)))
+            ->when($itemId, fn ($query) => $query->where('stock_item_id', $itemId))
+            ->get();
+
+        $aggregates = [];
+        foreach ($lines as $line) {
+            $invoice = $line->invoice;
+            if (! $invoice) {
+                continue;
+            }
+            $salesman = $invoice->salesman ?: $invoice->salesOrder?->salesman;
+            $salesmanIdKey = $salesman?->id ?: 0;
+            $productKey = $line->stock_item_id ?: 'name:'.mb_strtolower(trim((string) $line->description));
+            $key = $salesmanIdKey.'|'.$productKey;
+            if (! isset($aggregates[$key])) {
+                $aggregates[$key] = [
+                    'salesman' => $salesman?->name ?: 'Unassigned',
+                    'salesman_id' => $salesmanIdKey,
+                    'city' => $salesman?->city ?: ($invoice->customer?->city ?: ''),
+                    'category' => $line->stockItem?->stockCategory?->name ?: 'Uncategorized',
+                    'product' => $line->stockItem?->name ?: (trim((string) $line->description) ?: 'Item'),
+                    'sku' => $line->stockItem?->sku ?: '',
+                    'product_key' => (string) $productKey,
+                    'qty' => 0.0,
+                    'amount' => 0.0,
+                    'bills' => [],
+                ];
+            }
+            $aggregates[$key]['qty'] += (float) $line->quantity;
+            $aggregates[$key]['amount'] += (float) $line->line_total;
+            if ($invoice->invoice_no) {
+                $aggregates[$key]['bills'][$invoice->id] = true;
+            }
+        }
+
+        $detailRows = collect($aggregates)
+            ->map(function (array $row) {
+                $row['qty'] = round((float) $row['qty'], 3);
+                $row['amount'] = round((float) $row['amount'], 2);
+                $row['bills'] = count($row['bills']);
+
+                return $row;
+            })
+            ->sortBy([
+                ['category', 'asc'],
+                ['salesman', 'asc'],
+                ['product', 'asc'],
+            ])
+            ->values();
+
+        $topProducts = $detailRows
+            ->groupBy('product_key')
+            ->map(function (Collection $rows) {
+                $leader = $rows->sortByDesc('qty')->first();
+
+                return [
+                    'product' => $leader['product'],
+                    'sku' => $leader['sku'],
+                    'category' => $leader['category'],
+                    'qty' => round((float) $rows->sum('qty'), 3),
+                    'amount' => round((float) $rows->sum('amount'), 2),
+                    'salesmen' => $rows->count(),
+                    'top_salesman' => $leader['salesman'],
+                    'top_qty' => $leader['qty'],
+                    'top_amount' => $leader['amount'],
+                ];
+            })
+            ->sortByDesc('qty')
+            ->values();
+
+        $groups = $detailRows
+            ->groupBy($groupBy === 'salesman' ? 'salesman' : 'category')
+            ->map(function (Collection $rows, string $title) {
+                return [
+                    'title' => $title.' · '.$rows->count().' lines',
+                    'rows' => $rows->values(),
+                    'footer' => [
+                        'salesman' => 'Subtotal',
+                        'qty' => round((float) $rows->sum('qty'), 3),
+                        'amount' => round((float) $rows->sum('amount'), 2),
+                        'bills' => (float) $rows->sum('bills'),
+                    ],
+                ];
+            })
+            ->values();
+
+        $filters = collect([
+            $salesmanId ? Salesman::query()->find($salesmanId)?->name : null,
+            $city !== '' ? $city : null,
+            $categoryId ? StockCategory::query()->find($categoryId)?->name : null,
+            $itemId ? StockItem::query()->find($itemId)?->name : null,
+            $groupBy === 'salesman' ? 'Grouped by salesman' : 'Grouped by category',
+        ])->filter()->implode(' · ');
+
+        $detailColumns = $groupBy === 'salesman'
+            ? [
+                'category' => 'Category',
+                'product' => 'Product',
+                'sku' => 'SKU',
+                'city' => 'City',
+                'qty' => 'Qty',
+                'amount' => 'Amount',
+                'bills' => 'Bills',
+            ]
+            : [
+                'salesman' => 'Salesman',
+                'city' => 'City',
+                'product' => 'Product',
+                'sku' => 'SKU',
+                'qty' => 'Qty',
+                'amount' => 'Amount',
+                'bills' => 'Bills',
+            ];
+
+        return view('reports.salesman-product', $this->printData($item, $from, $to, [
+            'wide' => true,
+            'subtitle' => $filters !== '' ? $filters : null,
+            'groupLabel' => $groupBy === 'salesman' ? 'salesman' : 'category',
+            'topProducts' => $topProducts,
+            'groups' => $groups,
+            'detailColumns' => $detailColumns,
+            'detailNumeric' => ['qty', 'amount', 'bills'],
+            'footer' => [
+                'label' => 'Grand total',
+                'qty' => round((float) $detailRows->sum('qty'), 3),
+                'amount' => round((float) $detailRows->sum('amount'), 2),
+                'bills' => (float) $detailRows->sum('bills'),
+            ],
+        ]));
+    }
+
+    private function constrainInvoicePeriod($query, Carbon $from, Carbon $to): void
+    {
+        $fromStr = $from->toDateString();
+        $toStr = $to->toDateString();
+
+        $query->where(function ($inner) use ($from, $to, $fromStr, $toStr) {
+            $inner->whereBetween('invoice_date', [$fromStr, $toStr])
+                ->orWhereBetween('created_at', [$from, $to])
+                ->orWhereHas('salesOrder', function ($order) use ($from, $to, $fromStr, $toStr) {
+                    $order->whereBetween('order_date', [$fromStr, $toStr])
+                        ->orWhereBetween('created_at', [$from, $to]);
+                });
+        });
     }
 
     private function purchaseOrdersReport(array $item, Request $request): View

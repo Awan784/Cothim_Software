@@ -312,6 +312,11 @@ class SettingsService
         ];
     }
 
+    public function printFooter(): string
+    {
+        return trim($this->invoicePrintTexts()['developed_by']);
+    }
+
     public function defaultPrintText(string $key, ?string $companyName = null): string
     {
         $template = (string) config('ams.'.$key, '');

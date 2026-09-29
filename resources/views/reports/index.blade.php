@@ -8,6 +8,7 @@
                 'party-ledger' => 'Choose party and dates',
                 'cash-register', 'journal-report', 'dates' => 'Choose date range',
                 'salesman-commission', 'dates_salesman' => 'Choose salesman and dates',
+                'salesman-product' => 'Choose dates, salesman, category, product',
                 'month' => 'Choose month',
                 default => 'Open print sheet',
             };
@@ -21,7 +22,7 @@
                 'customers' => 'M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
                 'stock', 'stock-category', 'low-stock' => 'M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5 8.186 1.113zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6z',
                 'sales-invoices', 'sales-orders', 'sales-returns' => 'M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z',
-                'salesman-report', 'salesman-commission' => 'M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2 1a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h4z',
+                'salesman-report', 'salesman-commission', 'salesman-product' => 'M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2 1a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h4z',
                 'purchase-orders', 'purchase-returns' => 'M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5z',
                 'expenses' => 'M1.92.506a.5.5 0 0 1 .434.14L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .556.146l.5.5A.5.5 0 0 1 15 2v13.5a.5.5 0 0 1-.73.447L13 15.14l-.646.647a.5.5 0 0 1-.708 0L11 15.139l-.646.647a.5.5 0 0 1-.708 0L9 15.139l-.646.647a.5.5 0 0 1-.708 0L7 15.139l-.646.647a.5.5 0 0 1-.708 0L5 15.139l-.646.647a.5.5 0 0 1-.708 0L3 15.139l-.646.647A.5.5 0 0 1 1 15.5V2a.5.5 0 0 1 .053-.224l.5-.5z',
                 'monthly-sheet' => 'M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z',
@@ -55,6 +56,7 @@
                                     'cash-register' => 'cashRegisterModal',
                                     'journal-report' => 'journalReportModal',
                                     'salesman-commission' => 'salesmanCommissionModal',
+                                    'salesman-product' => 'salesmanProductModal',
                                     'dates', 'dates_salesman', 'month' => 'reportFilterModal',
                                     default => null,
                                 };
@@ -255,6 +257,87 @@
         </div>
     </div>
 
+    </div>
+
+    <div class="modal fade" id="salesmanProductModal" tabindex="-1" aria-labelledby="salesmanProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <form method="get" action="{{ route('reports.show', 'salesman-product') }}" target="_blank">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="salesmanProductModalLabel">{{ __('Salesman Product Sales') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Product-wise invoiced sales by salesman and category. Defaults to this month. Leave filters blank to include all.
+                        </p>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sp_from_date" class="form-label">From Date</label>
+                                <x-ams-date-input name="from_date" id="sp_from_date" :value="now()->startOfMonth()" required />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sp_to_date" class="form-label">To Date</label>
+                                <x-ams-date-input name="to_date" id="sp_to_date" :value="now()" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sp_salesman_id" class="form-label">Salesman</label>
+                                <select name="salesman_id" id="sp_salesman_id" class="form-select">
+                                    <option value="">All salesmen</option>
+                                    @foreach($salesmen as $salesman)
+                                        <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sp_city" class="form-label">City</label>
+                                <select name="city" id="sp_city" class="form-select">
+                                    <option value="">All cities</option>
+                                    @foreach($salesmanCities as $city)
+                                        <option value="{{ $city }}">{{ $city }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sp_stock_category_id" class="form-label">Category</label>
+                                <select name="stock_category_id" id="sp_stock_category_id" class="form-select">
+                                    <option value="">All categories</option>
+                                    @foreach($stockCategories as $category)
+                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sp_stock_item_id" class="form-label">Product</label>
+                                <select name="stock_item_id" id="sp_stock_item_id" class="form-select">
+                                    <option value="">All products</option>
+                                    @foreach($stockItems as $stockItem)
+                                        <option value="{{ $stockItem->id }}" data-category="{{ $stockItem->stock_category_id }}">{{ $stockItem->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <label for="sp_group_by" class="form-label">Group detail by</label>
+                            <select name="group_by" id="sp_group_by" class="form-select">
+                                <option value="category">Category, then salesman / product</option>
+                                <option value="salesman">Salesman, then category / product</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">View Report</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="reportFilterModal" tabindex="-1" aria-labelledby="reportFilterModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -374,6 +457,21 @@
                     fromInput.disabled = showMonth;
                     toInput.disabled = showMonth;
                     document.getElementById('rf_salesman_id').disabled = !showSalesman;
+                });
+            }
+
+            const categorySelect = document.getElementById('sp_stock_category_id');
+            const productSelect = document.getElementById('sp_stock_item_id');
+            if (categorySelect && productSelect) {
+                categorySelect.addEventListener('change', function () {
+                    const categoryId = categorySelect.value;
+                    productSelect.querySelectorAll('option[data-category]').forEach(function (option) {
+                        option.hidden = categoryId !== '' && String(option.getAttribute('data-category')) !== String(categoryId);
+                    });
+                    const selected = productSelect.options[productSelect.selectedIndex];
+                    if (selected && selected.hidden) {
+                        productSelect.value = '';
+                    }
                 });
             }
         })();
