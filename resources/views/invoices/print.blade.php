@@ -3,14 +3,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $invoice->invoice_no }} — Sales Invoice</title>
+    <title>{{ $invoice->invoice_no }} — Sale Invoice</title>
+    @php
+        $company = strtoupper($settings->companyName());
+        $printTexts = $settings->invoicePrintTexts($company);
+        $address = $settings->address();
+        $phone = $settings->phone();
+        $logoPath = $settings->publicLogoPath();
+        $customer = $invoice->customer;
+        $salesman = $invoice->salesman;
+        $mode = trim((string) $invoice->mode);
+        if ($mode === '') {
+            $mode = $invoice->isPaid() ? 'Cash' : 'CO';
+        }
+        $lines = $invoice->lines;
+        $itemCount = $lines->count();
+        $qtyTotal = (float) $lines->sum('quantity');
+        $grossTotal = (float) $lines->sum(fn ($line) => round((float) $line->quantity * (float) $line->unit_price, 2));
+        $discTotal = (float) $lines->sum('discount_amount');
+        $netTotal = (float) $lines->sum('line_net');
+        $printStamp = $printedAt->format('n/j/Y g:i:s A');
+        $issueDate = optional($invoice->issued_at ?? $invoice->invoice_date)?->format('d-M-y');
+    @endphp
     <style>
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             background: #eef1f4;
-            color: #111827;
+            color: #000;
         }
         .toolbar {
             position: sticky;
@@ -39,164 +60,168 @@
             width: 210mm;
             min-height: 297mm;
             background: #fff;
-            padding: 16mm 16mm 14mm;
+            padding: 10mm 12mm 10mm;
             box-shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
             display: flex;
             flex-direction: column;
         }
-        .header {
+        .brand {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: flex-start;
-            gap: 16px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #111827;
+            gap: 10px;
+            text-align: left;
+            margin-bottom: 6px;
         }
-        .company-name {
-            margin: 0 0 4px;
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 0.01em;
+        .brand img {
+            height: 52px;
+            width: auto;
+            max-width: 86px;
+            object-fit: contain;
         }
-        .company-meta {
+        .brand-text { max-width: 520px; }
+        .brand-name {
             margin: 0;
-            font-size: 12px;
-            color: #4b5563;
-            line-height: 1.45;
-        }
-        .doc-meta { text-align: right; }
-        .doc-label {
-            margin: 0 0 4px;
-            font-size: 11px;
-            letter-spacing: 0.16em;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            line-height: 1.1;
             text-transform: uppercase;
-            color: #6b7280;
         }
-        .doc-no {
-            margin: 0;
-            font-size: 22px;
+        .brand-meta {
+            margin: 3px 0 0;
+            font-size: 11px;
+            line-height: 1.35;
             font-weight: 700;
         }
-        .doc-date {
-            margin: 6px 0 0;
-            font-size: 13px;
-            color: #374151;
+        .doc-title {
+            margin: 10px 0 12px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 800;
+            text-decoration: underline;
+            letter-spacing: 0.04em;
         }
-        .parties {
+        .meta {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 18px 0 0;
-            padding-bottom: 16px;
+            gap: 8px 24px;
+            margin-bottom: 12px;
+            font-size: 12.5px;
+            font-weight: 700;
         }
-        .items-wrap {
-            width: 100%;
-            margin-top: 4px;
-            clear: both;
-        }
+        .meta .right { text-align: right; }
+        .meta p { margin: 3px 0; }
         table.items {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 12.5px;
+            font-size: 11px;
             border: 1px solid #000;
         }
-        table.items col.col-num { width: 36px; }
-        table.items col.col-item { width: auto; }
-        table.items col.col-unit { width: 70px; }
-        table.items col.col-qty { width: 70px; }
-        table.items col.col-rate { width: 90px; }
-        table.items col.col-disc { width: 68px; }
-        table.items col.col-tax-rate { width: 68px; }
-        table.items col.col-tax { width: 80px; }
-        table.items col.col-amt { width: 100px; }
+        table.items col.col-sr { width: 5%; }
+        table.items col.col-product { width: 22%; }
+        table.items col.col-bat { width: 8%; }
+        table.items col.col-exp { width: 11%; }
+        table.items col.col-qty { width: 9%; }
+        table.items col.col-rate { width: 8%; }
+        table.items col.col-amt { width: 10%; }
+        table.items col.col-dis { width: 8%; }
+        table.items col.col-disamt { width: 9%; }
+        table.items col.col-net { width: 10%; }
         table.items th,
         table.items td {
             border: 1px solid #000;
-            padding: 7px 8px;
-            vertical-align: middle;
+            padding: 5px 4px;
+            vertical-align: top;
         }
         table.items th {
-            background: #f3f3f3;
-            color: #111;
-            font-weight: 700;
-            text-align: left;
+            background: #cfcfcf;
+            font-weight: 800;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 1.15;
+            font-size: 10px;
         }
-        table.items .num {
+        table.items td.num,
+        table.items th.num {
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
-        table.items tfoot td {
-            font-size: 13px;
+        table.items td.center { text-align: center; }
+        table.items tbody td { font-weight: 600; }
+        .product-name { text-align: left; overflow-wrap: break-word; word-break: normal; }
+        .batch { text-align: center; }
+        .totals td {
+            font-weight: 800;
+            background: #fff;
+        }
+        .totals .note {
+            text-align: left;
             font-weight: 700;
-            background: #f3f3f3;
+            font-size: 11px;
         }
-        .note { color: #6b7280; font-size: 11px; margin-top: 2px; }
-        .party-label {
-            font-size: 10px;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #6b7280;
-            margin-bottom: 4px;
+        .lined { border-top: 2px solid #000 !important; }
+        .bill td {
+            font-weight: 800;
+            border: 1px solid #000;
         }
-        .party-name {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 4px;
+        .bill-label {
+            background: #cfcfcf;
+            text-align: right;
+            padding-right: 8px !important;
         }
-        .party-meta {
-            font-size: 12px;
-            color: #4b5563;
+        .bill-amt {
+            background: #cfcfcf;
+            text-align: right;
+        }
+        .legal {
+            margin-top: auto;
+            padding-top: 48px;
+            font-size: 11.5px;
             line-height: 1.45;
         }
-        .words {
-            margin-top: 16px;
+        .legal h3 {
+            margin: 0 0 4px;
             font-size: 12px;
-            color: #374151;
+            font-weight: 800;
+            text-decoration: underline;
+            text-transform: uppercase;
         }
-        .po-notes {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #374151;
+        .legal p { margin: 0 0 8px; white-space: pre-wrap; }
+        .sign {
+            margin-top: 18px;
+            font-weight: 800;
+            font-size: 12.5px;
         }
-        .bottom {
-            margin-top: auto;
-            padding-top: 36px;
+        .sign-line {
+            margin-top: 22px;
+            border-top: 1px solid #000;
+            width: 100%;
         }
-        .sigs {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 24px;
-            font-size: 11px;
-            color: #4b5563;
-        }
-        .sig-line {
-            border-top: 1px solid #111827;
-            padding-top: 6px;
-            text-align: center;
-        }
-        .footer {
-            margin-top: 28px;
+        .sheet-foot {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
             font-size: 10px;
-            color: #9ca3af;
-            text-align: center;
+            color: #444;
         }
         @media print {
             body { background: #fff; }
             .toolbar { display: none !important; }
             .page-wrap { padding: 0; }
             .sheet { box-shadow: none; min-height: 277mm; }
-            table.items th, table.items tfoot td {
+            table.items th, .bill-label, .bill-amt {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
         }
-        @page { size: A4; margin: 10mm; }
+        @page { size: A4; margin: 8mm; }
     </style>
 </head>
 <body>
     <div class="toolbar">
-        <span>Sales Invoice {{ $invoice->invoice_no }}</span>
+        <span>Sale Invoice {{ $invoice->invoice_no }}</span>
         <div>
             <a class="btn-back" href="{{ route('invoices.show', $invoice) }}">Back</a>
             <button type="button" class="btn-print" onclick="window.print()">Print</button>
@@ -205,122 +230,126 @@
 
     <div class="page-wrap">
         <div class="sheet">
-            <header class="header">
-                <x-print-company-brand :settings="$settings" />
-                <div class="doc-meta">
-                    <p class="doc-label">Sales invoice</p>
-                    <p class="doc-no">{{ $invoice->invoice_no }}</p>
-                    <p class="doc-date">Date: {{ ams_date($invoice->invoice_date) }}</p>
-                    @if($invoice->due_date)
-                        <p class="doc-date">Due: {{ ams_date($invoice->due_date) }}</p>
-                    @endif
-                </div>
-            </header>
-
-            <div class="parties">
-                <div>
-                    <div class="party-label">From</div>
-                    <div class="party-name">{{ $settings->companyName() }}</div>
-                    <div class="party-meta">{{ $settings->contactLine() }}</div>
-                </div>
-                <div>
-                    <div class="party-label">Customer</div>
-                    <div class="party-name">{{ $invoice->customer?->displayName() ?: '—' }}</div>
-                    <div class="party-meta">
-                        {{ collect([
-                            $invoice->customer?->phone ?: $invoice->customer?->mobile,
-                            $invoice->customer?->email,
-                            $invoice->customer?->address,
-                            $invoice->customer?->area,
-                            $invoice->customer?->city,
-                        ])->filter()->join(' · ') ?: '—' }}
-                        @if($invoice->customer?->ntn)
-                            <br>NTN {{ $invoice->customer->ntn }}
+            <div class="brand">
+                @if($logoPath)
+                    <img src="/{{ ltrim($logoPath, '/') }}" alt="">
+                @endif
+                <div class="brand-text">
+                    <h1 class="brand-name">{{ $company }}</h1>
+                    <p class="brand-meta">
+                        @if($address !== '')
+                            {{ $address }}@if($phone !== '') - Mob:{{ $phone }}@endif
+                        @elseif($phone !== '')
+                            Mob:{{ $phone }}
                         @endif
-                        @if($invoice->customer?->strn ?: $invoice->customer?->vat_number)
-                            · STRN {{ $invoice->customer->strn ?: $invoice->customer->vat_number }}
-                        @endif
-                    </div>
+                    </p>
                 </div>
             </div>
 
-            <div class="items-wrap">
-                <table class="items">
-                    <colgroup>
-                        <col class="col-num">
-                        <col class="col-item">
-                        <col class="col-unit">
-                        <col class="col-qty">
-                        <col class="col-rate">
-                        <col class="col-disc">
-                        <col class="col-tax-rate">
-                        <col class="col-tax">
-                        <col class="col-amt">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Item</th>
-                            <th>Unit</th>
-                            <th class="num">Qty</th>
-                            <th class="num">Rate</th>
-                            <th class="num">Disc %</th>
-                            <th class="num">Tax %</th>
-                            <th class="num">Tax</th>
-                            <th class="num">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($invoice->lines as $i => $line)
-                            <tr>
-                                <td>{{ $i + 1 }}</td>
-                                <td>{{ $line->description }}</td>
-                                <td>{{ strtoupper($line->stockItem?->unit ?: 'PCS') }}</td>
-                                <td class="num">{{ ams_num($line->quantity) }}</td>
-                                <td class="num">{{ ams_num($line->unit_price) }}</td>
-                                <td class="num">{{ ams_num($line->discount_rate) }}%</td>
-                                <td class="num">{{ ams_num($line->vat_rate) }}%</td>
-                                <td class="num">{{ ams_num($line->vat_amount) }}</td>
-                                <td class="num">{{ ams_num($line->line_total) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="8" class="num">Subtotal</td>
-                            <td class="num">{{ ams_num((float) $invoice->subtotal + (float) $invoice->discount_amount) }}</td>
-                        </tr>
-                        @if((float) $invoice->discount_amount > 0)
-                            <tr>
-                                <td colspan="8" class="num">Discount</td>
-                                <td class="num">{{ ams_num($invoice->discount_amount) }}</td>
-                            </tr>
-                        @endif
-                        <tr>
-                            <td colspan="8" class="num">Tax</td>
-                            <td class="num">{{ ams_num($invoice->vat_amount) }}</td>
-                        </tr>
-                        <tr class="grand">
-                            <td colspan="8" class="num">Total</td>
-                            <td class="num">{{ ams_num($invoice->total) }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
+            <h2 class="doc-title">SALE INVOICE</h2>
+
+            <div class="meta">
+                <div>
+                    <p>Invoice #: {{ $invoice->invoice_no }}</p>
+                    <p>Name: {{ $customer?->displayName() ?: '—' }}</p>
+                    <p>City : {{ $customer?->city ?: '—' }}</p>
+                </div>
+                <div class="right">
+                    <p>Issue Date: {{ $issueDate ?: '—' }}</p>
+                    <p>Salesman: {{ $salesman?->name ?: '—' }}</p>
+                    <p>Mode: {{ $mode }}</p>
+                </div>
             </div>
 
-            <p class="words"><strong>Amount in words:</strong> {{ $amountInWords }}</p>
+            <table class="items">
+                <colgroup>
+                    <col class="col-sr">
+                    <col class="col-product">
+                    <col class="col-bat">
+                    <col class="col-exp">
+                    <col class="col-qty">
+                    <col class="col-rate">
+                    <col class="col-amt">
+                    <col class="col-dis">
+                    <col class="col-disamt">
+                    <col class="col-net">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Sr#</th>
+                        <th>Products</th>
+                        <th>Bat#</th>
+                        <th>Exp Date</th>
+                        <th>Quanti<br>ty</th>
+                        <th>Rate</th>
+                        <th>Amount</th>
+                        <th>Dis%</th>
+                        <th>Dis Amt</th>
+                        <th>Net.<br>Amt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($lines as $i => $line)
+                        @php
+                            $qty = (float) $line->quantity;
+                            $rate = (float) $line->unit_price;
+                            $gross = round($qty * $rate, 2);
+                            $item = $line->stockItem;
+                        @endphp
+                        <tr>
+                            <td class="center">{{ $i + 1 }}</td>
+                            <td class="product-name">{{ $line->description }}</td>
+                            <td class="batch">{{ $item?->batch_no ?: '' }}</td>
+                            <td class="center">{{ $item?->expiry_date ? $item->expiry_date->format('d-M-y') : '' }}</td>
+                            <td class="num">{{ ams_num($qty) }}</td>
+                            <td class="num">{{ ams_num($rate) }}</td>
+                            <td class="num">{{ ams_num($gross) }}</td>
+                            <td class="num">{{ number_format((float) $line->discount_rate, 2) }}%</td>
+                            <td class="num">{{ ams_num($line->discount_amount) }}</td>
+                            <td class="num">{{ ams_num($line->line_net) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr class="totals">
+                        <td colspan="4" class="note">Items {{ $itemCount }}, Printed on: {{ $printStamp }}</td>
+                        <td class="num">{{ ams_num($qtyTotal) }}</td>
+                        <td></td>
+                        <td class="num lined">{{ ams_num($grossTotal) }}</td>
+                        <td></td>
+                        <td class="num lined">{{ ams_num($discTotal) }}</td>
+                        <td class="num lined">{{ ams_num($netTotal) }}</td>
+                    </tr>
+                    <tr class="bill">
+                        <td colspan="7"></td>
+                        <td colspan="2" class="bill-label">Bill Amount:</td>
+                        <td class="num bill-amt">{{ ams_num($netTotal) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
 
-            @if($invoice->notes)
-                <p class="po-notes"><strong>Notes:</strong> {{ $invoice->notes }}</p>
-            @endif
+            <div class="legal">
+                @if($printTexts['warranty'] !== '')
+                    <h3>General Warranty</h3>
+                    @foreach(preg_split('/\n\s*\n/', $printTexts['warranty']) as $para)
+                        <p>{{ $para }}</p>
+                    @endforeach
+                @endif
 
-            <div class="bottom">
-                <div class="sigs">
-                    <div class="sig-line">Prepared by</div>
-                    <div class="sig-line">Customer</div>
-                    <div class="sig-line">Authorized by</div>
-                </div>
-                <p class="footer">Printed {{ ams_datetime($printedAt) }}</p>
+                @if($printTexts['note'] !== '')
+                    <h3>Note:</h3>
+                    <p>{{ $printTexts['note'] }}</p>
+                @endif
+
+                @if($printTexts['on_behalf'] !== '')
+                    <div class="sign">{{ $printTexts['on_behalf'] }}</div>
+                    <div class="sign-line"></div>
+                @endif
+            </div>
+
+            <div class="sheet-foot">
+                <span>{{ $printTexts['developed_by'] }}</span>
+                <span>Page: 1/1</span>
             </div>
         </div>
     </div>

@@ -53,3 +53,10 @@
         'useItemSelect' => true,
         'showDiscount' => true,
     ])
+<div class="card p-4 mb-3">
+    <div class="mb-0">
+        <label class="form-label">Mode <span class="text-muted fw-normal">(optional)</span></label>
+        <input name="mode" class="form-control" maxlength="50" value="{{ old('mode', $isEdit ? $invoice->mode : '') }}" placeholder="CO">
+        <div class="form-text">Printed on the sale invoice. Examples: CO, Cash.</div>
+    </div>
+</div>

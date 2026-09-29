@@ -39,14 +39,20 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
+        $companyLabel = strtoupper((string) $data['company_name']);
         $organization = Organization::create([
             'name' => $data['company_name'],
             'slug' => Organization::uniqueSlug($data['company_name']),
             'plan' => Organization::PLAN_TRIAL,
             'trial_ends_at' => now()->addDays((int) config('ams.trial_days', 14))->toDateString(),
             'default_vat_rate' => 15,
+            'invoice_series' => (int) config('ams.invoice_series', 1000),
             'zatca_environment' => 'sandbox',
             'status' => 'active',
+            'print_warranty' => str_replace('{company}', $companyLabel, (string) config('ams.print_warranty')),
+            'print_note' => (string) config('ams.print_note'),
+            'print_on_behalf' => str_replace('{company}', $companyLabel, (string) config('ams.print_on_behalf')),
+            'print_developed_by' => (string) config('ams.print_developed_by'),
         ]);
 
         $user = User::create([

@@ -43,6 +43,7 @@ class SalesOrderService
                 'customer_id' => $data['customer_id'],
                 'order_date' => $data['order_date'],
                 'notes' => $data['notes'] ?? null,
+                'mode' => $this->normalizedMode($data['mode'] ?? null),
                 'subtotal' => $computed['subtotal'],
                 'discount_amount' => $computed['discount_amount'],
                 'vat_amount' => $computed['vat_amount'],
@@ -80,7 +81,7 @@ class SalesOrderService
         });
     }
 
-    public function confirm(SalesOrder $order, User $user): SalesInvoice
+    public function confirm(SalesOrder $order, User $user, array $extra = []): SalesInvoice
     {
         if (! $order->isPending()) {
             throw new InvalidArgumentException('Only pending orders can be confirmed.');
@@ -92,7 +93,12 @@ class SalesOrderService
             throw new InvalidArgumentException('Add lines before confirming.');
         }
 
-        return DB::transaction(function () use ($order, $user) {
+        $builty = $this->normalizedBuilty($extra);
+
+        return DB::transaction(function () use ($order, $user, $builty) {
+            $order->fill($builty);
+            $order->save();
+
             $lines = $order->lines->map(fn (SalesOrderLine $line) => [
                 'stock_item_id' => $line->stock_item_id,
                 'description' => $line->description,
@@ -108,6 +114,9 @@ class SalesOrderService
                 'due_date' => null,
                 'type' => 'simplified',
                 'notes' => $order->notes,
+                'mode' => $order->mode,
+                'builty_postal' => $order->builty_postal,
+                'builty_exp' => $order->builty_exp,
                 'salesman_id' => $order->salesman_id,
                 'sales_order_id' => $order->id,
                 'company_retain_percent' => $order->company_retain_percent,
@@ -125,6 +134,8 @@ class SalesOrderService
             $invoice->fill($split + [
                 'salesman_id' => $order->salesman_id,
                 'sales_order_id' => $order->id,
+                'builty_postal' => $order->builty_postal,
+                'builty_exp' => $order->builty_exp,
             ]);
             $invoice->save();
 
@@ -172,6 +183,7 @@ class SalesOrderService
     public function hydrateLine(array $line): array
     {
         $line['discount_rate'] = $line['discount_rate'] ?? 0;
+        $line['vat_rate'] = $line['vat_rate'] ?? 0;
 
         if (empty($line['stock_item_id'])) {
             return $line;
@@ -183,5 +195,42 @@ class SalesOrderService
         }
 
         return $line;
+    }
+
+    public function updateBuilty(SalesOrder $order, array $extra): SalesOrder
+    {
+        $builty = $this->normalizedBuilty($extra);
+
+        return DB::transaction(function () use ($order, $builty) {
+            $order->update($builty);
+
+            if ($order->sales_invoice_id) {
+                SalesInvoice::query()->whereKey($order->sales_invoice_id)->update($builty);
+            }
+
+            return $order->fresh(['invoice', 'customer']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array{builty_postal: ?string, builty_exp: ?float}
+     */
+    public function normalizedBuilty(array $extra): array
+    {
+        $postal = trim((string) ($extra['builty_postal'] ?? ''));
+        $exp = $extra['builty_exp'] ?? null;
+
+        return [
+            'builty_postal' => $postal === '' ? null : $postal,
+            'builty_exp' => $exp === null || $exp === '' ? null : round((float) $exp, 2),
+        ];
+    }
+
+    private function normalizedMode(mixed $mode): ?string
+    {
+        $mode = trim((string) $mode);
+
+        return $mode === '' ? null : $mode;
     }
 }

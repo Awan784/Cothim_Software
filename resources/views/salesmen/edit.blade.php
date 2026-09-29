@@ -18,6 +18,16 @@
         </div>
 
         <div class="card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="small text-muted">Current advance</div>
+                    <div class="fs-5 fw-semibold">{{ number_format((float) $salesman->advance_balance, 2) }}</div>
+                </div>
+                <a href="{{ route('salesman-settlements.create', ['salesman_id' => $salesman->id]) }}" class="btn btn-sm btn-outline-primary">New settlement</a>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-4">
             <form method="post" action="{{ route('salesmen.update', $salesman) }}">
                 @csrf
                 @method('put')

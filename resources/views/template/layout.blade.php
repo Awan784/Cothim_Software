@@ -20,7 +20,7 @@
     <link type="text/css" href="{{ asset('vendor/notyf/notyf.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/choices.js/public/assets/styles/choices.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('css/volt.css') }}" rel="stylesheet">
-    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=13" rel="stylesheet">
+    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=14" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     @if(wafi_is_rtl())
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -125,7 +125,7 @@
     <script src="{{ asset('vendor/sweetalert2/dist/sweetalert2.min.js') }}"></script>
     <script src="{{ asset('assets/js/volt.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="{{ asset('js/ams-ui.js') }}"></script>
+    <script src="{{ asset('js/ams-ui.js') }}?v=3"></script>
     @if(! $isSalesmanShell)
         <audio id="amsOrderRingtone" src="{{ asset('sounds/order-ring.wav') }}" preload="auto" loop playsinline autoplay muted></audio>
         <script>

@@ -35,6 +35,7 @@ class CheckModulePermission
         'sales-returns.print' => ['sales-returns', 'view'],
         'sales-orders.pending-feed' => ['sales-orders', 'view'],
         'sales-orders.confirm' => ['sales-orders', 'update'],
+        'sales-orders.builty' => ['sales-orders', 'update'],
         'sales-orders.reject' => ['sales-orders', 'update'],
         'bank-accounts.balance' => ['bank-accounts', 'view'],
         'reports.salesman-commission' => ['reports', 'view'],

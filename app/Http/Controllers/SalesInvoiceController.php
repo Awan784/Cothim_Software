@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\BankAccount;
+use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\StockItem;
 use App\Services\SalesInvoiceService;
 use App\Services\SettingsService;
-use App\Support\AmountInWords;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -60,8 +60,13 @@ class SalesInvoiceController extends Controller
 
         $invoice->load(['customer', 'lines', 'salesman']);
         $banks = BankAccount::orderBy('name')->get();
+        $receipts = CashVoucher::query()
+            ->where('sales_invoice_id', $invoice->id)
+            ->orderByDesc('voucher_date')
+            ->orderByDesc('id')
+            ->get();
 
-        return view('invoices.show', compact('invoice', 'banks', 'settings'));
+        return view('invoices.show', compact('invoice', 'banks', 'settings', 'receipts'));
     }
 
     public function edit(SalesInvoice $invoice, SettingsService $settings): View|RedirectResponse
@@ -128,12 +133,11 @@ class SalesInvoiceController extends Controller
 
     public function print(SalesInvoice $invoice, SettingsService $settings): View
     {
-        $invoice->load(['customer', 'lines.stockItem']);
+        $invoice->load(['customer', 'salesman', 'lines.stockItem', 'creator']);
 
         return view('invoices.print', [
             'invoice' => $invoice,
             'settings' => $settings,
-            'amountInWords' => AmountInWords::rupees((float) $invoice->total),
             'printedAt' => now(),
         ]);
     }
@@ -159,6 +163,7 @@ class SalesInvoiceController extends Controller
             'due_date' => ['nullable', 'date'],
             'type' => ['required', 'in:simplified,standard'],
             'notes' => ['nullable', 'string'],
+            'mode' => ['nullable', 'string', 'max:50'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
@@ -200,6 +205,6 @@ class SalesInvoiceController extends Controller
             ->where('is_active', true)
             ->with('variants')
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'unit', 'sale_price', 'quantity', 'has_variants']);
+            ->get(['id', 'name', 'sku', 'batch_no', 'unit', 'sale_price', 'quantity', 'has_variants']);
     }
 }

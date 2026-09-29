@@ -25,17 +25,23 @@ class Organization extends Model
         'phone',
         'logo_path',
         'default_vat_rate',
+        'invoice_series',
         'company_retain_percent',
         'salesman_commission_percent',
         'zatca_environment',
         'status',
         'whatsapp',
+        'print_warranty',
+        'print_note',
+        'print_on_behalf',
+        'print_developed_by',
         'admin_notes',
     ];
 
     protected $casts = [
         'trial_ends_at' => 'date',
         'default_vat_rate' => 'float',
+        'invoice_series' => 'integer',
         'company_retain_percent' => 'float',
         'salesman_commission_percent' => 'float',
     ];

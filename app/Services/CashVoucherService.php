@@ -55,6 +55,8 @@ class CashVoucherService
             $data['other_name'] = null;
         }
 
+        $data['affects_cash'] = (bool) ($data['affects_cash'] ?? true);
+
         return DB::transaction(function () use ($data) {
             $amount = (float) $data['amount'];
             $type = $data['type'];
@@ -62,26 +64,8 @@ class CashVoucherService
 
             $voucher = CashVoucher::create($data);
 
-            if ($voucher->payment_method === 'cash') {
-                $cash = CashAccount::whereKey($voucher->cash_account_id)->lockForUpdate()->firstOrFail();
-
-                if ($type === 'receive') {
-                    $cash->increment('current_balance', $amount);
-                } else {
-                    $cash->decrement('current_balance', $amount);
-                }
-            } else {
-                $bank = BankAccount::whereKey($voucher->bank_account_id)->lockForUpdate()->firstOrFail();
-
-                if ($type === 'payment' && (float) $bank->current_balance < $amount) {
-                    throw new RuntimeException('No balance in this bank account.');
-                }
-
-                if ($type === 'receive') {
-                    $bank->increment('current_balance', $amount);
-                } else {
-                    $bank->decrement('current_balance', $amount);
-                }
+            if ($voucher->affectsCashBalance()) {
+                $this->applySourceBalance($voucher, $amount, $type, true);
             }
 
             $this->applyPartyBalance($voucher, $amount, $type, true);
@@ -90,9 +74,51 @@ class CashVoucherService
         });
     }
 
+    public function delete(CashVoucher $voucher): void
+    {
+        DB::transaction(function () use ($voucher) {
+            $amount = (float) $voucher->amount;
+
+            if ($voucher->affectsCashBalance()) {
+                $this->applySourceBalance($voucher, $amount, $voucher->type, false);
+            }
+
+            $this->applyPartyBalance($voucher, $amount, $voucher->type, false);
+
+            $voucher->delete();
+        });
+    }
+
+    public function applySourceBalance(CashVoucher $voucher, float $amount, string $type, bool $apply): void
+    {
+        $receive = $apply ? ($type === 'receive') : ($type !== 'receive');
+
+        if (($voucher->payment_method ?? 'cash') === 'cash') {
+            $cash = CashAccount::whereKey($voucher->cash_account_id)->lockForUpdate()->firstOrFail();
+            if ($receive) {
+                $cash->increment('current_balance', $amount);
+            } else {
+                $cash->decrement('current_balance', $amount);
+            }
+
+            return;
+        }
+
+        $bank = BankAccount::whereKey($voucher->bank_account_id)->lockForUpdate()->firstOrFail();
+        if ($apply && $type === 'payment' && (float) $bank->current_balance < $amount) {
+            throw new RuntimeException('No balance in this bank account.');
+        }
+
+        if ($receive) {
+            $bank->increment('current_balance', $amount);
+        } else {
+            $bank->decrement('current_balance', $amount);
+        }
+    }
+
     public function applyPartyBalance(CashVoucher $voucher, float $amount, string $type, bool $apply): void
     {
-        if ($voucher->account_type === 'other' || empty($voucher->account_id)) {
+        if (in_array($voucher->account_type, ['other', 'salesman'], true) || empty($voucher->account_id)) {
             return;
         }
 

@@ -24,23 +24,50 @@
 
         @if($order->isPending())
             <div class="card p-4 mb-3">
-                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                    <p class="mb-0">Confirming this order generates a sales invoice, updates stock, and snapshots commission.</p>
-                    <div class="d-flex gap-2">
-                        <form method="post" action="{{ route('sales-orders.confirm', $order) }}">
-                            @csrf
-                            <button class="btn btn-primary" type="submit">Confirm &amp; generate invoice</button>
-                        </form>
-                        <form method="post" action="{{ route('sales-orders.reject', $order) }}" class="d-flex gap-2" onsubmit="return confirm('Reject this order?')">
-                            @csrf
-                            <input name="reject_reason" class="form-control" placeholder="Reason (optional)">
-                            <button class="btn btn-outline-danger" type="submit">Reject</button>
-                        </form>
+                <form method="post" action="{{ route('sales-orders.confirm', $order) }}">
+                    @csrf
+                    <p class="mb-3">Confirming this order generates a sales invoice, updates stock, and snapshots commission. Add builty details if you have them.</p>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Builty postal</label>
+                            <input name="builty_postal" class="form-control" maxlength="100" value="{{ old('builty_postal', $order->builty_postal) }}" placeholder="e.g. 23299048">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Builty expenses</label>
+                            <input name="builty_exp" type="number" min="0" step="0.01" class="form-control" value="{{ old('builty_exp', $order->builty_exp) }}" placeholder="0.00">
+                        </div>
                     </div>
-                </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-primary" type="submit">Confirm &amp; generate invoice</button>
+                    </div>
+                </form>
+                <form method="post" action="{{ route('sales-orders.reject', $order) }}" class="d-flex gap-2 mt-3" onsubmit="return confirm('Reject this order?')">
+                    @csrf
+                    <input name="reject_reason" class="form-control" placeholder="Reason (optional)">
+                    <button class="btn btn-outline-danger" type="submit">Reject</button>
+                </form>
             </div>
-        @elseif($order->isRejected() && $order->reject_reason)
-            <div class="alert alert-danger">Rejected: {{ $order->reject_reason }}</div>
+        @elseif($order->isRejected())
+            @if($order->reject_reason)
+                <div class="alert alert-danger">Rejected: {{ $order->reject_reason }}</div>
+            @endif
+        @else
+            <div class="card p-4 mb-3">
+                <form method="post" action="{{ route('sales-orders.builty', $order) }}" class="row g-3 align-items-end">
+                    @csrf
+                    <div class="col-md-4">
+                        <label class="form-label">Builty postal</label>
+                        <input name="builty_postal" class="form-control" maxlength="100" value="{{ old('builty_postal', $order->invoice?->builty_postal ?? $order->builty_postal) }}" placeholder="e.g. 23299048">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Builty expenses</label>
+                        <input name="builty_exp" type="number" min="0" step="0.01" class="form-control" value="{{ old('builty_exp', $order->invoice?->builty_exp ?? $order->builty_exp) }}" placeholder="0.00">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-primary" type="submit">Save builty</button>
+                    </div>
+                </form>
+            </div>
         @endif
 
         @include('sales-orders._lines', ['order' => $order])

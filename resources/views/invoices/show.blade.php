@@ -62,6 +62,39 @@
             </div>
         </div>
 
+        @if(isset($receipts) && $receipts->isNotEmpty())
+            <div class="card p-4 mb-3">
+                <h2 class="h6 mb-3">Receive payments</h2>
+                <div class="table-responsive">
+                    <table class="table table-flush mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Voucher</th>
+                                <th>Notes</th>
+                                <th class="text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($receipts as $receipt)
+                                <tr>
+                                    <td>{{ ams_date($receipt->voucher_date) }}</td>
+                                    <td>
+                                        <a href="{{ route('cash-vouchers.print', $receipt) }}" target="_blank">{{ $receipt->voucher_no }}</a>
+                                        @if(! $receipt->affectsCashBalance())
+                                            <span class="badge bg-secondary">Via salesman</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $receipt->notes ?: '—' }}</td>
+                                    <td class="text-end">{{ number_format((float) $receipt->amount, 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         @if(! $invoice->isDraft() && $invoice->balanceDue() > 0)
             <div class="card p-4">
                 <h2 class="h6">Record payment</h2>

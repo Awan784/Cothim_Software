@@ -101,15 +101,36 @@ class SalesOrderController extends Controller
         ]);
     }
 
-    public function confirm(SalesOrder $sales_order): RedirectResponse
+    public function confirm(Request $request, SalesOrder $sales_order): RedirectResponse
     {
+        $builty = $request->validate([
+            'builty_postal' => ['nullable', 'string', 'max:100'],
+            'builty_exp' => ['nullable', 'numeric', 'gte:0'],
+        ]);
+
         try {
-            $invoice = $this->orders->confirm($sales_order, request()->user());
+            $invoice = $this->orders->confirm($sales_order, $request->user(), $builty);
         } catch (InvalidArgumentException $e) {
-            return back()->with('error', $e->getMessage());
+            return back()->withInput()->with('error', $e->getMessage());
         }
 
         return redirect()->route('invoices.show', $invoice)->with('success', 'Order confirmed and invoice generated.');
+    }
+
+    public function updateBuilty(Request $request, SalesOrder $sales_order): RedirectResponse
+    {
+        $builty = $request->validate([
+            'builty_postal' => ['nullable', 'string', 'max:100'],
+            'builty_exp' => ['nullable', 'numeric', 'gte:0'],
+        ]);
+
+        try {
+            $this->orders->updateBuilty($sales_order, $builty);
+        } catch (InvalidArgumentException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Builty details saved.');
     }
 
     public function reject(Request $request, SalesOrder $sales_order): RedirectResponse
@@ -136,13 +157,14 @@ class SalesOrderController extends Controller
             'customer_id' => ['required', 'exists:customers,id'],
             'order_date' => ['required', 'date'],
             'notes' => ['nullable', 'string'],
+            'mode' => ['nullable', 'string', 'max:50'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
             'lines.*.discount_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
-            'lines.*.vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
+            'lines.*.vat_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
         ]);
 
         $data['lines'] = array_values(array_filter(
@@ -173,6 +195,6 @@ class SalesOrderController extends Controller
             ->where('is_active', true)
             ->with('variants')
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'unit', 'sale_price', 'quantity', 'has_variants']);
+            ->get(['id', 'name', 'sku', 'batch_no', 'unit', 'sale_price', 'quantity', 'has_variants']);
     }
 }

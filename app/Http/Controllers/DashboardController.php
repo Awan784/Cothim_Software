@@ -34,16 +34,19 @@ class DashboardController extends Controller
         $totalCashReceived = (float) CashVoucher::query()
             ->where('type', 'receive')
             ->where('payment_method', 'cash')
+            ->affectingCash()
             ->sum('amount');
 
         $totalBankReceived = (float) CashVoucher::query()
             ->where('type', 'receive')
             ->where('payment_method', 'bank')
+            ->affectingCash()
             ->sum('amount');
 
         $totalBankPaid = (float) CashVoucher::query()
             ->where('type', 'payment')
             ->where('payment_method', 'bank')
+            ->affectingCash()
             ->sum('amount');
 
         $expenseAccountsCount = ExpenseAccount::count();
@@ -74,18 +77,22 @@ class DashboardController extends Controller
         $todayCashReceive = (float) CashVoucher::query()
             ->where('type', 'receive')
             ->whereDate('voucher_date', $today)
+            ->affectingCash()
             ->sum('amount');
         $todayCashPayment = (float) CashVoucher::query()
             ->where('type', 'payment')
             ->whereDate('voucher_date', $today)
+            ->affectingCash()
             ->sum('amount');
         $monthCashReceive = (float) CashVoucher::query()
             ->where('type', 'receive')
             ->whereDate('voucher_date', '>=', $monthStart)
+            ->affectingCash()
             ->sum('amount');
         $monthCashPayment = (float) CashVoucher::query()
             ->where('type', 'payment')
             ->whereDate('voucher_date', '>=', $monthStart)
+            ->affectingCash()
             ->sum('amount');
 
         return view('dashboard', compact(

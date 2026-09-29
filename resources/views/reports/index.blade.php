@@ -219,12 +219,12 @@
                     </div>
                     <div class="modal-body">
                         <p class="text-muted small mb-3">
-                            Confirmed salesman invoices with company retain and commission snapshots.
+                            Select a salesman and date range. The print sheet lists each invoice with sale amount and commission, matching the commission report format.
                         </p>
                         <div class="mb-3">
                             <label for="sc_salesman_id" class="form-label">Salesman</label>
-                            <select name="salesman_id" id="sc_salesman_id" class="form-select">
-                                <option value="">All salesmen</option>
+                            <select name="salesman_id" id="sc_salesman_id" class="form-select" required>
+                                <option value="">Select salesman</option>
                                 @foreach($salesmen as $salesman)
                                     <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}</option>
                                 @endforeach
@@ -239,6 +239,11 @@
                                 <label for="sc_to_date" class="form-label">To Date</label>
                                 <x-ams-date-input name="to_date" id="sc_to_date" :value="now()" required />
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sc_previous_advance" class="form-label">Previous advance override</label>
+                            <input type="number" min="0" step="0.01" name="previous_advance" id="sc_previous_advance" class="form-control" placeholder="Leave blank to use salesman advance">
+                            <div class="form-text">Leave blank to use the salesman's current advance from settlements. Builty postal and expenses come from each order when admin confirms it.</div>
                         </div>
                     </div>
                     <div class="modal-footer">

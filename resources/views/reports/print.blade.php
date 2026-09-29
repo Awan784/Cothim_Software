@@ -137,6 +137,7 @@
             padding: 14px 8px;
         }
         table.items tr.row-bf td { background: #f3f3f3; font-style: italic; }
+        table.items tr.row-sale td { background: #dbeafe; }
         table.items tr.row-receive td { background: #d1e7dd; }
         table.items tr.row-payment td { background: #f8d7da; }
         table.items tr.row-bank td { background: #f9fafb; }
@@ -165,6 +166,7 @@
             table.items tr.subtotal td,
             table.items tr.group-head td,
             table.items tr.row-bf td,
+            table.items tr.row-sale td,
             table.items tr.row-receive td,
             table.items tr.row-payment td {
                 -webkit-print-color-adjust: exact;

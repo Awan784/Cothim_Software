@@ -87,7 +87,8 @@ class CashRegisterService
         $entries = collect();
 
         $vouchers = CashVoucher::query()
-            ->with(['cashAccount', 'bankAccount'])
+            ->with(['cashAccount', 'bankAccount', 'salesmanSettlement'])
+            ->affectingCash()
             ->whereDate('voucher_date', '>=', $from->toDateString())
             ->whereDate('voucher_date', '<=', $to->toDateString())
             ->orderBy('voucher_date')
@@ -171,11 +172,11 @@ class CashRegisterService
             'party_name' => $partyName,
             'paid_via' => $paidVia,
             'reference' => $voucher->reference ?? '',
-            'notes' => $voucher->notes ?? '',
+            'notes' => $voucher->cashBookNotes(),
             'amount' => $amount,
-            'cash_in' => $isCash && $voucher->type === 'receive' ? $amount : 0.0,
-            'cash_out' => $isCash && $voucher->type === 'payment' ? $amount : 0.0,
-            'affects_cash_balance' => $isCash,
+            'cash_in' => $isCash && $voucher->affectsCashBalance() && $voucher->type === 'receive' ? $amount : 0.0,
+            'cash_out' => $isCash && $voucher->affectsCashBalance() && $voucher->type === 'payment' ? $amount : 0.0,
+            'affects_cash_balance' => $isCash && $voucher->affectsCashBalance(),
         ];
     }
 
@@ -183,11 +184,16 @@ class CashRegisterService
     {
         $isReceive = $voucher->type === 'receive';
 
+        if ($voucher->isSettlementCash()) {
+            return $isReceive ? 'Settlement receive (Salesman)' : 'Settlement payment (Salesman)';
+        }
+
         return match ($voucher->account_type) {
             'customer' => $isReceive ? 'Cash Receive (Customer)' : 'Cash Payment (Customer)',
             'supplier' => $isReceive ? 'Cash Receive (Supplier)' : 'Cash Payment (Supplier)',
             'investor' => $isReceive ? 'Cash Receive (Investor)' : 'Cash Payment (Investor)',
             'expense' => $isReceive ? 'Expense Receive' : 'Expense Payment',
+            'salesman' => $isReceive ? 'Cash Receive (Salesman)' : 'Cash Payment (Salesman)',
             'other' => $isReceive ? 'Cash Receive (Other)' : 'Cash Payment (Other)',
             default => $isReceive ? 'Cash Receive' : 'Cash Payment',
         };
@@ -202,7 +208,7 @@ class CashRegisterService
     {
         $net = 0.0;
 
-        $voucherQuery = CashVoucher::query()->where('payment_method', 'cash');
+        $voucherQuery = CashVoucher::query()->where('payment_method', 'cash')->affectingCash();
 
         if ($from) {
             $voucherQuery->whereDate('voucher_date', '>=', $from->toDateString());
@@ -243,6 +249,7 @@ class CashRegisterService
             'supplier' => 'Supplier',
             'investor' => 'Investor',
             'expense' => 'Expense',
+            'salesman' => 'Salesman',
             'other' => 'Other',
             default => $accountType ? ucfirst($accountType) : '—',
         };

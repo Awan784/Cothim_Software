@@ -5,7 +5,7 @@
         $brandTop = strtoupper($brandParts[0] ?? $product);
         $brandBottom = strtoupper($brandParts[1] ?? '');
         $isAccounts = request()->routeIs('customers.*') || request()->routeIs('salesmen.*') || request()->routeIs('suppliers.*') || request()->routeIs('bank-accounts.*');
-        $isSales = request()->routeIs('invoices.*') || request()->routeIs('sales-returns.*') || request()->routeIs('sales-orders.*');
+        $isSales = request()->routeIs('invoices.*') || request()->routeIs('sales-returns.*') || request()->routeIs('sales-orders.*') || request()->routeIs('salesman-settlements.*');
         $isPurchases = request()->routeIs('purchase-orders.*') || request()->routeIs('purchase-returns.*');
         $isAccounting = request()->routeIs('cash-vouchers.*') || request()->routeIs('journal-vouchers.*');
         $isStock = request()->routeIs('stock-categories.*') || request()->routeIs('stock-items.*');
@@ -75,6 +75,7 @@
                             </a>
                         </li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" href="{{ route('sales-returns.index') }}"><span class="sidebar-text">Sales returns</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('salesman-settlements.*') ? 'active' : '' }}" href="{{ route('salesman-settlements.index') }}"><span class="sidebar-text">Salesman settlements</span></a></li>
                     </ul>
                 </div>
             </li>

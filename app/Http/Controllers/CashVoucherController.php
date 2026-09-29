@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\ExpenseAccount;
+use App\Models\Salesman;
 use App\Models\Supplier;
 use App\Services\CashVoucherService;
 use App\Services\SettingsService;
@@ -33,7 +34,8 @@ class CashVoucherController extends Controller
         $accountTypeFilter = $request->query('account_type');
         $accountIdFilter = $request->filled('account_id') ? (int) $request->query('account_id') : null;
 
-        $query = CashVoucher::with(['cashAccount', 'bankAccount'])
+        $query = CashVoucher::with(['cashAccount', 'bankAccount', 'salesmanSettlement'])
+            ->affectingCash()
             ->orderByDesc('voucher_date')
             ->orderByDesc('id');
 
@@ -43,7 +45,7 @@ class CashVoucherController extends Controller
             $typeFilter = null;
         }
 
-        $allowedAccountTypes = ['customer', 'supplier', 'expense', 'other'];
+        $allowedAccountTypes = ['customer', 'supplier', 'expense', 'salesman', 'other'];
         if (in_array($accountTypeFilter, $allowedAccountTypes, true)) {
             $query->where('account_type', $accountTypeFilter);
 
@@ -62,6 +64,7 @@ class CashVoucherController extends Controller
         $customers = Customer::orderBy('name')->get(['id', 'name']);
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $expenseAccounts = ExpenseAccount::orderBy('name')->get(['id', 'name']);
+        $salesmen = Salesman::orderBy('name')->get(['id', 'name']);
 
         return view('cash-vouchers.index', compact(
             'cashVouchers',
@@ -71,6 +74,7 @@ class CashVoucherController extends Controller
             'customers',
             'suppliers',
             'expenseAccounts',
+            'salesmen',
         ));
     }
 
@@ -141,6 +145,7 @@ class CashVoucherController extends Controller
             'customer' => 'Customer',
             'supplier' => 'Supplier',
             'investor' => 'Investor',
+            'salesman' => 'Salesman',
             'expense' => 'Expense Account',
             'other' => 'Other',
             default => ucfirst((string) $cashVoucher->account_type),
@@ -170,6 +175,11 @@ class CashVoucherController extends Controller
      */
     public function edit(CashVoucher $cashVoucher)
     {
+        if ($cashVoucher->isSettlementLinked()) {
+            return redirect()
+                ->route('salesman-settlements.show', $cashVoucher->salesman_settlement_id)
+                ->with('error', 'This voucher belongs to a salesman settlement.');
+        }
         $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
@@ -185,6 +195,10 @@ class CashVoucherController extends Controller
      */
     public function update(Request $request, CashVoucher $cashVoucher)
     {
+        if ($cashVoucher->isSettlementLinked()) {
+            return back()->with('error', 'This voucher belongs to a salesman settlement. Change it from Salesman settlements.');
+        }
+
         $data = $request->validate([
             'type' => ['required', 'in:receive,payment'],
             'payment_method' => ['required', 'in:cash,bank'],
@@ -292,29 +306,11 @@ class CashVoucherController extends Controller
      */
     public function destroy(CashVoucher $cashVoucher)
     {
-        DB::transaction(function () use ($cashVoucher) {
-            $amount = (float) $cashVoucher->amount;
+        if ($cashVoucher->isSettlementLinked()) {
+            return back()->with('error', 'This voucher belongs to a salesman settlement. Delete the settlement instead.');
+        }
 
-            if (($cashVoucher->payment_method ?? 'cash') === 'cash') {
-                $cash = CashAccount::whereKey($cashVoucher->cash_account_id)->lockForUpdate()->firstOrFail();
-                if ($cashVoucher->type === 'receive') {
-                    $cash->decrement('current_balance', $amount);
-                } else {
-                    $cash->increment('current_balance', $amount);
-                }
-            } else {
-                $bank = BankAccount::whereKey($cashVoucher->bank_account_id)->lockForUpdate()->firstOrFail();
-                if ($cashVoucher->type === 'receive') {
-                    $bank->decrement('current_balance', $amount);
-                } else {
-                    $bank->increment('current_balance', $amount);
-                }
-            }
-
-            $this->vouchers->applyPartyBalance($cashVoucher, $amount, $cashVoucher->type, false);
-
-            $cashVoucher->delete();
-        });
+        $this->vouchers->delete($cashVoucher);
 
         return back()->with('success', 'Cash voucher deleted.');
     }

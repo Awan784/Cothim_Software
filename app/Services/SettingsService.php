@@ -20,12 +20,17 @@ class SettingsService
         'company_phone' => 'phone',
         'company_logo' => 'logo_path',
         'default_vat_rate' => 'default_vat_rate',
+        'invoice_series' => 'invoice_series',
         'company_retain_percent' => 'company_retain_percent',
         'salesman_commission_percent' => 'salesman_commission_percent',
         'plan' => 'plan',
         'trial_ends_at' => 'trial_ends_at',
         'zatca_environment' => 'zatca_environment',
         'whatsapp' => 'whatsapp',
+        'print_warranty' => 'print_warranty',
+        'print_note' => 'print_note',
+        'print_on_behalf' => 'print_on_behalf',
+        'print_developed_by' => 'print_developed_by',
     ];
 
     public function organization(): ?Organization
@@ -55,12 +60,17 @@ class SettingsService
                 'company_phone' => '',
                 'company_logo' => '',
                 'default_vat_rate' => config('ams.default_vat_rate', 15),
+                'invoice_series' => (int) config('ams.invoice_series', 1000),
                 'company_retain_percent' => 50,
                 'salesman_commission_percent' => 25,
                 'plan' => 'trial',
                 'trial_ends_at' => null,
                 'zatca_environment' => 'sandbox',
                 'whatsapp' => '',
+                'print_warranty' => $this->defaultPrintText('print_warranty'),
+                'print_note' => $this->defaultPrintText('print_note'),
+                'print_on_behalf' => $this->defaultPrintText('print_on_behalf'),
+                'print_developed_by' => $this->defaultPrintText('print_developed_by'),
             ];
         }
 
@@ -72,12 +82,17 @@ class SettingsService
             'company_phone' => $org->phone,
             'company_logo' => $org->logo_path,
             'default_vat_rate' => $org->default_vat_rate,
+            'invoice_series' => $org->invoice_series ?? (int) config('ams.invoice_series', 1000),
             'company_retain_percent' => $org->company_retain_percent ?? 50,
             'salesman_commission_percent' => $org->salesman_commission_percent ?? 25,
             'plan' => $org->plan,
             'trial_ends_at' => optional($org->trial_ends_at)?->toDateString(),
             'zatca_environment' => $org->zatca_environment,
             'whatsapp' => $org->whatsapp,
+            'print_warranty' => $org->print_warranty ?: $this->defaultPrintText('print_warranty', $org->name),
+            'print_note' => $org->print_note ?: $this->defaultPrintText('print_note', $org->name),
+            'print_on_behalf' => $org->print_on_behalf ?: $this->defaultPrintText('print_on_behalf', $org->name),
+            'print_developed_by' => $org->print_developed_by ?: $this->defaultPrintText('print_developed_by', $org->name),
         ];
     }
 
@@ -253,6 +268,11 @@ class SettingsService
         return (float) ($this->get('default_vat_rate', 15) ?: 15);
     }
 
+    public function invoiceSeries(): int
+    {
+        return max(0, (int) ($this->get('invoice_series') ?? config('ams.invoice_series', 1000)));
+    }
+
     public function plan(): string
     {
         return (string) ($this->get('plan', 'trial') ?: 'trial');
@@ -273,5 +293,30 @@ class SettingsService
     public function isOnTrial(): bool
     {
         return $this->plan() === Organization::PLAN_TRIAL;
+    }
+
+    /**
+     * Invoice footer copy with {company} replaced by the current company name.
+     *
+     * @return array{warranty: string, note: string, on_behalf: string, developed_by: string}
+     */
+    public function invoicePrintTexts(?string $companyName = null): array
+    {
+        $company = strtoupper((string) ($companyName ?: $this->companyName()));
+
+        return [
+            'warranty' => str_replace('{company}', $company, (string) $this->get('print_warranty')),
+            'note' => str_replace('{company}', $company, (string) $this->get('print_note')),
+            'on_behalf' => str_replace('{company}', $company, (string) $this->get('print_on_behalf')),
+            'developed_by' => str_replace('{company}', $company, (string) $this->get('print_developed_by')),
+        ];
+    }
+
+    public function defaultPrintText(string $key, ?string $companyName = null): string
+    {
+        $template = (string) config('ams.'.$key, '');
+        $company = strtoupper((string) ($companyName ?: $this->organization()?->name ?: config('ams.company_name', 'Contimade Traders')));
+
+        return str_replace('{company}', $company, $template);
     }
 }

@@ -25,10 +25,14 @@ class CashVoucher extends Model
         'voucher_date',
         'reference',
         'notes',
+        'affects_cash',
+        'salesman_settlement_id',
+        'sales_invoice_id',
     ];
 
     protected $casts = [
         'voucher_date' => 'date',
+        'affects_cash' => 'boolean',
     ];
 
     public static function prefixFor(string $type): string
@@ -78,6 +82,7 @@ class CashVoucher extends Model
             'supplier' => Supplier::find($this->account_id)?->name,
             'investor' => Investor::find($this->account_id)?->name,
             'expense' => ExpenseAccount::find($this->account_id)?->name,
+            'salesman' => Salesman::find($this->account_id)?->name,
             default => null,
         };
     }
@@ -94,6 +99,7 @@ class CashVoucher extends Model
             'supplier' => Supplier::class,
             'investor' => Investor::class,
             'expense' => ExpenseAccount::class,
+            'salesman' => Salesman::class,
         ];
 
         $namesByType = [];
@@ -123,5 +129,51 @@ class CashVoucher extends Model
             $name = $namesByType[$voucher->account_type][$voucher->account_id] ?? null;
             $voucher->setAttribute('account_display_name', $name);
         }
+    }
+
+    public function salesmanSettlement(): BelongsTo
+    {
+        return $this->belongsTo(SalesmanSettlement::class, 'salesman_settlement_id');
+    }
+
+    public function salesInvoice(): BelongsTo
+    {
+        return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
+    }
+
+    public function isSettlementLinked(): bool
+    {
+        return $this->salesman_settlement_id !== null;
+    }
+
+    public function affectsCashBalance(): bool
+    {
+        return (bool) ($this->affects_cash ?? true);
+    }
+
+    public function isInvoiceAllocation(): bool
+    {
+        return $this->isSettlementLinked() && ! $this->affectsCashBalance();
+    }
+
+    public function isSettlementCash(): bool
+    {
+        return $this->isSettlementLinked() && $this->affectsCashBalance();
+    }
+
+    public function cashBookNotes(): string
+    {
+        $settlement = $this->salesmanSettlement;
+        if ($this->isSettlementCash() && $settlement) {
+            return 'Allocated '.number_format((float) $settlement->allocated_amount, 2)
+                .' · Advance '.number_format((float) $settlement->closing_advance, 2);
+        }
+
+        return (string) ($this->notes ?? '');
+    }
+
+    public function scopeAffectingCash($query)
+    {
+        return $query->where('affects_cash', true);
     }
 }

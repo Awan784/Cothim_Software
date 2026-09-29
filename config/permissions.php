@@ -11,6 +11,7 @@ return [
         'stock-items' => 'Stock Items',
         'customers' => 'Customers',
         'salesmen' => 'Salesmen',
+        'salesman-settlements' => 'Salesman Settlements',
         'suppliers' => 'Suppliers',
         'expense-accounts' => 'Expense Accounts',
         'bank-accounts' => 'Bank Accounts',

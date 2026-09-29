@@ -52,7 +52,7 @@
                         <div class="db-card-icon sand"></div>
                     </div>
                     <h3 class="db-card-value">{{ ams_num($monthCommission) }}</h3>
-                    <p class="db-card-note">{{ ams_num($rates['salesman_commission_percent']) }}% after {{ ams_num($rates['company_retain_percent']) }}% retain</p>
+                    <p class="db-card-note">Confirmed invoices</p>
                 </a>
             </div>
         </div>

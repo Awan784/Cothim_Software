@@ -251,7 +251,21 @@ main.content {
 }
 
 .flatpickr-calendar {
-    z-index: 1065 !important;
+    z-index: 1080 !important;
+}
+
+.modal .modal-dialog,
+.modal .modal-content,
+.modal .modal-body {
+    overflow: visible;
+}
+
+.modal .ams-date-field {
+    z-index: 2;
+}
+
+.modal .ams-date-field .flatpickr-calendar {
+    z-index: 1080 !important;
 }
 
 /* Modals */

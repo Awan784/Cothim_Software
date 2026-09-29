@@ -22,6 +22,7 @@ class Salesman extends Authenticatable
         'city',
         'monthly_target',
         'commission_percent',
+        'advance_balance',
         'is_active',
     ];
 
@@ -35,6 +36,7 @@ class Salesman extends Authenticatable
         return [
             'monthly_target' => 'decimal:2',
             'commission_percent' => 'float',
+            'advance_balance' => 'float',
             'is_active' => 'boolean',
             'password' => 'hashed',
         ];
@@ -58,6 +60,11 @@ class Salesman extends Authenticatable
     public function invoices(): HasMany
     {
         return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function settlements(): HasMany
+    {
+        return $this->hasMany(SalesmanSettlement::class);
     }
 
     public function customersInCity(): Builder

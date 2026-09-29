@@ -628,9 +628,9 @@ class AccountingAssistantService
         $bank = (float) BankAccount::sum('current_balance');
         $receivable = (float) Customer::sum('current_balance');
         $payable = (float) Supplier::sum('current_balance');
-        $bankIn = (float) CashVoucher::query()->where('type', 'receive')->where('payment_method', 'bank')->sum('amount');
-        $bankOut = (float) CashVoucher::query()->where('type', 'payment')->where('payment_method', 'bank')->sum('amount');
-        $cashIn = (float) CashVoucher::query()->where('type', 'receive')->where('payment_method', 'cash')->sum('amount');
+        $bankIn = (float) CashVoucher::query()->where('type', 'receive')->where('payment_method', 'bank')->affectingCash()->sum('amount');
+        $bankOut = (float) CashVoucher::query()->where('type', 'payment')->where('payment_method', 'bank')->affectingCash()->sum('amount');
+        $cashIn = (float) CashVoucher::query()->where('type', 'receive')->where('payment_method', 'cash')->affectingCash()->sum('amount');
 
         return "Cash balance: ".number_format($cash, 2)
             ."\nBank balance: ".number_format($bank, 2)

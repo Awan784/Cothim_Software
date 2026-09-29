@@ -32,6 +32,9 @@ class SalesInvoice extends Model
         'salesman_commission_amount',
         'amount_paid',
         'notes',
+        'mode',
+        'builty_postal',
+        'builty_exp',
         'zatca_qr_payload',
         'zatca_status',
         'zatca_uuid',
@@ -51,6 +54,7 @@ class SalesInvoice extends Model
         'salesman_commission_percent' => 'float',
         'company_retain_amount' => 'float',
         'salesman_commission_amount' => 'float',
+        'builty_exp' => 'float',
         'amount_paid' => 'float',
     ];
 

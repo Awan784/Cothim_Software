@@ -17,7 +17,7 @@
         name="{{ $name }}"
         id="{{ $inputId }}"
         value="{{ $inputValue }}"
-        placeholder="dd-mm-yy HH:mm"
+        placeholder="dd-mm-yyyy HH:mm"
         autocomplete="off"
         @if($required) required @endif
         {{ $attributes->merge(['class' => 'ams-datetime-input ' . $class . ($errors->has($name) ? ' is-invalid' : '')]) }}

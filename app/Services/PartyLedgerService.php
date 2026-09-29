@@ -9,6 +9,7 @@ use App\Models\JournalVoucherLine;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
+use App\Models\SalesOrder;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
 use Carbon\Carbon;
@@ -178,8 +179,24 @@ class PartyLedgerService
         }
 
         if ($accountType === 'customer') {
-            foreach (SalesInvoice::where('customer_id', $accountId)->where('status', '!=', 'draft')->get() as $invoice) {
-                $date = $invoice->invoice_date instanceof Carbon ? $invoice->invoice_date : Carbon::parse($invoice->invoice_date);
+            foreach (SalesInvoice::with(['lines', 'salesOrder.lines'])
+                ->where('customer_id', $accountId)
+                ->where('status', '!=', 'draft')
+                ->get() as $invoice) {
+                $date = $this->ledgerDate(
+                    $invoice->invoice_date,
+                    $invoice->created_at,
+                    $invoice->salesOrder?->order_date,
+                    $invoice->salesOrder?->created_at,
+                );
+                $orderNo = $invoice->salesOrder?->order_no;
+                $lineNotes = $this->saleLineNotes($invoice->lines->isNotEmpty() ? $invoice->lines : $invoice->salesOrder?->lines);
+                $notes = collect([
+                    $orderNo ? 'Order '.$orderNo : null,
+                    $lineNotes,
+                    filled($invoice->notes) ? (string) $invoice->notes : null,
+                ])->filter()->implode(' · ');
+
                 $entries->push([
                     'date' => $date,
                     'sort_group' => 1,
@@ -187,8 +204,8 @@ class PartyLedgerService
                     'sort_seq' => (int) ($invoice->created_at?->timestamp ?? $invoice->id),
                     'sort_key' => 'si-'.$invoice->id,
                     'ref' => $invoice->invoice_no ?: 'INV-'.$invoice->id,
-                    'description' => 'Sales invoice',
-                    'notes' => (string) ($invoice->notes ?? ''),
+                    'description' => $orderNo ? 'Sales invoice · '.$orderNo : 'Sales invoice',
+                    'notes' => $notes,
                     'debit' => (float) $invoice->total,
                     'credit' => 0.0,
                     'tone' => null,
@@ -196,8 +213,37 @@ class PartyLedgerService
                 ]);
             }
 
+            foreach (SalesOrder::with('lines')
+                ->where('customer_id', $accountId)
+                ->whereNull('sales_invoice_id')
+                ->where('status', '!=', SalesOrder::STATUS_REJECTED)
+                ->get() as $order) {
+                $date = $this->ledgerDate($order->order_date, $order->created_at);
+                $lineNotes = $this->saleLineNotes($order->lines);
+                $notes = collect([
+                    $order->statusLabel(),
+                    $lineNotes,
+                    filled($order->notes) ? (string) $order->notes : null,
+                ])->filter()->implode(' · ');
+
+                $entries->push([
+                    'date' => $date,
+                    'sort_group' => 1,
+                    'sort_date' => $date->format('Y-m-d'),
+                    'sort_seq' => (int) ($order->created_at?->timestamp ?? $order->id),
+                    'sort_key' => 'so-'.$order->id,
+                    'ref' => $order->order_no ?: 'SO-'.$order->id,
+                    'description' => 'Sales order',
+                    'notes' => $notes,
+                    'debit' => (float) $order->total,
+                    'credit' => 0.0,
+                    'tone' => null,
+                    'source' => 'sale',
+                ]);
+            }
+
             foreach (SalesReturn::where('customer_id', $accountId)->get() as $sr) {
-                $date = $sr->return_date instanceof Carbon ? $sr->return_date : Carbon::parse($sr->return_date);
+                $date = $this->ledgerDate($sr->return_date, $sr->created_at);
                 $entries->push([
                     'date' => $date,
                     'sort_group' => 1,
@@ -288,6 +334,64 @@ class PartyLedgerService
         }
 
         return $entries;
+    }
+
+    /**
+     * Prefer the document date unless it is clearly a mis-parsed year; then use created_at / order dates.
+     */
+    private function ledgerDate(mixed $documentDate, mixed $createdAt, mixed $orderDate = null, mixed $orderCreatedAt = null): Carbon
+    {
+        $document = $this->asDate($documentDate);
+        $created = $this->asDate($createdAt);
+        $order = $this->asDate($orderDate);
+        $orderCreated = $this->asDate($orderCreatedAt);
+
+        if ($document && $created && abs((int) $document->year - (int) $created->year) > 1) {
+            $document = null;
+        }
+        if ($order && $orderCreated && abs((int) $order->year - (int) $orderCreated->year) > 1) {
+            $order = null;
+        }
+
+        $chosen = $document ?? $created ?? $order ?? $orderCreated ?? now();
+
+        return $chosen->copy()->startOfDay();
+    }
+
+    private function asDate(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value->copy();
+        }
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function saleLineNotes(?iterable $lines): string
+    {
+        if ($lines === null) {
+            return '';
+        }
+
+        return collect($lines)->map(function ($line) {
+            $name = trim((string) ($line->description ?? ''));
+            if ($name === '') {
+                return null;
+            }
+            $qty = (float) ($line->quantity ?? 0);
+            $qtyLabel = abs($qty - round($qty)) < 0.0005
+                ? (string) (int) round($qty)
+                : rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.');
+
+            return $qtyLabel.' × '.$name;
+        })->filter()->implode(', ');
     }
 
     /**

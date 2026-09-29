@@ -57,6 +57,12 @@
                         <input name="default_vat_rate" class="form-control" value="{{ old('default_vat_rate', $settings['default_vat_rate'] ?? 15) }}">
                     </div>
                     <div class="col-md-4 mb-3">
+                        <label class="form-label">Invoice series</label>
+                        <input name="invoice_series" type="number" min="0" step="1" class="form-control @error('invoice_series') is-invalid @enderror" value="{{ old('invoice_series', $settings['invoice_series'] ?? 1000) }}">
+                        @error('invoice_series') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="form-text">Next invoice number is this plus one. Example: 1000 → Invoice # 1001, 1002, 1003…</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
                         <label class="form-label">Company retain %</label>
                         <input name="company_retain_percent" class="form-control" value="{{ old('company_retain_percent', $settings['company_retain_percent'] ?? 50) }}">
                         <div class="form-text">Share of each confirmed salesman invoice the company keeps first. Default 50%.</div>
@@ -71,6 +77,30 @@
                     <label class="form-label">WhatsApp</label>
                     <input name="whatsapp" class="form-control" value="{{ old('whatsapp', $settings['whatsapp'] ?? '') }}" placeholder="9665XXXXXXXX">
                     <div class="form-text">Used to send invoices to customers on WhatsApp.</div>
+                </div>
+                <hr class="my-4">
+                <h2 class="h5 mb-1">Invoice print text</h2>
+                <p class="text-muted mb-3">Shown at the bottom of sale invoices. Use <code>{company}</code> to insert the company name automatically.</p>
+                <div class="mb-3">
+                    <label class="form-label">General Warranty</label>
+                    <textarea name="print_warranty" rows="5" class="form-control @error('print_warranty') is-invalid @enderror">{{ old('print_warranty', $settings['print_warranty'] ?? '') }}</textarea>
+                    @error('print_warranty') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Note</label>
+                    <textarea name="print_note" rows="3" class="form-control @error('print_note') is-invalid @enderror">{{ old('print_note', $settings['print_note'] ?? '') }}</textarea>
+                    @error('print_note') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">On Behalf</label>
+                    <input name="print_on_behalf" class="form-control @error('print_on_behalf') is-invalid @enderror" value="{{ old('print_on_behalf', $settings['print_on_behalf'] ?? '') }}">
+                    @error('print_on_behalf') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Print footer</label>
+                    <input name="print_developed_by" class="form-control @error('print_developed_by') is-invalid @enderror" value="{{ old('print_developed_by', $settings['print_developed_by'] ?? '') }}">
+                    @error('print_developed_by') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    <div class="form-text">Replaces the old “User: …” line at the bottom of the sale invoice.</div>
                 </div>
                 <button class="btn btn-primary" type="submit">Save</button>
             </form>

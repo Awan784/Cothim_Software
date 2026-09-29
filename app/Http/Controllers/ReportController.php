@@ -16,6 +16,7 @@ use App\Models\Supplier;
 use App\Services\CashRegisterService;
 use App\Services\JournalReportService;
 use App\Services\PartyLedgerService;
+use App\Services\SalesmanSettlementService;
 use App\Services\SettingsService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -189,38 +190,129 @@ class ReportController extends Controller
         $data = $request->validate([
             'from_date' => ['required', 'date'],
             'to_date' => ['required', 'date', 'after_or_equal:from_date'],
-            'salesman_id' => ['nullable', 'integer', 'exists:salesmen,id'],
+            'salesman_id' => ['required', 'integer', 'exists:salesmen,id'],
+            'builty_expenses' => ['nullable', 'numeric', 'gte:0'],
+            'previous_advance' => ['nullable', 'numeric', 'gte:0'],
         ]);
 
         $from = Carbon::parse($data['from_date'])->startOfDay();
         $to = Carbon::parse($data['to_date'])->endOfDay();
+        $salesman = Salesman::query()->findOrFail($data['salesman_id']);
+        $fromStr = $from->toDateString();
+        $toStr = $to->toDateString();
 
-        $query = SalesInvoice::with(['customer', 'salesman'])
+        $inPeriod = function ($query) use ($from, $to, $fromStr, $toStr) {
+            $query->where(function ($inner) use ($from, $to, $fromStr, $toStr) {
+                $inner->whereBetween('invoice_date', [$fromStr, $toStr])
+                    ->orWhereBetween('created_at', [$from, $to])
+                    ->orWhereHas('salesOrder', function ($order) use ($from, $to, $fromStr, $toStr) {
+                        $order->whereBetween('order_date', [$fromStr, $toStr])
+                            ->orWhereBetween('created_at', [$from, $to]);
+                    });
+            });
+        };
+
+        $invoices = SalesInvoice::with(['customer', 'salesman', 'salesOrder'])
             ->where('status', '!=', 'draft')
-            ->whereNotNull('salesman_id')
-            ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()]);
+            ->where(function ($query) use ($salesman) {
+                $query->where('salesman_id', $salesman->id)
+                    ->orWhereHas('salesOrder', fn ($order) => $order->where('salesman_id', $salesman->id));
+            })
+            ->where($inPeriod)
+            ->orderBy('invoice_date')
+            ->orderBy('id')
+            ->get();
 
-        if (! empty($data['salesman_id'])) {
-            $query->where('salesman_id', $data['salesman_id']);
-        }
+        $openOrders = SalesOrder::with('customer')
+            ->where('salesman_id', $salesman->id)
+            ->whereNull('sales_invoice_id')
+            ->where('status', '!=', SalesOrder::STATUS_REJECTED)
+            ->where(function ($query) use ($from, $to, $fromStr, $toStr) {
+                $query->whereBetween('order_date', [$fromStr, $toStr])
+                    ->orWhereBetween('created_at', [$from, $to]);
+            })
+            ->orderBy('order_date')
+            ->orderBy('id')
+            ->get();
 
-        $invoices = $query->orderBy('invoice_date')->orderBy('id')->get();
+        $rows = $invoices->map(function (SalesInvoice $invoice) {
+            $date = $invoice->invoice_date;
+            if ($invoice->created_at && $date && abs((int) $date->year - (int) $invoice->created_at->year) > 1) {
+                $date = $invoice->created_at;
+            }
 
-        $salesman = ! empty($data['salesman_id']) ? Salesman::query()->find($data['salesman_id']) : null;
+            return [
+                'date' => $date,
+                'bill_no' => $invoice->invoice_no,
+                'builty_postal' => $invoice->builty_postal ?: $invoice->salesOrder?->builty_postal,
+                'builty_exp' => (float) ($invoice->builty_exp ?? $invoice->salesOrder?->builty_exp ?? 0),
+                'party' => $invoice->customer?->displayName() ?: '—',
+                'city' => $invoice->customer?->city ?: '',
+                'amount' => (float) $invoice->total,
+                'commission' => (float) $invoice->salesman_commission_amount,
+            ];
+        })->concat($openOrders->map(function (SalesOrder $order) {
+            $date = $order->order_date;
+            if ($order->created_at && $date && abs((int) $date->year - (int) $order->created_at->year) > 1) {
+                $date = $order->created_at;
+            }
 
-        return view('reports.salesman-commission', $this->printData(
-            ['title' => 'Salesman Commission'],
-            $from,
-            $to,
-            [
-                'subtitle' => $salesman?->name,
-                'salesman' => $salesman,
-                'invoices' => $invoices,
-                'totalSales' => (float) $invoices->sum('total'),
-                'totalRetain' => (float) $invoices->sum('company_retain_amount'),
-                'totalCommission' => (float) $invoices->sum('salesman_commission_amount'),
-            ]
-        ));
+            return [
+                'date' => $date,
+                'bill_no' => $order->order_no,
+                'builty_postal' => $order->builty_postal,
+                'builty_exp' => (float) ($order->builty_exp ?? 0),
+                'party' => $order->customer?->displayName() ?: '—',
+                'city' => $order->customer?->city ?: '',
+                'amount' => (float) $order->total,
+                'commission' => (float) $order->salesman_commission_amount,
+            ];
+        }))->sortBy(function (array $row) {
+            $date = $row['date'] ?? null;
+
+            return $date instanceof Carbon ? $date->timestamp : 0;
+        })->values();
+
+        $totalSales = round((float) $rows->sum('amount'), 2);
+        $totalCommission = round((float) $rows->sum('commission'), 2);
+        $builtyExpenses = round((float) $rows->sum('builty_exp') + (float) ($data['builty_expenses'] ?? 0), 2);
+        $previousAdvance = array_key_exists('previous_advance', $data) && $data['previous_advance'] !== null
+            ? round((float) $data['previous_advance'], 2)
+            : app(SalesmanSettlementService::class)->currentAdvance($salesman);
+        $afterCommission = round($totalSales - $totalCommission, 2);
+        $afterBuilty = round($afterCommission - $builtyExpenses, 2);
+        $netReceivable = round($afterBuilty - $previousAdvance, 2);
+
+        $commissionPercent = $invoices
+            ->pluck('salesman_commission_percent')
+            ->filter(fn ($value) => $value !== null)
+            ->map(fn ($value) => (float) $value)
+            ->unique()
+            ->values();
+        $percentLabel = $commissionPercent->count() === 1
+            ? rtrim(rtrim(number_format((float) $commissionPercent->first(), 2, '.', ''), '0'), '.')
+            : rtrim(rtrim(number_format((float) ($salesman->commission_percent ?? current_organization()?->salesman_commission_percent ?? 25), 2, '.', ''), '0'), '.');
+
+        $settings = app(SettingsService::class);
+
+        return view('reports.salesman-commission', [
+            'settings' => $settings,
+            'companyName' => $settings->companyName(),
+            'printedAt' => now(),
+            'fromDate' => $from,
+            'toDate' => $to,
+            'salesman' => $salesman,
+            'rows' => $rows,
+            'invoices' => $invoices,
+            'totalSales' => $totalSales,
+            'totalCommission' => $totalCommission,
+            'builtyExpenses' => $builtyExpenses,
+            'previousAdvance' => $previousAdvance,
+            'afterCommission' => $afterCommission,
+            'afterBuilty' => $afterBuilty,
+            'netReceivable' => $netReceivable,
+            'percentLabel' => $percentLabel,
+        ]);
     }
 
     private function accountReceivablesReport(array $item): View
@@ -793,8 +885,8 @@ class ReportController extends Controller
             $expenses = (float) $dayVouchers
                 ->where('account_type', 'expense')
                 ->sum(fn (CashVoucher $voucher) => $voucher->type === 'payment' ? (float) $voucher->amount : -1 * (float) $voucher->amount);
-            $cashIn = (float) $dayVouchers->where('type', 'receive')->sum('amount');
-            $cashOut = (float) $dayVouchers->where('type', 'payment')->sum('amount');
+            $cashIn = (float) $dayVouchers->where('type', 'receive')->filter(fn (CashVoucher $voucher) => $voucher->affectsCashBalance())->sum('amount');
+            $cashOut = (float) $dayVouchers->where('type', 'payment')->filter(fn (CashVoucher $voucher) => $voucher->affectsCashBalance())->sum('amount');
 
             $days->push([
                 'label' => ams_date($date),

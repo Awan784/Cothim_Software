@@ -39,6 +39,9 @@ class SalesInvoiceService
                 'due_date' => $data['due_date'] ?? null,
                 'type' => $data['type'] ?? 'simplified',
                 'notes' => $data['notes'] ?? null,
+                'mode' => array_key_exists('mode', $data)
+                    ? (trim((string) $data['mode']) === '' ? null : trim((string) $data['mode']))
+                    : ($invoice?->mode),
                 'subtotal' => $computed['subtotal'],
                 'discount_amount' => $computed['discount_amount'],
                 'vat_amount' => $computed['vat_amount'],
@@ -52,6 +55,8 @@ class SalesInvoiceService
                 'salesman_commission_percent',
                 'company_retain_amount',
                 'salesman_commission_amount',
+                'builty_postal',
+                'builty_exp',
             ] as $field) {
                 if (array_key_exists($field, $data)) {
                     $payload[$field] = $data[$field];
@@ -177,6 +182,8 @@ class SalesInvoiceService
                 'voucher_date' => now()->toDateString(),
                 'reference' => $invoice->invoice_no,
                 'notes' => 'Payment for invoice '.$invoice->invoice_no,
+                'sales_invoice_id' => $invoice->id,
+                'affects_cash' => true,
             ]);
 
             $invoice->amount_paid = round((float) $invoice->amount_paid + $amount, 2);
@@ -189,12 +196,20 @@ class SalesInvoiceService
 
     private function nextNumber(): string
     {
-        $year = now()->format('Y');
-        $count = SalesInvoice::query()
-            ->whereYear('created_at', $year)
-            ->whereNotNull('invoice_no')
-            ->count() + 1;
+        $max = $this->settings->invoiceSeries();
 
-        return 'INV-'.$year.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        $numbers = SalesInvoice::query()
+            ->whereNotNull('invoice_no')
+            ->lockForUpdate()
+            ->pluck('invoice_no');
+
+        foreach ($numbers as $invoiceNo) {
+            $invoiceNo = trim((string) $invoiceNo);
+            if ($invoiceNo !== '' && ctype_digit($invoiceNo) && (int) $invoiceNo > $max) {
+                $max = (int) $invoiceNo;
+            }
+        }
+
+        return (string) ($max + 1);
     }
 }

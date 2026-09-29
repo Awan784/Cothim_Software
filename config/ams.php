@@ -24,4 +24,10 @@ return [
 
     'datetime_format' => env('AMS_DATETIME_FORMAT', 'd-m-y H:i'),
 
+    'print_warranty' => "The Medicines Sold and Marketed by {company} are Manufactured by Homoeopathic Form 6 Holder Companies. These Medicines are Manufactured According to DRAP Rules under High Qualified Staff.\n\nExcept Cosmetics Products.",
+    'print_note' => 'Expired products shall not be taken back and make order according to your demand. Thank you!',
+    'print_on_behalf' => 'On Behalf {company}',
+    'print_developed_by' => 'software developed by sentax lab (Software Company) +92-306-6400081',
+    'invoice_series' => 1000,
+
 ];

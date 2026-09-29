@@ -4,7 +4,10 @@
     $stockItems = $stockItems ?? collect();
     $useItemSelect = ! empty($useItemSelect);
     $showDiscount = ! empty($showDiscount);
-    $labelColspan = $showDiscount ? 5 : 4;
+    $showTax = $showTax ?? true;
+    $showBatch = ! empty($showBatch);
+    $frontCols = 3 + ($showDiscount ? 1 : 0) + ($showBatch ? 1 : 0) + ($showTax ? 1 : 0);
+    $hiddenVat = $showTax ? $vatRate : 0;
 @endphp
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -21,7 +24,7 @@
         </div>
     @endif
     <div class="table-responsive">
-        <table class="table table-flush mb-0" id="taxLinesTable" data-show-discount="{{ $showDiscount ? '1' : '0' }}">
+        <table class="table table-flush mb-0" id="taxLinesTable" data-show-discount="{{ $showDiscount ? '1' : '0' }}" data-show-tax="{{ $showTax ? '1' : '0' }}">
             <thead class="thead-light">
                 <tr>
                     <th>{{ $useItemSelect ? 'Item' : 'Description' }}</th>
@@ -30,69 +33,56 @@
                     @if($showDiscount)
                         <th class="text-end">Disc %</th>
                     @endif
-                    <th class="text-end">Tax %</th>
-                    <th class="text-end">Tax</th>
+                    @if($showBatch)
+                        <th>Batch #</th>
+                    @endif
+                    @if($showTax)
+                        <th class="text-end">Tax %</th>
+                        <th class="text-end">Tax</th>
+                    @endif
                     <th class="text-end">Total</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($rows as $i => $row)
-                    <tr class="tax-line">
-                        <td>
-                            @include('partials.tax-line-description', ['index' => $i, 'row' => $row, 'selected' => $row['description'] ?? '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
-                        </td>
-                        <td><input name="lines[{{ $i }}][quantity]" class="form-control form-control-sm text-end line-qty" value="{{ $row['quantity'] ?? 1 }}"></td>
-                        <td><input name="lines[{{ $i }}][unit_price]" class="form-control form-control-sm text-end line-price" value="{{ $row['unit_price'] ?? 0 }}"></td>
-                        @if($showDiscount)
-                            <td><input name="lines[{{ $i }}][discount_rate]" class="form-control form-control-sm text-end line-discount" value="{{ $row['discount_rate'] ?? 0 }}"></td>
-                        @endif
-                        <td><input name="lines[{{ $i }}][vat_rate]" class="form-control form-control-sm text-end line-rate" value="{{ $row['vat_rate'] ?? $vatRate }}"></td>
-                        <td class="text-end line-vat">0.00</td>
-                        <td class="text-end line-total">0.00</td>
-                        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">×</button></td>
-                    </tr>
+                    @include('partials.tax-line-row', ['index' => $i, 'row' => $row])
                 @empty
-                    <tr class="tax-line">
-                        <td>
-                            @include('partials.tax-line-description', ['index' => 0, 'row' => [], 'selected' => '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
-                        </td>
-                        <td><input name="lines[0][quantity]" class="form-control form-control-sm text-end line-qty" value="1"></td>
-                        <td><input name="lines[0][unit_price]" class="form-control form-control-sm text-end line-price" value="0"></td>
-                        @if($showDiscount)
-                            <td><input name="lines[0][discount_rate]" class="form-control form-control-sm text-end line-discount" value="0"></td>
-                        @endif
-                        <td><input name="lines[0][vat_rate]" class="form-control form-control-sm text-end line-rate" value="{{ $vatRate }}"></td>
-                        <td class="text-end line-vat">0.00</td>
-                        <td class="text-end line-total">0.00</td>
-                        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">×</button></td>
-                    </tr>
+                    @include('partials.tax-line-row', ['index' => 0, 'row' => []])
                 @endempty
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="{{ $labelColspan }}" class="text-end">Subtotal</td>
-                    <td></td>
+                    <td colspan="{{ $frontCols }}" class="text-end">Subtotal</td>
+                    @if($showTax)
+                        <td></td>
+                    @endif
                     <td class="text-end" id="docSubtotal">0.00</td>
                     <td></td>
                 </tr>
                 @if($showDiscount)
                     <tr>
-                        <td colspan="{{ $labelColspan }}" class="text-end">Discount</td>
-                        <td></td>
+                        <td colspan="{{ $frontCols }}" class="text-end">Discount</td>
+                        @if($showTax)
+                            <td></td>
+                        @endif
                         <td class="text-end" id="docDiscount">0.00</td>
                         <td></td>
                     </tr>
                 @endif
+                @if($showTax)
+                    <tr>
+                        <td colspan="{{ $frontCols }}" class="text-end">Tax</td>
+                        <td></td>
+                        <td class="text-end" id="docVat">0.00</td>
+                        <td></td>
+                    </tr>
+                @endif
                 <tr>
-                    <td colspan="{{ $labelColspan }}" class="text-end">Tax</td>
-                    <td></td>
-                    <td class="text-end" id="docVat">0.00</td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td colspan="{{ $labelColspan }}" class="text-end"><strong>Total</strong></td>
-                    <td></td>
+                    <td colspan="{{ $frontCols }}" class="text-end"><strong>Total</strong></td>
+                    @if($showTax)
+                        <td></td>
+                    @endif
                     <td class="text-end"><strong id="docTotal">0.00</strong></td>
                     <td></td>
                 </tr>
@@ -106,15 +96,18 @@
     var table = document.getElementById('taxLinesTable');
     if (!table) return;
     function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
-    function applyItemPrice(select) {
+    function applyItem(select) {
         var opt = select.options[select.selectedIndex];
         var price = opt ? opt.getAttribute('data-price') : '';
         var desc = opt ? opt.getAttribute('data-description') : '';
+        var batch = opt ? opt.getAttribute('data-batch') : '';
         var row = select.closest('tr');
         var priceInput = row.querySelector('.line-price');
         var descInput = row.querySelector('.line-description');
+        var batchCell = row.querySelector('.line-batch');
         if (priceInput && price !== null && price !== '') priceInput.value = price;
         if (descInput) descInput.value = desc || '';
+        if (batchCell) batchCell.textContent = batch || '—';
     }
     function recalc() {
         var sub = 0, discTotal = 0, vat = 0;
@@ -123,24 +116,27 @@
             var price = parseFloat(row.querySelector('.line-price').value) || 0;
             var discInput = row.querySelector('.line-discount');
             var discRate = discInput ? (parseFloat(discInput.value) || 0) : 0;
-            var rate = parseFloat(row.querySelector('.line-rate').value) || 0;
+            var rateInput = row.querySelector('.line-rate');
+            var rate = rateInput ? (parseFloat(rateInput.value) || 0) : 0;
             var gross = qty * price;
             var disc = gross * discRate / 100;
             var net = gross - disc;
             var v = net * rate / 100;
-            row.querySelector('.line-vat').textContent = money(v);
+            var vatCell = row.querySelector('.line-vat');
+            if (vatCell) vatCell.textContent = money(v);
             row.querySelector('.line-total').textContent = money(net + v);
             sub += gross; discTotal += disc; vat += v;
         });
         document.getElementById('docSubtotal').textContent = money(sub);
         var discEl = document.getElementById('docDiscount');
         if (discEl) discEl.textContent = money(discTotal);
-        document.getElementById('docVat').textContent = money(vat);
+        var vatEl = document.getElementById('docVat');
+        if (vatEl) vatEl.textContent = money(vat);
         document.getElementById('docTotal').textContent = money(sub - discTotal + vat);
     }
     table.addEventListener('input', recalc);
     table.addEventListener('change', function (e) {
-        if (e.target.classList.contains('line-item')) applyItemPrice(e.target);
+        if (e.target.classList.contains('line-item')) applyItem(e.target);
         recalc();
     });
     table.addEventListener('click', function (e) {
@@ -158,18 +154,25 @@
             if (input.classList.contains('line-qty')) input.value = '1';
             else if (input.classList.contains('line-price')) input.value = '0';
             else if (input.classList.contains('line-discount')) input.value = '0';
-            else if (input.classList.contains('line-rate')) input.value = '{{ $vatRate }}';
+            else if (input.classList.contains('line-rate')) input.value = '{{ $hiddenVat }}';
             else if (input.tagName === 'SELECT') input.selectedIndex = 0;
             else input.value = '';
         });
+        var batchCell = tr.querySelector('.line-batch');
+        if (batchCell) batchCell.textContent = '—';
         table.querySelector('tbody').appendChild(tr);
         recalc();
     });
     table.querySelectorAll('.line-item').forEach(function (select) {
         var opt = select.options[select.selectedIndex];
-        var descInput = select.closest('tr').querySelector('.line-description');
+        var row = select.closest('tr');
+        var descInput = row.querySelector('.line-description');
         if (descInput && opt && !descInput.value) {
             descInput.value = opt.getAttribute('data-description') || '';
+        }
+        var batchCell = row.querySelector('.line-batch');
+        if (batchCell && opt && select.value) {
+            batchCell.textContent = opt.getAttribute('data-batch') || '—';
         }
     });
     recalc();

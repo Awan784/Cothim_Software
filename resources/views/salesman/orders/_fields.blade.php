@@ -41,4 +41,13 @@
     'stockItems' => $stockItems ?? collect(),
     'useItemSelect' => true,
     'showDiscount' => true,
+    'showTax' => false,
+    'showBatch' => true,
 ])
+<div class="card p-4 mb-3">
+    <div class="mb-0">
+        <label class="form-label">Mode <span class="text-muted fw-normal">(optional)</span></label>
+        <input name="mode" class="form-control" maxlength="50" value="{{ old('mode', $isEdit ? $order->mode : '') }}" placeholder="CO">
+        <div class="form-text">Printed on the sale invoice as Mode. Leave blank if not needed.</div>
+    </div>
+</div>

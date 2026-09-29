@@ -47,6 +47,7 @@
             @forelse($entries as $entry)
                 <tr @class([
                     'row-bf' => !empty($entry['is_brought_forward']) || !empty($entry['is_opening']),
+                    'row-sale' => empty($entry['is_brought_forward']) && ($entry['source'] ?? '') === 'sale',
                     'row-receive' => empty($entry['is_brought_forward']) && ($entry['tone'] ?? '') === 'receive',
                     'row-payment' => empty($entry['is_brought_forward']) && ($entry['tone'] ?? '') === 'payment',
                 ])>

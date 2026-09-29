@@ -17,6 +17,12 @@ class NormalizeAmsDateInputs
         'expense_date',
         'from_date',
         'to_date',
+        'order_date',
+        'invoice_date',
+        'due_date',
+        'bill_date',
+        'extracted_date',
+        'settlement_date',
     ];
 
     /** @var list<string> */

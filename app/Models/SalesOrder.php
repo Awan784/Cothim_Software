@@ -32,6 +32,9 @@ class SalesOrder extends Model
         'company_retain_amount',
         'salesman_commission_amount',
         'notes',
+        'mode',
+        'builty_postal',
+        'builty_exp',
         'sales_invoice_id',
         'confirmed_by',
         'confirmed_at',
@@ -49,6 +52,7 @@ class SalesOrder extends Model
         'salesman_commission_percent' => 'float',
         'company_retain_amount' => 'float',
         'salesman_commission_amount' => 'float',
+        'builty_exp' => 'float',
         'confirmed_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];

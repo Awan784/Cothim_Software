@@ -58,6 +58,7 @@ class BankAccountController extends Controller
     {
         $cashVouchers = CashVoucher::with('cashAccount')
             ->where('payment_method', 'bank')
+            ->affectingCash()
             ->where('bank_account_id', $bankAccount->id)
             ->orderByDesc('voucher_date')
             ->limit(500)

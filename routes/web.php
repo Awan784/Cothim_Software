@@ -14,6 +14,7 @@ use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SalesInvoiceController;
 use App\Http\Controllers\SalesmanController;
+use App\Http\Controllers\SalesmanSettlementController;
 use App\Http\Controllers\Salesman\DashboardController as SalesmanDashboardController;
 use App\Http\Controllers\Salesman\InvoiceController as SalesmanInvoiceController;
 use App\Http\Controllers\Salesman\OrderController as SalesmanOrderController;
@@ -79,6 +80,8 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
         ->name('sales-orders.pending-feed');
     Route::post('sales-orders/{sales_order}/confirm', [SalesOrderController::class, 'confirm'])
         ->name('sales-orders.confirm');
+    Route::post('sales-orders/{sales_order}/builty', [SalesOrderController::class, 'updateBuilty'])
+        ->name('sales-orders.builty');
     Route::post('sales-orders/{sales_order}/reject', [SalesOrderController::class, 'reject'])
         ->name('sales-orders.reject');
     Route::resource('sales-orders', SalesOrderController::class)->only(['index', 'show', 'edit', 'update']);
@@ -104,6 +107,10 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     // Accounts
     Route::resource('customers', CustomerController::class);
     Route::resource('salesmen', SalesmanController::class);
+    Route::get('salesman-settlements/invoices', [SalesmanSettlementController::class, 'invoices'])
+        ->name('salesman-settlements.invoices');
+    Route::resource('salesman-settlements', SalesmanSettlementController::class)
+        ->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::resource('suppliers', SupplierController::class);
     Route::resource('bank-accounts', BankAccountController::class);
     Route::get('bank-accounts/{bankAccount}/balance', [BankAccountController::class, 'balance'])->name('bank-accounts.balance');

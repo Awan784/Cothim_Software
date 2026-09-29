@@ -31,9 +31,14 @@ class SettingsController extends Controller
             'company_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'remove_logo' => ['nullable', 'boolean'],
             'default_vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
+            'invoice_series' => ['required', 'integer', 'gte:0', 'lte:999999999'],
             'company_retain_percent' => ['required', 'numeric', 'gte:0', 'lte:100'],
             'salesman_commission_percent' => ['required', 'numeric', 'gte:0', 'lte:100'],
             'whatsapp' => ['nullable', 'string', 'max:32'],
+            'print_warranty' => ['nullable', 'string', 'max:4000'],
+            'print_note' => ['nullable', 'string', 'max:2000'],
+            'print_on_behalf' => ['nullable', 'string', 'max:255'],
+            'print_developed_by' => ['nullable', 'string', 'max:255'],
         ]);
 
         unset($data['company_logo'], $data['remove_logo']);

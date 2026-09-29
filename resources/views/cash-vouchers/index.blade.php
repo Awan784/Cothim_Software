@@ -47,7 +47,7 @@
                         <label for="filter_account_type" class="form-label small mb-1">Account Type</label>
                         <select name="account_type" id="filter_account_type" class="form-select form-select-sm">
                             <option value="">All account types</option>
-                            @foreach (['customer' => 'Customer', 'supplier' => 'Supplier', 'expense' => 'Expense', 'other' => 'Other'] as $value => $label)
+                            @foreach (['customer' => 'Customer', 'supplier' => 'Supplier', 'expense' => 'Expense', 'salesman' => 'Salesman', 'other' => 'Other'] as $value => $label)
                                 <option value="{{ $value }}" @selected($accountTypeFilter === $value)>{{ $label }}</option>
                             @endforeach
                         </select>
@@ -106,6 +106,9 @@
                                     @if($v->account_display_name)
                                         - {{ $v->account_display_name }}
                                     @endif
+                                    @if($v->isSettlementCash())
+                                        <div class="small text-muted">Settlement {{ $v->reference }} · {{ $v->cashBookNotes() }}</div>
+                                    @endif
                                 </td>
                                 <td class="text-gray-900 text-end {{ $v->type === 'payment' ? 'text-danger' : 'text-success' }}">
                                     {{ number_format((float) $v->amount, 2) }}
@@ -113,12 +116,16 @@
                                 <td class="text-end text-nowrap voucher-row-actions">
                                     <a href="{{ route('cash-vouchers.print', $v) }}" target="_blank"
                                         class="btn btn-sm btn-outline-primary">Print Invoice</a>
-                                    <a href="{{ route('cash-vouchers.edit', $v) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                    <form action="{{ route('cash-vouchers.destroy', $v) }}" method="post" class="d-inline">
-                                        @csrf
-                                        @method('delete')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this voucher?')">Delete</button>
-                                    </form>
+                                    @if($v->isSettlementLinked())
+                                        <a href="{{ route('salesman-settlements.show', $v->salesman_settlement_id) }}" class="btn btn-sm btn-outline-secondary">Settlement</a>
+                                    @else
+                                        <a href="{{ route('cash-vouchers.edit', $v) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        <form action="{{ route('cash-vouchers.destroy', $v) }}" method="post" class="d-inline">
+                                            @csrf
+                                            @method('delete')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this voucher?')">Delete</button>
+                                        </form>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -158,9 +165,10 @@
                 'account_name' => $v->account_display_name ?: '—',
                 'amount' => number_format((float) $v->amount, 2),
                 'reference' => $v->reference ?: '—',
-                'notes' => $v->notes ?: '—',
-                'edit_url' => route('cash-vouchers.edit', $v),
+                'notes' => $v->isSettlementCash() ? $v->cashBookNotes() : ($v->notes ?: '—'),
+                'edit_url' => $v->isSettlementLinked() ? route('salesman-settlements.show', $v->salesman_settlement_id) : route('cash-vouchers.edit', $v),
                 'print_url' => route('cash-vouchers.print', $v),
+                'edit_label' => $v->isSettlementLinked() ? 'Settlement' : 'Edit',
             ]];
         });
     @endphp
@@ -245,6 +253,7 @@
                 customer: @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()),
                 supplier: @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()),
                 expense: @json($expenseAccounts->map(fn ($e) => ['id' => $e->id, 'name' => $e->name])->values()),
+                salesman: @json($salesmen->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()),
             };
 
             const typeSelect = document.getElementById('filter_account_type');
@@ -309,6 +318,7 @@
 
                 document.getElementById('detailPrintBtn').href = detail.print_url;
                 document.getElementById('detailEditBtn').href = detail.edit_url;
+                document.getElementById('detailEditBtn').textContent = detail.edit_label || 'Edit';
 
                 detailModal.show();
             }

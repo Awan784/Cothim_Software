@@ -219,6 +219,39 @@
         });
     }
 
+    function bindAmsPicker(input, extra) {
+        if (!input || input._flatpickr || input.dataset.fpInit === '1') {
+            return;
+        }
+
+        var modal = input.closest('.modal');
+        if (modal && !modal.classList.contains('show')) {
+            return;
+        }
+
+        input.dataset.fpInit = '1';
+
+        var options = {
+            dateFormat: extra.dateFormat,
+            allowInput: true,
+            disableMobile: true,
+            clickOpens: true,
+            allowInvalidPreload: true,
+        };
+
+        if (extra.enableTime) {
+            options.enableTime = true;
+            options.time_24hr = true;
+        }
+
+        if (modal) {
+            options.static = true;
+            options.appendTo = input.closest('.ams-date-field') || input.parentElement;
+        }
+
+        window.flatpickr(input, options);
+    }
+
     function initAmsDatePickers(root) {
         if (typeof window.flatpickr !== 'function') {
             return;
@@ -226,40 +259,12 @@
 
         var scope = root || document;
 
-        scope.querySelectorAll('.ams-date-input:not([data-fp-init])').forEach(function (input) {
-            input.dataset.fpInit = '1';
-            var modal = input.closest('.modal');
-            var options = {
-                dateFormat: 'd-m-y',
-                allowInput: true,
-                disableMobile: true,
-                clickOpens: true,
-            };
-
-            if (modal) {
-                options.appendTo = modal;
-            }
-
-            window.flatpickr(input, options);
+        scope.querySelectorAll('.ams-date-input').forEach(function (input) {
+            bindAmsPicker(input, { dateFormat: 'd-m-Y' });
         });
 
-        scope.querySelectorAll('.ams-datetime-input:not([data-fp-init])').forEach(function (input) {
-            input.dataset.fpInit = '1';
-            var modal = input.closest('.modal');
-            var options = {
-                dateFormat: 'd-m-y H:i',
-                enableTime: true,
-                time_24hr: true,
-                allowInput: true,
-                disableMobile: true,
-                clickOpens: true,
-            };
-
-            if (modal) {
-                options.appendTo = modal;
-            }
-
-            window.flatpickr(input, options);
+        scope.querySelectorAll('.ams-datetime-input').forEach(function (input) {
+            bindAmsPicker(input, { dateFormat: 'd-m-Y H:i', enableTime: true });
         });
     }
 
@@ -276,5 +281,13 @@
     document.addEventListener('shown.bs.modal', function (event) {
         initAmsDatePickers(event.target);
         initAmountInputs(event.target);
+    });
+
+    document.addEventListener('hide.bs.modal', function (event) {
+        event.target.querySelectorAll('.ams-date-input, .ams-datetime-input').forEach(function (input) {
+            if (input._flatpickr) {
+                input._flatpickr.close();
+            }
+        });
     });
 })();

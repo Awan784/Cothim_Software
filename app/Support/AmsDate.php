@@ -13,7 +13,7 @@ class AmsDate
 
     public const DISPLAY_DATETIME = 'd-m-y H:i';
 
-    public const INPUT = 'd-m-y';
+    public const INPUT = 'd-m-Y';
 
     /**
      * @param  CarbonInterface|DateTimeInterface|string|null  $date
@@ -50,7 +50,7 @@ class AmsDate
      */
     public static function inputDateTimeValue(mixed $date): string
     {
-        return self::format($date, self::DISPLAY_DATETIME);
+        return self::format($date, 'd-m-Y H:i');
     }
 
     public static function parse(?string $value): ?Carbon
@@ -60,10 +60,25 @@ class AmsDate
         }
 
         $value = trim($value);
+        $formats = [];
 
-        foreach (['d-m-y', 'd-m-Y', 'Y-m-d', 'd/m/y', 'd/m/Y'] as $format) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            $formats[] = 'Y-m-d';
+        } elseif (preg_match('/^\d{2}-\d{2}-\d{4}$/', $value)) {
+            $formats[] = 'd-m-Y';
+        } elseif (preg_match('/^\d{2}-\d{2}-\d{2}$/', $value)) {
+            $formats[] = 'd-m-y';
+        } elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $value)) {
+            $formats[] = 'd/m/Y';
+        } elseif (preg_match('/^\d{2}\/\d{2}\/\d{2}$/', $value)) {
+            $formats[] = 'd/m/y';
+        } else {
+            $formats = ['d-m-Y', 'd-m-y', 'Y-m-d', 'd/m/Y', 'd/m/y'];
+        }
+
+        foreach ($formats as $format) {
             try {
-                $parsed = Carbon::createFromFormat($format, $value);
+                $parsed = Carbon::createFromFormat('!'.$format, $value);
                 if ($parsed !== false) {
                     return $parsed->startOfDay();
                 }
@@ -87,7 +102,7 @@ class AmsDate
 
         $value = trim(str_replace('T', ' ', $value));
 
-        foreach (['d-m-y H:i', 'd-m-Y H:i', 'Y-m-d H:i', 'Y-m-d H:i:s', 'd-m-y H:i:s', 'd-m-Y H:i:s'] as $format) {
+        foreach (['d-m-Y H:i', 'd-m-Y H:i:s', 'd-m-y H:i', 'Y-m-d H:i', 'Y-m-d H:i:s', 'd-m-y H:i:s'] as $format) {
             try {
                 $parsed = Carbon::createFromFormat($format, $value);
                 if ($parsed !== false) {

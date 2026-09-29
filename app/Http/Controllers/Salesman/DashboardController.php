@@ -5,12 +5,11 @@ namespace App\Http\Controllers\Salesman;
 use App\Http\Controllers\Controller;
 use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
-use App\Services\CommissionService;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(CommissionService $commission): View
+    public function index(): View
     {
         $salesman = auth('salesman')->user();
         $monthStart = now()->startOfMonth()->toDateString();
@@ -34,7 +33,6 @@ class DashboardController extends Controller
 
         $monthSales = (float) $monthInvoices->sum('total');
         $monthCommission = (float) $monthInvoices->sum('salesman_commission_amount');
-        $rates = $commission->ratesFor($salesman);
 
         $recentOrders = SalesOrder::with('customer')
             ->where('salesman_id', $salesman->id)
@@ -48,7 +46,6 @@ class DashboardController extends Controller
             'monthOrders',
             'monthSales',
             'monthCommission',
-            'rates',
             'recentOrders',
         ));
     }
