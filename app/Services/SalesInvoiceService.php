@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
+use App\Models\Salesman;
 use App\Models\StockItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ class SalesInvoiceService
         private ZatcaQrService $zatca,
         private CashVoucherService $vouchers,
         private InventoryService $inventory,
+        private CommissionService $commission,
     ) {}
 
     /**
@@ -62,6 +64,8 @@ class SalesInvoiceService
                     $payload[$field] = $data[$field];
                 }
             }
+
+            $payload = array_merge($payload, $this->salesmanSnapshot($data, (float) $computed['total']));
 
             if ($invoice) {
                 if (! $invoice->isDraft()) {
@@ -211,5 +215,36 @@ class SalesInvoiceService
         }
 
         return (string) ($max + 1);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function salesmanSnapshot(array $data, float $total): array
+    {
+        if (! array_key_exists('salesman_id', $data)) {
+            return [];
+        }
+
+        $salesmanId = $data['salesman_id'];
+        if (! filled($salesmanId)) {
+            return [
+                'salesman_id' => null,
+                'company_retain_percent' => 0,
+                'salesman_commission_percent' => 0,
+                'company_retain_amount' => 0,
+                'salesman_commission_amount' => 0,
+            ];
+        }
+
+        $salesman = Salesman::query()->find($salesmanId);
+        if (! $salesman) {
+            throw new InvalidArgumentException('Salesman not found.');
+        }
+
+        return $this->commission->snapshot($total, $salesman) + [
+            'salesman_id' => $salesman->id,
+        ];
     }
 }

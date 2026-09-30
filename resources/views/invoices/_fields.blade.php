@@ -25,20 +25,32 @@
                 @endforeach
             </select>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-4 mb-3">
             <label class="form-label">Invoice date</label>
             <x-ams-date-input name="invoice_date" :value="$isEdit ? $invoice->invoice_date : now()" required />
         </div>
-        <div class="col-md-3 mb-3">
-            <label class="form-label">Due date</label>
-            <x-ams-date-input name="due_date" :value="$isEdit ? $invoice->due_date : null" />
-        </div>
-        <div class="col-md-2 mb-3">
-            <label class="form-label">Type</label>
-            <select name="type" class="form-select">
-                <option value="simplified" {{ old('type', $isEdit ? $invoice->type : 'simplified') === 'simplified' ? 'selected' : '' }}>Simplified (B2C)</option>
-                <option value="standard" {{ old('type', $isEdit ? $invoice->type : '') === 'standard' ? 'selected' : '' }}>Standard (B2B)</option>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Salesman</label>
+            <select name="salesman_id" class="form-select">
+                <option value="">Select salesman</option>
+                @foreach($salesmen ?? [] as $salesman)
+                    <option value="{{ $salesman->id }}" {{ (string) old('salesman_id', $isEdit ? $invoice->salesman_id : '') === (string) $salesman->id ? 'selected' : '' }}>
+                        {{ $salesman->name }}
+                    </option>
+                @endforeach
             </select>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Builty Postal</label>
+            <input name="builty_postal" class="form-control" maxlength="100" value="{{ old('builty_postal', $isEdit ? $invoice->builty_postal : '') }}" placeholder="e.g. 23299048">
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Builty Exp</label>
+            <input name="builty_exp" type="number" min="0" step="0.01" class="form-control" value="{{ old('builty_exp', $isEdit ? $invoice->builty_exp : '') }}" placeholder="0.00">
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label">Mode <span class="text-muted fw-normal">(optional)</span></label>
+            <input name="mode" class="form-control" maxlength="50" value="{{ old('mode', $isEdit ? $invoice->mode : '') }}" placeholder="CO">
         </div>
     </div>
     <div class="mb-0">
@@ -52,11 +64,6 @@
         'stockItems' => $stockItems ?? collect(),
         'useItemSelect' => true,
         'showDiscount' => true,
+        'showTax' => false,
+        'showBatch' => true,
     ])
-<div class="card p-4 mb-3">
-    <div class="mb-0">
-        <label class="form-label">Mode <span class="text-muted fw-normal">(optional)</span></label>
-        <input name="mode" class="form-control" maxlength="50" value="{{ old('mode', $isEdit ? $invoice->mode : '') }}" placeholder="CO">
-        <div class="form-text">Printed on the sale invoice. Examples: CO, Cash.</div>
-    </div>
-</div>

@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
+use App\Models\Salesman;
 use App\Models\StockItem;
 use App\Services\SalesInvoiceService;
 use App\Services\SettingsService;
@@ -30,6 +31,7 @@ class SalesInvoiceController extends Controller
     {
         return view('invoices.create', [
             'customers' => Customer::orderBy('name')->get(),
+            'salesmen' => $this->salesmen(),
             'stockItems' => $this->stockItems(),
             'vatRate' => $settings->vatRate(),
         ]);
@@ -80,6 +82,7 @@ class SalesInvoiceController extends Controller
         return view('invoices.edit', [
             'invoice' => $invoice,
             'customers' => Customer::orderBy('name')->get(),
+            'salesmen' => $this->salesmen($invoice->salesman_id),
             'stockItems' => $this->stockItems(),
             'vatRate' => $settings->vatRate(),
         ]);
@@ -160,8 +163,9 @@ class SalesInvoiceController extends Controller
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'invoice_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date'],
-            'type' => ['required', 'in:simplified,standard'],
+            'salesman_id' => ['nullable', 'exists:salesmen,id'],
+            'builty_postal' => ['nullable', 'string', 'max:100'],
+            'builty_exp' => ['nullable', 'numeric', 'gte:0'],
             'notes' => ['nullable', 'string'],
             'mode' => ['nullable', 'string', 'max:50'],
             'lines' => ['required', 'array', 'min:1'],
@@ -170,8 +174,17 @@ class SalesInvoiceController extends Controller
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
             'lines.*.discount_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
-            'lines.*.vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
+            'lines.*.vat_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
         ]);
+
+        $data['type'] = 'simplified';
+        $data['due_date'] = null;
+        $data['salesman_id'] = filled($data['salesman_id'] ?? null) ? (int) $data['salesman_id'] : null;
+        $postal = trim((string) ($data['builty_postal'] ?? ''));
+        $data['builty_postal'] = $postal === '' ? null : $postal;
+        $data['builty_exp'] = ($data['builty_exp'] ?? '') === '' || $data['builty_exp'] === null
+            ? null
+            : round((float) $data['builty_exp'], 2);
 
         $data['lines'] = array_values(array_filter(
             $data['lines'],
@@ -180,6 +193,7 @@ class SalesInvoiceController extends Controller
 
         foreach ($data['lines'] as &$line) {
             $line['discount_rate'] = $line['discount_rate'] ?? 0;
+            $line['vat_rate'] = 0;
 
             if (empty($line['stock_item_id'])) {
                 $line['stock_item_id'] = null;
@@ -194,6 +208,22 @@ class SalesInvoiceController extends Controller
         unset($line);
 
         return $data;
+    }
+
+    /**
+     * @return Collection<int, Salesman>
+     */
+    private function salesmen(?int $currentId = null): Collection
+    {
+        return Salesman::query()
+            ->where(function ($query) use ($currentId) {
+                $query->where('is_active', true);
+                if ($currentId) {
+                    $query->orWhereKey($currentId);
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     /**

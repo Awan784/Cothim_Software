@@ -55,6 +55,10 @@
                             <tr><td colspan="6" class="text-end">Company retain ({{ number_format((float) $invoice->company_retain_percent, 2) }}%)</td><td class="text-end">{{ number_format((float) $invoice->company_retain_amount, 2) }}</td></tr>
                             <tr><td colspan="6" class="text-end">Commission ({{ number_format((float) $invoice->salesman_commission_percent, 2) }}% of remaining)</td><td class="text-end">{{ number_format((float) $invoice->salesman_commission_amount, 2) }}</td></tr>
                         @endif
+                        @if($invoice->builty_postal || $invoice->builty_exp !== null)
+                            <tr><td colspan="6" class="text-end">Builty Postal</td><td class="text-end">{{ $invoice->builty_postal ?: '—' }}</td></tr>
+                            <tr><td colspan="6" class="text-end">Builty Exp</td><td class="text-end">{{ $invoice->builty_exp !== null ? number_format((float) $invoice->builty_exp, 2) : '—' }}</td></tr>
+                        @endif
                         <tr><td colspan="6" class="text-end">Paid</td><td class="text-end">{{ number_format((float) $invoice->amount_paid, 2) }}</td></tr>
                         <tr><td colspan="6" class="text-end">Due</td><td class="text-end">{{ number_format($invoice->balanceDue(), 2) }}</td></tr>
                     </tfoot>
