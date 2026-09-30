@@ -58,7 +58,7 @@
                                 <td class="text-gray-900">{{ $item->potency ?: '—' }}</td>
                                 <td class="text-gray-900">{{ strtoupper($item->unit ?: '') }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->quantity, 2) }}</td>
-                                <td class="text-gray-900">{{ $item->batch_no ?: '—' }}</td>
+                                <td class="text-gray-900" style="max-width: 220px;">{{ $item->lotsSummary() }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->cost_price, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ $item->sale_price !== null ? number_format((float) $item->sale_price, 2) : '—' }}</td>
                                 <td class="text-gray-900">{{ $item->is_active ? 'Active' : 'Inactive' }}</td>

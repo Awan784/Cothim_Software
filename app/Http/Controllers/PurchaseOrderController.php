@@ -166,6 +166,7 @@ class PurchaseOrderController extends Controller
             'items.*.unit' => ['nullable', 'string', 'max:50'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.note' => ['nullable', 'string'],
         ], [
             'items.required' => 'Add at least one inventory item.',
@@ -192,6 +193,7 @@ class PurchaseOrderController extends Controller
                 'unit' => $item->unit,
                 'unit_price' => (float) $row['unit_price'],
                 'quantity' => (float) $row['quantity'],
+                'batch_no' => trim((string) ($row['batch_no'] ?? '')) ?: null,
                 'note' => $row['note'] ?? null,
             ];
         }
@@ -301,6 +303,7 @@ class PurchaseOrderController extends Controller
                 'unit_price' => $unitPrice,
                 'quantity' => $qty,
                 'line_total' => $unitPrice * $qty,
+                'batch_no' => $row['batch_no'] ?? null,
                 'note' => $row['note'] ?? null,
             ]);
 
@@ -311,6 +314,7 @@ class PurchaseOrderController extends Controller
                 'notes' => $row['item_name'] ?? 'Purchase',
                 'source_type' => 'purchase_order',
                 'source_id' => $po->id,
+                'batch_no' => $row['batch_no'] ?? null,
             ]);
         }
     }

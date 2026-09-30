@@ -9,6 +9,7 @@ use App\Models\SalesOrderLine;
 use App\Models\StockItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class SalesOrderService
@@ -64,6 +65,8 @@ class SalesOrderService
                 SalesOrderLine::create([
                     'sales_order_id' => $order->id,
                     'stock_item_id' => $line['stock_item_id'] ?? null,
+                    'stock_item_lot_id' => $line['stock_item_lot_id'] ?? null,
+                    'batch_no' => $line['batch_no'] ?? null,
                     'description' => $line['description'] ?? 'Item',
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
@@ -99,14 +102,22 @@ class SalesOrderService
             $order->fill($builty);
             $order->save();
 
-            $lines = $order->lines->map(fn (SalesOrderLine $line) => [
-                'stock_item_id' => $line->stock_item_id,
-                'description' => $line->description,
-                'quantity' => $line->quantity,
-                'unit_price' => $line->unit_price,
-                'discount_rate' => $line->discount_rate,
-                'vat_rate' => $line->vat_rate,
-            ])->all();
+            $lines = $order->lines->map(function (SalesOrderLine $line) {
+                try {
+                    return StockItem::applyLotToLine([
+                        'stock_item_id' => $line->stock_item_id,
+                        'stock_item_lot_id' => $line->stock_item_lot_id,
+                        'batch_no' => $line->batch_no,
+                        'description' => $line->description,
+                        'quantity' => $line->quantity,
+                        'unit_price' => $line->unit_price,
+                        'discount_rate' => $line->discount_rate,
+                        'vat_rate' => $line->vat_rate,
+                    ]);
+                } catch (ValidationException $e) {
+                    throw new InvalidArgumentException(collect($e->errors())->flatten()->first() ?: 'Select a batch for each line.');
+                }
+            })->all();
 
             $invoice = $this->invoices->generate([
                 'customer_id' => $order->customer_id,
@@ -210,7 +221,7 @@ class SalesOrderService
             $line['description'] = $item->name;
         }
 
-        return $line;
+        return StockItem::applyLotToLine($line);
     }
 
     public function updateBuilty(SalesOrder $order, array $extra): SalesOrder

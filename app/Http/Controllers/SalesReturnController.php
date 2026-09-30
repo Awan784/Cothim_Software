@@ -172,6 +172,7 @@ class SalesReturnController extends Controller
             'items.*.stock_item_id' => ['required', 'exists:stock_items,id'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'items.*.batch_no' => ['nullable', 'string', 'max:100'],
             'items.*.note' => ['nullable', 'string'],
         ], [
             'items.required' => 'Add at least one inventory item.',
@@ -198,6 +199,7 @@ class SalesReturnController extends Controller
                 'unit' => $item->unit,
                 'unit_price' => (float) $row['unit_price'],
                 'quantity' => (float) $row['quantity'],
+                'batch_no' => trim((string) ($row['batch_no'] ?? '')) ?: ($item->batch_no ?: null),
                 'note' => $row['note'] ?? null,
             ];
         }
@@ -280,6 +282,7 @@ class SalesReturnController extends Controller
                 'unit_price' => $unitPrice,
                 'quantity' => $qty,
                 'line_total' => $unitPrice * $qty,
+                'batch_no' => $row['batch_no'] ?? null,
                 'note' => $row['note'] ?? null,
             ]);
 
@@ -290,6 +293,7 @@ class SalesReturnController extends Controller
                 'notes' => $row['item_name'] ?? 'Sales return',
                 'source_type' => 'sales_return',
                 'source_id' => $return->id,
+                'batch_no' => $row['batch_no'] ?? null,
             ]);
         }
     }

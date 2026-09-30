@@ -667,6 +667,11 @@ main.content {
     background-color: #fbd0d5 !important;
 }
 
+td.line-batch,
+.line-lot {
+    min-width: 10.5rem;
+}
+
 .table .ledger-row-receive:hover > td,
 .table .ledger-row-payment:hover > td {
     filter: brightness(0.97);

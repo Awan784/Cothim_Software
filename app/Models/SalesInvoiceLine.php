@@ -10,6 +10,8 @@ class SalesInvoiceLine extends Model
     protected $fillable = [
         'sales_invoice_id',
         'stock_item_id',
+        'stock_item_lot_id',
+        'batch_no',
         'description',
         'quantity',
         'unit_price',
@@ -41,5 +43,19 @@ class SalesInvoiceLine extends Model
     public function stockItem(): BelongsTo
     {
         return $this->belongsTo(StockItem::class);
+    }
+
+    public function lot(): BelongsTo
+    {
+        return $this->belongsTo(StockItemLot::class, 'stock_item_lot_id');
+    }
+
+    public function batchLabel(): string
+    {
+        if (trim((string) $this->batch_no) !== '') {
+            return $this->batch_no;
+        }
+
+        return $this->lot?->batchLabel() ?: ($this->stockItem?->batch_no ?: '—');
     }
 }

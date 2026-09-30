@@ -4,6 +4,8 @@
     if (! is_array($rows) && $isEdit) {
         $rows = $order->lines->map(fn ($l) => [
             'stock_item_id' => $l->stock_item_id,
+            'stock_item_lot_id' => $l->stock_item_lot_id,
+            'batch_no' => $l->batch_no,
             'description' => $l->description,
             'quantity' => $l->quantity,
             'unit_price' => $l->unit_price,

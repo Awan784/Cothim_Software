@@ -1,6 +1,7 @@
 @php
     $item = $stockItem;
     $hasVariants = (bool) old('has_variants', $item->has_variants);
+    $hasManyLots = $item->exists && $item->lots->count() > 1;
     $variantRows = old('variants', $item->relationLoaded('variants') || $item->exists
         ? $item->variants->map(fn ($v) => ['id' => $v->id, 'name' => $v->name, 'size' => $v->size, 'price' => $v->price])->all()
         : []);
@@ -35,8 +36,15 @@
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Batch no</label>
-        <input name="batch_no" value="{{ old('batch_no', $item->batch_no) }}" class="form-control @error('batch_no') is-invalid @enderror">
+        <input name="batch_no" value="{{ old('batch_no', $item->batch_no) }}" class="form-control @error('batch_no') is-invalid @enderror" {{ $hasManyLots ? 'readonly' : '' }}>
         @error('batch_no') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        @if($hasManyLots)
+            <div class="form-text">This item has more than one batch. Receive a new batch on a purchase order.</div>
+        @elseif($item->exists)
+            <div class="form-text">Opening / current batch. New purchases with a different batch stay separate.</div>
+        @else
+            <div class="form-text">Opening batch. Later purchases can use a different batch number.</div>
+        @endif
     </div>
 </div>
 
@@ -52,8 +60,11 @@
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Quantity</label>
-        <input name="quantity" value="{{ old('quantity', $item->quantity ?? 0) }}" class="form-control text-end @error('quantity') is-invalid @enderror" required>
+        <input name="quantity" value="{{ old('quantity', $item->quantity ?? 0) }}" class="form-control text-end @error('quantity') is-invalid @enderror" required {{ $hasManyLots ? 'readonly' : '' }}>
         @error('quantity') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        @if($hasManyLots)
+            <div class="form-text">Total of all batches. Change qty by purchase, sale, or return.</div>
+        @endif
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Potency</label>
@@ -71,6 +82,37 @@
         @error('pack_size') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 </div>
+
+@if($item->exists && $item->lots->isNotEmpty())
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Batches in stock</strong>
+            <span class="text-muted small ms-2">Leftover of an old batch stays here when a new purchase uses a different batch number.</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Batch #</th>
+                        <th class="text-end">Qty</th>
+                        <th>Expiry</th>
+                        <th>Received</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($item->lots as $lot)
+                        <tr>
+                            <td>{{ $lot->batchLabel() }}</td>
+                            <td class="text-end">{{ number_format((float) $lot->quantity, 2) }}</td>
+                            <td>{{ $lot->expiry_date ? $lot->expiry_date->format('d-m-Y') : '—' }}</td>
+                            <td>{{ $lot->received_at ? $lot->received_at->format('d-m-Y') : '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+@endif
 
 <div class="row">
     <div class="col-md-6 mb-3">

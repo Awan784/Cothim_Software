@@ -11,7 +11,12 @@
 @endphp
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>Lines</strong>
+        <div>
+            <strong>Lines</strong>
+            @if($showBatch)
+                <span class="text-muted small ms-2">Pick the batch you are selling. Add another line to sell a second batch of the same item.</span>
+            @endif
+        </div>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addTaxLine">Add line</button>
     </div>
     @if($useItemSelect && $stockItems->isEmpty())
@@ -28,13 +33,13 @@
             <thead class="thead-light">
                 <tr>
                     <th>{{ $useItemSelect ? 'Item' : 'Description' }}</th>
+                    @if($showBatch)
+                        <th>Batch #</th>
+                    @endif
                     <th class="text-end">Qty</th>
                     <th class="text-end">Unit price</th>
                     @if($showDiscount)
                         <th class="text-end">Disc %</th>
-                    @endif
-                    @if($showBatch)
-                        <th>Batch #</th>
                     @endif
                     @if($showTax)
                         <th class="text-end">Tax %</th>
@@ -96,18 +101,67 @@
     var table = document.getElementById('taxLinesTable');
     if (!table) return;
     function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+    function parseLots(opt) {
+        if (!opt) return [];
+        var raw = opt.getAttribute('data-lots') || '[]';
+        try {
+            var lots = JSON.parse(raw);
+            if (Array.isArray(lots)) return lots;
+        } catch (e) {}
+        try {
+            var decoded = raw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+            var lots = JSON.parse(decoded);
+            return Array.isArray(lots) ? lots : [];
+        } catch (e2) {
+            return [];
+        }
+    }
+    function fillLots(row, selectedId) {
+        var lotSelect = row.querySelector('.line-lot');
+        if (!lotSelect) return;
+        var itemSelect = row.querySelector('.line-item');
+        var opt = itemSelect && itemSelect.options[itemSelect.selectedIndex];
+        var lots = parseLots(opt);
+        var keep = selectedId != null ? String(selectedId) : '';
+        lotSelect.innerHTML = '';
+        var empty = document.createElement('option');
+        empty.value = '';
+        var fallbackBatch = opt ? (opt.getAttribute('data-batch') || '') : '';
+        if (lots.length) {
+            empty.textContent = 'Select batch';
+        } else if (fallbackBatch) {
+            empty.textContent = fallbackBatch;
+        } else {
+            empty.textContent = itemSelect && itemSelect.value ? 'No batch in stock' : 'Select item first';
+        }
+        lotSelect.appendChild(empty);
+        lots.forEach(function (lot) {
+            var qty = parseFloat(lot.qty);
+            if (isNaN(qty)) qty = 0;
+            var option = document.createElement('option');
+            option.value = lot.id;
+            option.setAttribute('data-batch', lot.batch || '');
+            option.setAttribute('data-qty', String(qty));
+            option.textContent = (lot.batch || '—') + ' · ' + qty.toFixed(2);
+            lotSelect.appendChild(option);
+        });
+        if (keep && lotSelect.querySelector('option[value="' + keep + '"]')) {
+            lotSelect.value = keep;
+            return;
+        }
+        var first = lots.find(function (lot) { return (parseFloat(lot.qty) || 0) > 0; }) || lots[0];
+        lotSelect.value = first ? String(first.id) : '';
+    }
     function applyItem(select) {
         var opt = select.options[select.selectedIndex];
         var price = opt ? opt.getAttribute('data-price') : '';
         var desc = opt ? opt.getAttribute('data-description') : '';
-        var batch = opt ? opt.getAttribute('data-batch') : '';
         var row = select.closest('tr');
         var priceInput = row.querySelector('.line-price');
         var descInput = row.querySelector('.line-description');
-        var batchCell = row.querySelector('.line-batch');
         if (priceInput && price !== null && price !== '') priceInput.value = price;
         if (descInput) descInput.value = desc || '';
-        if (batchCell) batchCell.textContent = batch || '—';
+        fillLots(row, '');
     }
     function recalc() {
         var sub = 0, discTotal = 0, vat = 0;
@@ -167,11 +221,10 @@
             else if (input.classList.contains('line-price')) input.value = '0';
             else if (input.classList.contains('line-discount')) input.value = '0';
             else if (input.classList.contains('line-rate')) input.value = '{{ $hiddenVat }}';
+            else if (input.classList.contains('line-lot')) input.innerHTML = '<option value="">Select item first</option>';
             else if (input.tagName === 'SELECT') input.selectedIndex = 0;
             else input.value = '';
         });
-        var batchCell = tr.querySelector('.line-batch');
-        if (batchCell) batchCell.textContent = '—';
         table.querySelector('tbody').appendChild(tr);
         if (window.amsInitSearchSelects) window.amsInitSearchSelects(tr);
         recalc();
@@ -183,10 +236,8 @@
         if (descInput && opt && !descInput.value) {
             descInput.value = opt.getAttribute('data-description') || '';
         }
-        var batchCell = row.querySelector('.line-batch');
-        if (batchCell && opt && select.value) {
-            batchCell.textContent = opt.getAttribute('data-batch') || '—';
-        }
+        var lotSelect = row.querySelector('.line-lot');
+        fillLots(row, lotSelect ? lotSelect.value : '');
     });
     recalc();
 })();

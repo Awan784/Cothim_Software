@@ -51,7 +51,7 @@ class OrderController extends Controller
     public function show(SalesOrder $order): View
     {
         $this->authorizeOrder($order);
-        $order->load(['customer', 'lines.stockItem', 'invoice']);
+        $order->load(['customer', 'lines.stockItem', 'lines.lot', 'invoice']);
 
         return view('salesman.orders.show', compact('order'));
     }
@@ -121,6 +121,7 @@ class OrderController extends Controller
             'mode' => ['nullable', 'string', 'max:50'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
+            'lines.*.stock_item_lot_id' => ['nullable', 'exists:stock_item_lots,id'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
@@ -155,7 +156,10 @@ class OrderController extends Controller
     {
         return StockItem::query()
             ->where('is_active', true)
-            ->with('variants')
+            ->with([
+                'variants',
+                'lots' => fn ($query) => $query->orderBy('received_at')->orderBy('id'),
+            ])
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'batch_no', 'unit', 'sale_price', 'quantity', 'has_variants']);
     }

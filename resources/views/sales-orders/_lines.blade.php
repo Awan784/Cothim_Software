@@ -18,7 +18,7 @@
                         <td class="text-end">{{ number_format((float) $line->quantity, 3) }}</td>
                         <td class="text-end">{{ number_format((float) $line->unit_price, 2) }}</td>
                         <td class="text-end">{{ number_format((float) $line->discount_rate, 2) }}%</td>
-                        <td>{{ $line->stockItem?->batch_no ?: '—' }}</td>
+                        <td>{{ $line->batchLabel() }}</td>
                         <td class="text-end">{{ number_format((float) $line->line_total, 2) }}</td>
                     </tr>
                 @endforeach

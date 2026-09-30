@@ -438,22 +438,23 @@ class ReportController extends Controller
 
     private function stockReport(array $item): View
     {
-        $items = StockItem::query()->with('stockCategory')->orderBy('name')->get();
+        $items = $this->stockItemsForReport();
         $rows = $this->stockRows($items);
 
         return view('reports.simple', $this->printData($item, extra: [
             'wide' => true,
+            'subtitle' => 'Detailed by batch',
             'columns' => $this->stockColumns(),
             'numeric' => $this->stockNumeric(),
             'rows' => $rows,
-            'footer' => $this->stockFooter($rows, 'Totals · '.$rows->count().' items'),
+            'footer' => $this->stockFooter($rows, 'Totals · '.$rows->count().' batches'),
             'empty' => 'No stock items found.',
         ]));
     }
 
     private function stockByCategoryReport(array $item): View
     {
-        $items = StockItem::query()->with('stockCategory')->orderBy('name')->get();
+        $items = $this->stockItemsForReport();
 
         $groups = $items
             ->groupBy(fn (StockItem $stock) => $stock->stockCategory?->name ?: 'Uncategorized')
@@ -462,7 +463,7 @@ class ReportController extends Controller
                 $rows = $this->stockRows($groupItems);
 
                 return [
-                    'title' => $title.' · '.$rows->count().' items',
+                    'title' => $title.' · '.$rows->count().' batches',
                     'rows' => $rows,
                     'footer' => $this->stockFooter($rows, 'Subtotal'),
                 ];
@@ -473,6 +474,7 @@ class ReportController extends Controller
 
         return view('reports.grouped', $this->printData($item, extra: [
             'wide' => true,
+            'subtitle' => 'Detailed by batch',
             'columns' => $this->stockColumns(),
             'numeric' => $this->stockNumeric(),
             'groups' => $groups,
@@ -483,21 +485,17 @@ class ReportController extends Controller
 
     private function lowStockReport(array $item): View
     {
-        $items = StockItem::query()
-            ->with('stockCategory')
-            ->lowStock()
-            ->orderBy('quantity')
-            ->orderBy('name')
-            ->get();
+        $items = $this->stockItemsForReport(lowStock: true);
 
         $rows = $this->stockRows($items);
 
         return view('reports.simple', $this->printData($item, extra: [
             'wide' => true,
+            'subtitle' => 'Detailed by batch',
             'columns' => $this->stockColumns(),
             'numeric' => $this->stockNumeric(),
             'rows' => $rows,
-            'footer' => $this->stockFooter($rows, 'Totals · '.$rows->count().' items'),
+            'footer' => $this->stockFooter($rows, 'Totals · '.$rows->count().' batches'),
             'empty' => 'No low-stock items.',
         ]));
     }
@@ -1207,6 +1205,7 @@ class ReportController extends Controller
             'sku' => 'SKU',
             'name' => 'Item',
             'category' => 'Category',
+            'batch' => 'Batch #',
             'unit' => 'Unit',
             'qty' => 'Qty',
             'reorder' => 'Reorder',
@@ -1226,29 +1225,72 @@ class ReportController extends Controller
     }
 
     /**
+     * @return Collection<int, StockItem>
+     */
+    private function stockItemsForReport(bool $lowStock = false): Collection
+    {
+        $query = StockItem::query()
+            ->with([
+                'stockCategory',
+                'lots' => fn ($lots) => $lots->orderBy('received_at')->orderBy('id'),
+            ]);
+
+        if ($lowStock) {
+            $query->lowStock()->orderBy('quantity')->orderBy('name');
+        } else {
+            $query->orderBy('name');
+        }
+
+        return $query->get();
+    }
+
+    /**
      * @param  Collection<int, StockItem>  $items
      * @return Collection<int, array<string, mixed>>
      */
     private function stockRows(Collection $items): Collection
     {
-        return $items->map(function (StockItem $item) {
-            $qty = (float) $item->quantity;
-            $cost = (float) $item->cost_price;
-            $sale = (float) $item->sale_price;
+        $rows = collect();
 
-            return [
-                'sku' => $item->sku ?: '—',
-                'name' => $item->purchaseLabel(),
-                'category' => $item->stockCategory?->name ?: 'Uncategorized',
-                'unit' => StockItem::UNITS[$item->unit] ?? ($item->unit ?: '—'),
-                'qty' => $qty,
-                'reorder' => (float) $item->reorder_level,
-                'cost' => $cost,
-                'sale' => $sale,
-                'cost_value' => $qty * $cost,
-                'sale_value' => $qty * $sale,
-            ];
-        })->values();
+        foreach ($items as $item) {
+            $lots = $item->relationLoaded('lots')
+                ? $item->lots
+                : $item->lots()->orderBy('received_at')->orderBy('id')->get();
+
+            if ($lots->isEmpty()) {
+                $rows->push($this->stockRow($item, $item->batch_no ?: '—', (float) $item->quantity));
+                continue;
+            }
+
+            foreach ($lots as $lot) {
+                $rows->push($this->stockRow($item, $lot->batchLabel(), (float) $lot->quantity));
+            }
+        }
+
+        return $rows->values();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function stockRow(StockItem $item, string $batch, float $qty): array
+    {
+        $cost = (float) $item->cost_price;
+        $sale = (float) $item->sale_price;
+
+        return [
+            'sku' => $item->sku ?: '—',
+            'name' => $item->purchaseLabel(),
+            'category' => $item->stockCategory?->name ?: 'Uncategorized',
+            'batch' => $batch !== '' ? $batch : '—',
+            'unit' => StockItem::UNITS[$item->unit] ?? ($item->unit ?: '—'),
+            'qty' => $qty,
+            'reorder' => (float) $item->reorder_level,
+            'cost' => $cost,
+            'sale' => $sale,
+            'cost_value' => $qty * $cost,
+            'sale_value' => $qty * $sale,
+        ];
     }
 
     /**

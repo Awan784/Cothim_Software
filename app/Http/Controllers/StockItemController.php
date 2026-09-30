@@ -19,7 +19,10 @@ class StockItemController extends Controller
             $filter = 'all';
         }
 
-        $query = StockItem::with('stockCategory')->withCount('variants');
+        $query = StockItem::with([
+            'stockCategory',
+            'lots' => fn ($q) => $q->orderBy('received_at')->orderBy('id'),
+        ])->withCount('variants');
 
         if ($filter === 'low') {
             $query->lowStock();
@@ -67,6 +70,7 @@ class StockItemController extends Controller
             unset($data['variants']);
 
             $item = StockItem::create($data);
+            $item->seedOpeningLot();
             $this->syncVariants($item, $data['has_variants'], $variants);
         });
 
@@ -80,7 +84,7 @@ class StockItemController extends Controller
 
     public function edit(StockItem $stockItem): View
     {
-        $stockItem->load('variants');
+        $stockItem->load(['variants', 'lots' => fn ($query) => $query->orderBy('received_at')->orderBy('id')]);
 
         return view('stock-items.edit', [
             'stockCategories' => StockCategory::orderBy('name')->get(),
@@ -96,8 +100,19 @@ class StockItemController extends Controller
             $variants = $data['variants'] ?? [];
             unset($data['variants']);
 
+            $lotCount = $stockItem->lots()->count();
+            if ($lotCount > 1) {
+                unset($data['quantity'], $data['batch_no']);
+            }
+
             $stockItem->update($data);
             $this->syncVariants($stockItem, $data['has_variants'], $variants);
+
+            if ($lotCount > 1) {
+                $stockItem->syncQuantityFromLots();
+            } else {
+                $stockItem->syncSingleLotFromItem();
+            }
         });
 
         return redirect()->route('stock-items.index')->with('success', 'Item updated.');

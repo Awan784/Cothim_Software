@@ -8,6 +8,7 @@
             'unit' => $i->unit,
             'unit_price' => $i->unit_price,
             'quantity' => $i->quantity,
+            'batch_no' => $i->batch_no,
             'note' => $i->note,
         ])->toArray() : []);
 @endphp
@@ -50,7 +51,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
             <strong>Inventory items</strong>
-            <span class="text-muted small ms-2">Saving a purchase adds quantity to stock</span>
+            <span class="text-muted small ms-2">Saving a purchase adds quantity to that batch. Same batch number merges; a new batch stays separate.</span>
         </div>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addPoLine">Add item</button>
     </div>
@@ -62,6 +63,7 @@
                     <th style="min-width: 90px;">Unit</th>
                     <th class="text-end" style="min-width: 120px;">Cost</th>
                     <th class="text-end" style="min-width: 90px;">Qty</th>
+                    <th style="min-width: 110px;">Batch #</th>
                     <th style="min-width: 160px;">Note</th>
                     <th class="text-end" style="min-width: 100px;">Line total</th>
                     <th class="text-end" style="width: 80px;"></th>
@@ -76,7 +78,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="5" class="text-end"><strong>Total</strong></td>
+                    <td colspan="6" class="text-end"><strong>Total</strong></td>
                     <td class="text-end"><strong id="poGrandTotal">0.00</strong></td>
                     <td></td>
                 </tr>

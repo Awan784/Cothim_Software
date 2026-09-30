@@ -60,7 +60,7 @@ class SalesInvoiceController extends Controller
             }
         }
 
-        $invoice->load(['customer', 'lines', 'salesman']);
+        $invoice->load(['customer', 'lines.stockItem', 'lines.lot', 'salesman']);
         $banks = BankAccount::orderBy('name')->get();
         $receipts = CashVoucher::query()
             ->where('sales_invoice_id', $invoice->id)
@@ -136,7 +136,7 @@ class SalesInvoiceController extends Controller
 
     public function print(SalesInvoice $invoice, SettingsService $settings): View
     {
-        $invoice->load(['customer', 'salesman', 'lines.stockItem', 'creator']);
+        $invoice->load(['customer', 'salesman', 'lines.stockItem', 'lines.lot', 'creator']);
 
         return view('invoices.print', [
             'invoice' => $invoice,
@@ -171,6 +171,7 @@ class SalesInvoiceController extends Controller
             'mode' => ['nullable', 'string', 'max:50'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
+            'lines.*.stock_item_lot_id' => ['nullable', 'exists:stock_item_lots,id'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
@@ -205,6 +206,8 @@ class SalesInvoiceController extends Controller
             if ($item && blank($line['description'] ?? null)) {
                 $line['description'] = $item->name;
             }
+
+            $line = StockItem::applyLotToLine($line);
         }
         unset($line);
 
@@ -234,7 +237,10 @@ class SalesInvoiceController extends Controller
     {
         return StockItem::query()
             ->where('is_active', true)
-            ->with('variants')
+            ->with([
+                'variants',
+                'lots' => fn ($query) => $query->orderBy('received_at')->orderBy('id'),
+            ])
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'batch_no', 'unit', 'sale_price', 'quantity', 'has_variants']);
     }

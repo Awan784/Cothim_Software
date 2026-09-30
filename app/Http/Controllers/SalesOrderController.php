@@ -33,7 +33,7 @@ class SalesOrderController extends Controller
 
     public function show(SalesOrder $sales_order): View
     {
-        $sales_order->load(['customer', 'salesman', 'lines.stockItem', 'invoice', 'confirmer']);
+        $sales_order->load(['customer', 'salesman', 'lines.stockItem', 'lines.lot', 'invoice', 'confirmer']);
 
         return view('sales-orders.show', [
             'order' => $sales_order,
@@ -171,6 +171,7 @@ class SalesOrderController extends Controller
             'mode' => ['nullable', 'string', 'max:50'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
+            'lines.*.stock_item_lot_id' => ['nullable', 'exists:stock_item_lots,id'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
@@ -204,7 +205,10 @@ class SalesOrderController extends Controller
     {
         return StockItem::query()
             ->where('is_active', true)
-            ->with('variants')
+            ->with([
+                'variants',
+                'lots' => fn ($query) => $query->orderBy('received_at')->orderBy('id'),
+            ])
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'batch_no', 'unit', 'sale_price', 'quantity', 'has_variants']);
     }

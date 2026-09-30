@@ -11,6 +11,7 @@ use App\Models\SalesmanSettlementAllocation;
 use App\Models\SalesOrder;
 use App\Models\StockItem;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -90,6 +91,8 @@ class SalesInvoiceService
                 SalesInvoiceLine::create([
                     'sales_invoice_id' => $invoice->id,
                     'stock_item_id' => $line['stock_item_id'] ?? null,
+                    'stock_item_lot_id' => $line['stock_item_lot_id'] ?? null,
+                    'batch_no' => $line['batch_no'] ?? null,
                     'description' => $line['description'] ?? 'Item',
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
@@ -130,7 +133,6 @@ class SalesInvoiceService
         }
 
         return DB::transaction(function () use ($invoice) {
-            $invoice->invoice_no = $invoice->invoice_no ?: $this->nextNumber();
             $invoice->status = 'issued';
             $invoice->issued_at = now();
             $invoice->zatca_uuid = $invoice->uuid;
@@ -138,7 +140,7 @@ class SalesInvoiceService
             $invoice->zatca_status = filled($this->settings->get('company_vat_number'))
                 ? 'phase1'
                 : 'phase1';
-            $invoice->save();
+            $this->assignInvoiceNo($invoice);
 
             Customer::whereKey($invoice->customer_id)->increment('current_balance', (float) $invoice->total);
 
@@ -160,6 +162,8 @@ class SalesInvoiceService
                     'notes' => $line->description,
                     'source_type' => 'sales_invoice',
                     'source_id' => $invoice->id,
+                    'stock_item_lot_id' => $line->stock_item_lot_id,
+                    'batch_no' => $line->batch_no,
                 ]);
             }
 
@@ -235,23 +239,64 @@ class SalesInvoiceService
         });
     }
 
+    private function assignInvoiceNo(SalesInvoice $invoice): void
+    {
+        if (filled($invoice->invoice_no)) {
+            $invoice->save();
+
+            return;
+        }
+
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            $invoice->invoice_no = $this->nextNumber();
+
+            try {
+                $invoice->save();
+
+                return;
+            } catch (QueryException $e) {
+                if (! $this->isInvoiceNoCollision($e) || $attempt === 7) {
+                    throw $e;
+                }
+
+                $invoice->invoice_no = null;
+            }
+        }
+    }
+
     private function nextNumber(): string
     {
         $max = $this->settings->invoiceSeries();
 
         $numbers = SalesInvoice::query()
+            ->withTrashed()
             ->whereNotNull('invoice_no')
             ->lockForUpdate()
             ->pluck('invoice_no');
 
         foreach ($numbers as $invoiceNo) {
             $invoiceNo = trim((string) $invoiceNo);
-            if ($invoiceNo !== '' && ctype_digit($invoiceNo) && (int) $invoiceNo > $max) {
+            if ($invoiceNo !== '' && preg_match('/^\d+$/', $invoiceNo) && (int) $invoiceNo > $max) {
                 $max = (int) $invoiceNo;
             }
         }
 
-        return (string) ($max + 1);
+        $next = $max + 1;
+        while (SalesInvoice::query()->withTrashed()->where('invoice_no', (string) $next)->exists()) {
+            $next++;
+        }
+
+        return (string) $next;
+    }
+
+    private function isInvoiceNoCollision(QueryException $e): bool
+    {
+        if ((string) $e->getCode() !== '23000') {
+            return false;
+        }
+
+        return str_contains($e->getMessage(), 'invoice_no')
+            || str_contains($e->getMessage(), 'sales_invoices_organization_id_invoice_no_unique');
     }
 
     /**

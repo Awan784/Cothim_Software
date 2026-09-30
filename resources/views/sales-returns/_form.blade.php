@@ -8,6 +8,7 @@
             'unit' => $i->unit,
             'unit_price' => $i->unit_price,
             'quantity' => $i->quantity,
+            'batch_no' => $i->batch_no,
             'note' => $i->note,
         ])->toArray() : []);
 @endphp
@@ -62,6 +63,7 @@
                     <th style="min-width: 90px;">Unit</th>
                     <th class="text-end" style="min-width: 120px;">Rate</th>
                     <th class="text-end" style="min-width: 90px;">Qty</th>
+                    <th style="min-width: 110px;">Batch #</th>
                     <th style="min-width: 160px;">Reason</th>
                     <th class="text-end" style="min-width: 100px;">Line total</th>
                     <th class="text-end" style="width: 80px;"></th>
@@ -76,7 +78,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="5" class="text-end"><strong>Total</strong></td>
+                    <td colspan="6" class="text-end"><strong>Total</strong></td>
                     <td class="text-end"><strong id="srGrandTotal">0</strong></td>
                     <td></td>
                 </tr>
@@ -111,6 +113,11 @@
                 priceInput.value = price;
             }
             onHand.textContent = 'On hand: ' + qty + ' ' + String(unit).toUpperCase();
+            var batchInput = row.querySelector('.sr-batch');
+            var latestBatch = opt ? (opt.getAttribute('data-batch') || '') : '';
+            if (batchInput && !batchInput.value && latestBatch) {
+                batchInput.value = latestBatch;
+            }
         } else {
             unitInput.value = '';
             onHand.textContent = 'On hand: —';

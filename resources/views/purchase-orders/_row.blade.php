@@ -3,6 +3,7 @@
     $unit = is_array($row) ? ($row['unit'] ?? '') : '';
     $unitPrice = is_array($row) ? ($row['unit_price'] ?? '') : '';
     $qty = is_array($row) ? ($row['quantity'] ?? '1') : '1';
+    $batchNo = is_array($row) ? ($row['batch_no'] ?? '') : '';
     $note = is_array($row) ? ($row['note'] ?? '') : '';
     $itemError = is_numeric($idx) ? $errors->first('items.'.$idx.'.stock_item_id') : null;
     $groupedItems = $stockItems->groupBy(fn ($item) => $item->stockCategory?->name ?: 'Inventory');
@@ -40,6 +41,9 @@
     </td>
     <td>
         <input name="items[{{ $idx }}][quantity]" class="form-control text-end po-qty" value="{{ $qty }}" inputmode="decimal" required>
+    </td>
+    <td>
+        <input name="items[{{ $idx }}][batch_no]" class="form-control po-batch" value="{{ $batchNo }}" placeholder="e.g. 002" maxlength="100">
     </td>
     <td>
         <input name="items[{{ $idx }}][note]" class="form-control po-note" value="{{ $note }}" placeholder="Note">

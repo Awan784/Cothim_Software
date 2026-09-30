@@ -3,6 +3,7 @@
     $unit = is_array($row) ? ($row['unit'] ?? '') : '';
     $unitPrice = is_array($row) ? ($row['unit_price'] ?? '') : '';
     $qty = is_array($row) ? ($row['quantity'] ?? '1') : '1';
+    $batchNo = is_array($row) ? ($row['batch_no'] ?? '') : '';
     $note = is_array($row) ? ($row['note'] ?? '') : '';
     $itemError = is_numeric($idx) ? $errors->first('items.'.$idx.'.stock_item_id') : null;
     $groupedItems = $stockItems->groupBy(fn ($item) => $item->stockCategory?->name ?: 'Inventory');
@@ -19,6 +20,7 @@
                             data-unit="{{ $it->unit }}"
                             data-price="{{ number_format((float) ($it->sale_price ?: $it->cost_price), 2, '.', '') }}"
                             data-qty="{{ number_format((float) $it->quantity, 2, '.', '') }}"
+                            data-batch="{{ $it->batch_no }}"
                             {{ $stockId === (string) $it->id ? 'selected' : '' }}>
                             {{ $it->purchaseLabel() }} — {{ ams_num($it->quantity) }} {{ strtoupper($it->unit ?: 'PCS') }}
                         </option>
@@ -39,6 +41,9 @@
     </td>
     <td>
         <input name="items[{{ $idx }}][quantity]" class="form-control text-end sr-qty" value="{{ $qty }}" inputmode="decimal" required>
+    </td>
+    <td>
+        <input name="items[{{ $idx }}][batch_no]" class="form-control sr-batch" value="{{ $batchNo }}" placeholder="e.g. 001" maxlength="100">
     </td>
     <td>
         <input name="items[{{ $idx }}][note]" class="form-control sr-note" value="{{ $note }}" placeholder="Reason">
