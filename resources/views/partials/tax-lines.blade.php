@@ -136,20 +136,32 @@
     }
     table.addEventListener('input', recalc);
     table.addEventListener('change', function (e) {
-        if (e.target.classList.contains('line-item')) applyItem(e.target);
+        var select = e.target.closest ? e.target.closest('select.line-item') : null;
+        if (e.target.classList && e.target.classList.contains('line-item')) {
+            select = e.target;
+        }
+        if (select) applyItem(select);
         recalc();
     });
     table.addEventListener('click', function (e) {
         if (e.target.classList.contains('remove-line')) {
             var rows = table.querySelectorAll('.tax-line');
-            if (rows.length > 1) e.target.closest('tr').remove();
+            if (rows.length > 1) {
+                var row = e.target.closest('tr');
+                if (window.amsDestroySearchSelects) window.amsDestroySearchSelects(row);
+                row.remove();
+            }
             recalc();
         }
     });
     document.getElementById('addTaxLine').addEventListener('click', function () {
         var i = table.querySelectorAll('.tax-line').length;
         var tr = table.querySelector('.tax-line').cloneNode(true);
+        if (window.amsStripChoicesFromClone) window.amsStripChoicesFromClone(tr);
         tr.querySelectorAll('input, select').forEach(function (input) {
+            if (input.classList.contains('ams-combo-search') || input.classList.contains('ams-combo-toggle')) {
+                return;
+            }
             input.name = input.name.replace(/lines\[\d+]/, 'lines[' + i + ']');
             if (input.classList.contains('line-qty')) input.value = '1';
             else if (input.classList.contains('line-price')) input.value = '0';
@@ -161,6 +173,7 @@
         var batchCell = tr.querySelector('.line-batch');
         if (batchCell) batchCell.textContent = '—';
         table.querySelector('tbody').appendChild(tr);
+        if (window.amsInitSearchSelects) window.amsInitSearchSelects(tr);
         recalc();
     });
     table.querySelectorAll('.line-item').forEach(function (select) {

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseReturn;
+use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\StockItem;
 use App\Models\StockMovement;
@@ -57,6 +58,28 @@ class InventoryService
         StockMovement::query()
             ->where('source_type', 'purchase_return')
             ->where('source_id', $purchaseReturn->id)
+            ->delete();
+    }
+
+    public function revertSalesInvoice(SalesInvoice $invoice): void
+    {
+        $invoice->loadMissing('lines');
+
+        foreach ($invoice->lines as $line) {
+            $stockItemId = $line->stock_item_id;
+            if (! $stockItemId && $line->description) {
+                $stockItemId = StockItem::query()->where('name', $line->description)->value('id');
+            }
+            if (! $stockItemId) {
+                continue;
+            }
+
+            $this->adjust((int) $stockItemId, (float) $line->quantity);
+        }
+
+        StockMovement::query()
+            ->where('source_type', 'sales_invoice')
+            ->where('source_id', $invoice->id)
             ->delete();
     }
 

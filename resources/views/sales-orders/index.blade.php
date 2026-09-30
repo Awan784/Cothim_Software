@@ -42,6 +42,11 @@
                                         <a class="btn btn-sm btn-outline-primary" href="{{ route('sales-orders.edit', $order) }}">Edit</a>
                                     @endif
                                     <a class="btn btn-sm btn-outline-primary" href="{{ route('sales-orders.show', $order) }}">Open</a>
+                                    <form action="{{ route('sales-orders.destroy', $order) }}" method="post" class="d-inline">
+                                        @csrf
+                                        @method('delete')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this order? If it has an invoice, that invoice will be deleted too.')">Delete</button>
+                                    </form>
                                 </td>
                             </tr>
                         @empty

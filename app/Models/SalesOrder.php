@@ -6,10 +6,12 @@ use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SalesOrder extends Model
 {
     use BelongsToOrganization;
+    use SoftDeletes;
 
     public const STATUS_PENDING = 'pending';
 
@@ -70,6 +72,19 @@ class SalesOrder extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class, 'sales_invoice_id');
+    }
+
+    public static function linkedToInvoice(SalesInvoice $invoice): ?self
+    {
+        return static::query()
+            ->where(function ($query) use ($invoice) {
+                $query->where('sales_invoice_id', $invoice->id);
+
+                if ($invoice->sales_order_id) {
+                    $query->orWhere('id', $invoice->sales_order_id);
+                }
+            })
+            ->first();
     }
 
     public function confirmer(): BelongsTo

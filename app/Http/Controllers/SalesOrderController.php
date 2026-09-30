@@ -148,6 +148,17 @@ class SalesOrderController extends Controller
         return redirect()->route('sales-orders.index')->with('success', 'Order rejected.');
     }
 
+    public function destroy(SalesOrder $sales_order): RedirectResponse
+    {
+        try {
+            $this->orders->softDelete($sales_order);
+        } catch (InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('sales-orders.index')->with('success', 'Order deleted.');
+    }
+
     /**
      * @return array<string, mixed>
      */

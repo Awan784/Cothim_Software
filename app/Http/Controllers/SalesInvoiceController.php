@@ -147,12 +147,13 @@ class SalesInvoiceController extends Controller
 
     public function destroy(SalesInvoice $invoice): RedirectResponse
     {
-        if (! $invoice->isDraft()) {
-            return back()->with('error', 'Only draft invoices can be deleted.');
+        try {
+            $this->invoices->softDelete($invoice);
+        } catch (InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         }
-        $invoice->delete();
 
-        return redirect()->route('invoices.index')->with('success', 'Draft deleted.');
+        return redirect()->route('invoices.index')->with('success', 'Invoice deleted.');
     }
 
     /**
@@ -219,7 +220,7 @@ class SalesInvoiceController extends Controller
             ->where(function ($query) use ($currentId) {
                 $query->where('is_active', true);
                 if ($currentId) {
-                    $query->orWhereKey($currentId);
+                    $query->orWhere('id', $currentId);
                 }
             })
             ->orderBy('name')

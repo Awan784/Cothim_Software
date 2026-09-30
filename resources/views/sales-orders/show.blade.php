@@ -18,6 +18,11 @@
                 @if($order->isConfirmed() && $order->invoice)
                     <a href="{{ route('invoices.show', $order->invoice) }}" class="btn btn-sm btn-primary">Open invoice</a>
                 @endif
+                <form action="{{ route('sales-orders.destroy', $order) }}" method="post">
+                    @csrf
+                    @method('delete')
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this order? If it has an invoice, that invoice will be deleted too.')">Delete</button>
+                </form>
                 <a href="{{ route('sales-orders.index') }}" class="btn btn-sm btn-secondary">Back</a>
             </div>
         </div>

@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Salesman;
+use App\Models\SalesmanSettlementAllocation;
+use App\Models\SalesOrder;
 use App\Models\StockItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -195,6 +198,40 @@ class SalesInvoiceService
             $invoice->save();
 
             return $invoice->fresh(['customer']);
+        });
+    }
+
+    public function softDelete(SalesInvoice $invoice, bool $cascadeOrder = true): void
+    {
+        if ($invoice->trashed()) {
+            return;
+        }
+
+        if (SalesmanSettlementAllocation::query()->where('sales_invoice_id', $invoice->id)->exists()) {
+            throw new InvalidArgumentException('This invoice is in a salesman settlement. Delete the settlement first.');
+        }
+
+        DB::transaction(function () use ($invoice, $cascadeOrder) {
+            $linkedOrder = SalesOrder::linkedToInvoice($invoice);
+
+            if (! $invoice->isDraft()) {
+                $this->inventory->revertSalesInvoice($invoice);
+
+                foreach (CashVoucher::query()->where('sales_invoice_id', $invoice->id)->orderBy('id')->get() as $voucher) {
+                    if ($voucher->isSettlementLinked()) {
+                        throw new InvalidArgumentException('This invoice has settlement cash entries. Delete the settlement first.');
+                    }
+                    $this->vouchers->delete($voucher);
+                }
+
+                Customer::whereKey($invoice->customer_id)->decrement('current_balance', (float) $invoice->total);
+            }
+
+            $invoice->delete();
+
+            if ($cascadeOrder && $linkedOrder && ! $linkedOrder->trashed()) {
+                $linkedOrder->delete();
+            }
         });
     }
 

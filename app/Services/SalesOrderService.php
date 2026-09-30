@@ -176,6 +176,22 @@ class SalesOrderService
         $order->delete();
     }
 
+    public function softDelete(SalesOrder $order): void
+    {
+        DB::transaction(function () use ($order) {
+            if ($order->sales_invoice_id) {
+                $invoice = SalesInvoice::query()->find($order->sales_invoice_id);
+                if ($invoice) {
+                    $this->invoices->softDelete($invoice, false);
+                }
+            }
+
+            if (! $order->trashed()) {
+                $order->delete();
+            }
+        });
+    }
+
     /**
      * @param  array<string, mixed>  $line
      * @return array<string, mixed>

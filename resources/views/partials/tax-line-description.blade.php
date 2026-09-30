@@ -20,7 +20,7 @@
             $selectedId = $match ? (string) $match->id : '';
         }
     @endphp
-    <select name="lines[{{ $index }}][stock_item_id]" class="form-select form-select-sm line-item" required>
+    <select name="lines[{{ $index }}][stock_item_id]" class="form-select form-select-sm line-item ams-search-select" data-ams-search="1" data-search-placeholder="Search item" required>
         <option value="">Select item</option>
         @foreach($stockItems as $item)
             @if($item->has_variants && $item->variants->isNotEmpty())

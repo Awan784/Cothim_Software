@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -67,6 +68,38 @@ class StockItem extends Model
     public function variants(): HasMany
     {
         return $this->hasMany(StockItemVariant::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function isOutOfStock(): bool
+    {
+        return (float) $this->quantity <= 0;
+    }
+
+    public function isLowStock(): bool
+    {
+        if ($this->isOutOfStock()) {
+            return true;
+        }
+
+        $reorder = (int) ($this->reorder_level ?? 0);
+
+        return $reorder > 0 && (float) $this->quantity <= $reorder;
+    }
+
+    public function scopeLowStock(Builder $query): Builder
+    {
+        return $query->where(function (Builder $inner) {
+            $inner->where('quantity', '<=', 0)
+                ->orWhere(function (Builder $reorder) {
+                    $reorder->where('reorder_level', '>', 0)
+                        ->whereColumn('quantity', '<=', 'reorder_level');
+                });
+        });
+    }
+
+    public function scopeOutOfStock(Builder $query): Builder
+    {
+        return $query->where('quantity', '<=', 0);
     }
 
     public function purchaseLabel(): string

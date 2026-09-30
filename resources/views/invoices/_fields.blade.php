@@ -16,7 +16,7 @@
     <div class="row">
         <div class="col-md-4 mb-3">
             <label class="form-label">Customer</label>
-            <select name="customer_id" class="form-select" required>
+            <select name="customer_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search customer" required>
                 <option value="">Select customer</option>
                 @foreach($customers as $customer)
                     <option value="{{ $customer->id }}" {{ (string) old('customer_id', $isEdit ? $invoice->customer_id : '') === (string) $customer->id ? 'selected' : '' }}>
@@ -31,7 +31,7 @@
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Salesman</label>
-            <select name="salesman_id" class="form-select">
+            <select name="salesman_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search salesman">
                 <option value="">Select salesman</option>
                 @foreach($salesmen ?? [] as $salesman)
                     <option value="{{ $salesman->id }}" {{ (string) old('salesman_id', $isEdit ? $invoice->salesman_id : '') === (string) $salesman->id ? 'selected' : '' }}>

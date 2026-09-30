@@ -47,7 +47,14 @@
                                 </td>
                                 <td class="text-end text-gray-900">{{ ams_num($invoice->total) }}</td>
                                 <td class="text-end {{ $invoice->balanceDue() > 0.009 ? 'text-danger fw-semibold' : 'text-muted' }}">{{ ams_num($invoice->balanceDue()) }}</td>
-                                <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ route('invoices.show', $invoice) }}">Open</a></td>
+                                <td class="text-end text-nowrap">
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('invoices.show', $invoice) }}">Open</a>
+                                    <form action="{{ route('invoices.destroy', $invoice) }}" method="post" class="d-inline">
+                                        @csrf
+                                        @method('delete')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this invoice? Stock and customer balance will be reversed.')">Delete</button>
+                                    </form>
+                                </td>
                             </tr>
                         @empty
                             <tr><td colspan="7" class="text-center text-muted">No invoices yet.</td></tr>

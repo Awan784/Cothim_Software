@@ -12,14 +12,29 @@ use Illuminate\View\View;
 
 class StockItemController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $stockItems = StockItem::with('stockCategory')
-            ->withCount('variants')
-            ->orderBy('name')
-            ->get();
+        $filter = $request->query('stock', 'all');
+        if (! in_array($filter, ['all', 'low', 'zero'], true)) {
+            $filter = 'all';
+        }
 
-        return view('stock-items.index', compact('stockItems'));
+        $query = StockItem::with('stockCategory')->withCount('variants');
+
+        if ($filter === 'low') {
+            $query->lowStock();
+        } elseif ($filter === 'zero') {
+            $query->outOfStock();
+        }
+
+        $stockItems = $query->orderBy('name')->get();
+        $counts = [
+            'all' => StockItem::query()->count(),
+            'low' => StockItem::query()->lowStock()->count(),
+            'zero' => StockItem::query()->outOfStock()->count(),
+        ];
+
+        return view('stock-items.index', compact('stockItems', 'filter', 'counts'));
     }
 
     public function create(): View|RedirectResponse

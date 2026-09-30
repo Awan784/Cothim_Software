@@ -84,7 +84,7 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
         ->name('sales-orders.builty');
     Route::post('sales-orders/{sales_order}/reject', [SalesOrderController::class, 'reject'])
         ->name('sales-orders.reject');
-    Route::resource('sales-orders', SalesOrderController::class)->only(['index', 'show', 'edit', 'update']);
+    Route::resource('sales-orders', SalesOrderController::class)->only(['index', 'show', 'edit', 'update', 'destroy']);
 
     Route::get('/settings/company', [SettingsController::class, 'company'])->name('settings.company');
     Route::post('/settings/company', [SettingsController::class, 'updateCompany'])->name('settings.company.update');

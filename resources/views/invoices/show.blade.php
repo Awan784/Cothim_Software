@@ -12,6 +12,11 @@
                 @if(! $invoice->isDraft())
                     <a href="{{ route('invoices.print', $invoice) }}" class="btn btn-sm btn-primary" target="_blank">Print</a>
                 @endif
+                <form action="{{ route('invoices.destroy', $invoice) }}" method="post">
+                    @csrf
+                    @method('delete')
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this invoice? Stock and customer balance will be reversed.')">Delete</button>
+                </form>
                 <a href="{{ route('invoices.index') }}" class="btn btn-sm btn-secondary">Back</a>
             </div>
         </div>

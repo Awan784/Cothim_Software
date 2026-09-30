@@ -485,13 +485,7 @@ class ReportController extends Controller
     {
         $items = StockItem::query()
             ->with('stockCategory')
-            ->where(function ($query) {
-                $query->where('quantity', '<=', 0)
-                    ->orWhere(function ($inner) {
-                        $inner->where('reorder_level', '>', 0)
-                            ->whereColumn('quantity', '<=', 'reorder_level');
-                    });
-            })
+            ->lowStock()
             ->orderBy('quantity')
             ->orderBy('name')
             ->get();

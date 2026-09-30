@@ -16,7 +16,7 @@
     <div class="row">
         <div class="col-md-8 mb-3">
             <label class="form-label">Customer</label>
-            <select name="customer_id" class="form-select" required>
+            <select name="customer_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search customer" required>
                 <option value="">Select customer</option>
                 @foreach($customers as $customer)
                     <option value="{{ $customer->id }}" {{ (string) old('customer_id', $isEdit ? $order->customer_id : '') === (string) $customer->id ? 'selected' : '' }}>
