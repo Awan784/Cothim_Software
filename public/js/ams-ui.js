@@ -87,6 +87,25 @@
         }
     }
 
+    function initMobileSidebar() {
+        var sidebar = document.getElementById('sidebarMenu');
+        if (!sidebar) {
+            return;
+        }
+
+        sidebar.querySelectorAll('a.nav-link:not([data-bs-toggle])').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (window.innerWidth >= 992 || !window.bootstrap || !window.bootstrap.Collapse) {
+                    return;
+                }
+                var instance = window.bootstrap.Collapse.getInstance(sidebar);
+                if (instance) {
+                    instance.hide();
+                }
+            });
+        });
+    }
+
     /** Keep modals on body so fixed positioning and clicks work (no trapped backdrop). */
     function initModals() {
         document.querySelectorAll('.modal').forEach(function (modalEl) {
@@ -565,6 +584,7 @@
         initFormSubmitGuard();
         initConfirmDeletes();
         initSidebarScroll();
+        initMobileSidebar();
         initModals();
         initAmsDatePickers();
         initAmountInputs();

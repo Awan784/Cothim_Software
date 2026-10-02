@@ -28,7 +28,7 @@
             @endif
         </div>
     @endif
-    <div class="table-responsive">
+    <div class="table-responsive ams-line-table-wrap">
         <table class="table table-flush mb-0" id="taxLinesTable" data-show-discount="{{ $showDiscount ? '1' : '0' }}" data-show-tax="{{ $showTax ? '1' : '0' }}">
             <thead class="thead-light">
                 <tr>

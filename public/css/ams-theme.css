@@ -1827,7 +1827,7 @@ body.ams-light {
 
 /* Topbar / mobile */
 .ams-light .sidebar-toggle {
-    color: #4b5563;
+    color: #111827;
     border: 1px solid #e5e7eb;
     background: #fff;
     border-radius: 10px;
@@ -1838,12 +1838,44 @@ body.ams-light {
     border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
-.ams-light .ams-mobile-nav .navbar-toggler {
-    border-color: rgba(255,255,255,0.2);
+.ams-light .ams-mobile-nav .navbar-toggler,
+.ams-light .ams-nav-toggle {
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
 }
 
-.ams-light .ams-mobile-nav .navbar-toggler-icon {
-    filter: invert(1);
+.ams-light .ams-nav-toggle:focus {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+.ams-nav-bars,
+.ams-nav-bars::before,
+.ams-nav-bars::after {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+}
+
+.ams-nav-bars {
+    position: relative;
+}
+
+.ams-nav-bars::before,
+.ams-nav-bars::after {
+    content: '';
+    position: absolute;
+    left: 0;
+}
+
+.ams-nav-bars::before {
+    top: -6px;
+}
+
+.ams-nav-bars::after {
+    top: 6px;
 }
 
 .ams-light .ams-page-content {
@@ -2134,18 +2166,248 @@ body.ams-login {
 }
 
 @media (max-width: 991.98px) {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body.ams-light {
+        overflow-x: hidden;
+    }
+
+    main.content {
+        padding: 0 0.75rem 1.25rem;
+    }
+
+    .ams-light .ams-mobile-nav {
+        position: sticky;
+        top: 0;
+        z-index: 1040;
+        padding-top: 0.55rem;
+        padding-bottom: 0.55rem;
+    }
+
+    .ams-light #sidebarMenu.sidebar {
+        width: min(86vw, 280px);
+        max-width: 280px;
+        z-index: 1045;
+        box-shadow: 16px 0 40px rgba(15, 23, 42, 0.28);
+    }
+
+    .ams-light .ams-topbar {
+        padding-top: 0.35rem;
+        padding-bottom: 0.15rem;
+    }
+
+    .ams-light .ams-page-content {
+        margin-top: 0.5rem !important;
+        max-width: none;
+    }
+
+    .ams-light .pb-4 > .py-4,
+    .ams-light .pb-4 > .d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.85rem !important;
+    }
+
     .ams-light .card.p-4 {
-        padding: 1.1rem !important;
+        padding: 1rem !important;
+    }
+
+    .ams-light .form-label,
+    .ams-light .col-form-label {
+        font-size: 0.82rem;
+    }
+
+    .ams-light .form-control,
+    .ams-light .form-select,
+    .ams-light textarea.form-control,
+    .ams-light .ams-date-input,
+    .ams-light .ams-datetime-input,
+    .ams-light .ams-combo-toggle,
+    .ams-light .ams-combo-search {
+        width: 100%;
+        min-height: 44px;
+        font-size: 16px;
+        border-radius: 10px;
+    }
+
+    .ams-light .form-control-sm,
+    .ams-light .form-select-sm {
+        min-height: 40px;
+        font-size: 16px;
+    }
+
+    .ams-light .btn {
+        min-height: 40px;
+    }
+
+    .ams-light .btn-sm {
+        min-height: 36px;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .ams-light form .row > [class*="col-"] {
+        margin-bottom: 0.15rem;
     }
 
     .ams-light .table thead th,
     .ams-light .table td {
-        padding: 0.7rem 0.75rem;
+        padding: 0.65rem 0.7rem;
+        white-space: nowrap;
     }
 
+    .ams-light .table-responsive {
+        margin-left: -0.15rem;
+        margin-right: -0.15rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .ams-light #poLinesTable,
+    .ams-light #srLinesTable {
+        min-width: 720px;
+    }
+
+    .ams-light .ams-line-table-wrap {
+        overflow: visible;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .ams-light #taxLinesTable,
+    .ams-light #taxLinesTable thead,
+    .ams-light #taxLinesTable tbody,
+    .ams-light #taxLinesTable tfoot {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .ams-light #taxLinesTable thead {
+        display: none;
+    }
+
+    .ams-light #taxLinesTable .tax-line {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem 0.7rem;
+        padding: 0.9rem;
+        margin: 0 0 0.75rem;
+        background: #fff;
+        border: 1px solid #e5eaf0;
+        border-radius: 12px;
+    }
+
+    .ams-light #taxLinesTable .tax-line > td {
+        display: flex;
+        flex-direction: column;
+        width: auto;
+        min-width: 0;
+        padding: 0 !important;
+        border: 0 !important;
+        white-space: normal !important;
+        background: transparent !important;
+    }
+
+    .ams-light #taxLinesTable .tax-line > td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.28rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #6b7280;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .ams-light #taxLinesTable .tax-line > .line-item-cell,
+    .ams-light #taxLinesTable .tax-line > .line-batch,
+    .ams-light #taxLinesTable .tax-line > .line-remove {
+        grid-column: 1 / -1;
+    }
+
+    .ams-light #taxLinesTable .tax-line > .line-remove {
+        align-items: flex-end;
+    }
+
+    .ams-light #taxLinesTable .tax-line .ams-combo,
+    .ams-light #taxLinesTable .tax-line .line-item,
+    .ams-light #taxLinesTable .tax-line .line-lot,
+    .ams-light #taxLinesTable .tax-line input {
+        width: 100%;
+    }
+
+    .ams-light #taxLinesTable .tax-line .line-total,
+    .ams-light #taxLinesTable .tax-line .line-vat {
+        justify-content: flex-end;
+        font-weight: 700;
+        font-size: 1rem;
+        min-height: 40px;
+    }
+
+    .ams-light #taxLinesTable tfoot tr {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.35rem 0.15rem;
+        border: 0;
+    }
+
+    .ams-light #taxLinesTable tfoot td {
+        border: 0 !important;
+        padding: 0.15rem 0 !important;
+        white-space: normal !important;
+        background: transparent !important;
+    }
+
+    .ams-light #taxLinesTable tfoot td:empty {
+        display: none;
+    }
+
+    .ams-light .ams-combo-toggle,
+    .ams-light .ams-combo-option {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        word-break: break-word;
+    }
+
+    .ams-light .ams-combo-toggle {
+        align-items: flex-start;
+        min-height: 44px;
+        line-height: 1.35;
+    }
+
+    .ams-light .ams-combo-panel {
+        z-index: 60;
+    }
+
+    .ams-light .ams-combo-list {
+        max-height: 280px;
+    }
+
+    .ams-light .db-welcome {
+        padding: 16px;
+        align-items: flex-start;
+    }
+
+    .ams-light .db-welcome h2 {
+        font-size: 18px;
+    }
+
+    .ams-light .db-welcome-meta,
     .ams-light .db-cash,
     .ams-light .db-actions {
         grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .ams-light .db-card-value {
+        font-size: 1.35rem;
+        overflow-wrap: anywhere;
     }
 
     .ams-brand-text { font-size: 16px; letter-spacing: 3px; }

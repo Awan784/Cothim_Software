@@ -20,7 +20,7 @@
     <link type="text/css" href="{{ asset('vendor/notyf/notyf.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/choices.js/public/assets/styles/choices.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('css/volt.css') }}" rel="stylesheet">
-    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=19" rel="stylesheet">
+    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=21" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     @if(wafi_is_rtl())
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -47,10 +47,10 @@
             @endif
         </a>
         <div class="d-flex align-items-center">
-            <button class="navbar-toggler d-lg-none collapsed" type="button"
+            <button class="navbar-toggler ams-nav-toggle d-lg-none collapsed" type="button"
                 data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu"
                 aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+                <span class="ams-nav-bars" aria-hidden="true"></span>
             </button>
         </div>
     </nav>
@@ -126,7 +126,7 @@
     <script src="{{ asset('assets/js/volt.js') }}"></script>
     <script src="{{ asset('vendor/choices.js/public/assets/scripts/choices.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="{{ asset('js/ams-ui.js') }}?v=5"></script>
+    <script src="{{ asset('js/ams-ui.js') }}?v=6"></script>
     @if(! $isSalesmanShell)
         <audio id="amsOrderRingtone" src="{{ asset('sounds/order-ring.wav') }}" preload="auto" loop playsinline autoplay muted></audio>
         <script>

@@ -17,14 +17,14 @@
     }
 @endphp
 <tr class="tax-line">
-    <td>
+    <td class="line-item-cell" data-label="{{ $useItemSelect ? 'Item' : 'Description' }}">
         @include('partials.tax-line-description', ['index' => $index, 'row' => $row, 'selected' => $row['description'] ?? '', 'useItemSelect' => $useItemSelect, 'stockItems' => $stockItems])
         @unless($showTax)
             <input type="hidden" name="lines[{{ $index }}][vat_rate]" class="line-rate" value="{{ $hiddenVat }}">
         @endunless
     </td>
     @if($showBatch)
-        <td class="line-batch">
+        <td class="line-batch" data-label="Batch #">
             <select name="lines[{{ $index }}][stock_item_lot_id]" class="form-select form-select-sm line-lot" data-ams-plain="1">
                 <option value="">{{ $lotOptions->isNotEmpty() ? 'Select batch' : 'Select item first' }}</option>
                 @foreach($lotOptions as $lot)
@@ -38,15 +38,25 @@
             </select>
         </td>
     @endif
-    <td><input name="lines[{{ $index }}][quantity]" class="form-control form-control-sm text-end line-qty" value="{{ $row['quantity'] ?? 1 }}"></td>
-    <td><input name="lines[{{ $index }}][unit_price]" class="form-control form-control-sm text-end line-price" value="{{ $row['unit_price'] ?? 0 }}"></td>
+    <td class="line-qty-cell" data-label="Qty">
+        <input name="lines[{{ $index }}][quantity]" class="form-control form-control-sm text-end line-qty" value="{{ $row['quantity'] ?? 1 }}">
+    </td>
+    <td class="line-price-cell" data-label="Unit price">
+        <input name="lines[{{ $index }}][unit_price]" class="form-control form-control-sm text-end line-price" value="{{ $row['unit_price'] ?? 0 }}">
+    </td>
     @if($showDiscount)
-        <td><input name="lines[{{ $index }}][discount_rate]" class="form-control form-control-sm text-end line-discount" value="{{ $row['discount_rate'] ?? 0 }}"></td>
+        <td class="line-discount-cell" data-label="Disc %">
+            <input name="lines[{{ $index }}][discount_rate]" class="form-control form-control-sm text-end line-discount" value="{{ $row['discount_rate'] ?? 0 }}">
+        </td>
     @endif
     @if($showTax)
-        <td><input name="lines[{{ $index }}][vat_rate]" class="form-control form-control-sm text-end line-rate" value="{{ $row['vat_rate'] ?? $vatRate }}"></td>
-        <td class="text-end line-vat">0.00</td>
+        <td class="line-tax-cell" data-label="Tax %">
+            <input name="lines[{{ $index }}][vat_rate]" class="form-control form-control-sm text-end line-rate" value="{{ $row['vat_rate'] ?? $vatRate }}">
+        </td>
+        <td class="text-end line-vat" data-label="Tax">0.00</td>
     @endif
-    <td class="text-end line-total">0.00</td>
-    <td><button type="button" class="btn btn-sm btn-outline-danger remove-line">×</button></td>
+    <td class="text-end line-total" data-label="Total">0.00</td>
+    <td class="line-remove">
+        <button type="button" class="btn btn-sm btn-outline-danger remove-line">Remove</button>
+    </td>
 </tr>
