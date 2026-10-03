@@ -1321,13 +1321,43 @@ body.ams-light {
 }
 
 /* Datatables (simple-datatables v3 + v6 class names) */
+.ams-light .table-responsive:has(.dataTable-wrapper),
+.ams-light .table-responsive:has(.datatable-wrapper) {
+    overflow: visible;
+}
+
+.ams-light .datatable-wrapper .datatable-container,
+.ams-light .dataTable-wrapper .dataTable-container {
+    height: auto !important;
+    overflow-x: auto;
+}
+
 .ams-light .datatable-wrapper .datatable-top,
 .ams-light .datatable-wrapper .datatable-bottom,
 .ams-light .dataTable-wrapper .dataTable-top,
 .ams-light .dataTable-wrapper .dataTable-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
     padding: 0.75rem 1rem;
     font-size: 0.85rem;
     color: #6b7280;
+    background: #fff;
+}
+
+.ams-light .datatable-pagination,
+.ams-light .dataTable-pagination,
+.ams-light .datatable-pagination-list,
+.ams-light .dataTable-pagination-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
 .ams-light .datatable-input,

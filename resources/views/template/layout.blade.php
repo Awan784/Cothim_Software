@@ -20,7 +20,7 @@
     <link type="text/css" href="{{ asset('vendor/notyf/notyf.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('vendor/choices.js/public/assets/styles/choices.min.css') }}" rel="stylesheet">
     <link type="text/css" href="{{ asset('css/volt.css') }}" rel="stylesheet">
-    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=21" rel="stylesheet">
+    <link type="text/css" href="{{ asset('css/ams-theme.css') }}?v=22" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     @if(wafi_is_rtl())
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -141,16 +141,92 @@
         (function () {
             if (!window.simpleDatatables || !window.simpleDatatables.DataTable) return;
 
+            function parseSearchColumns(table) {
+                if (!table || !table.dataset.searchColumns) return null;
+                return table.dataset.searchColumns.split(',').map(function (n) {
+                    return parseInt(n.trim(), 10);
+                }).filter(function (n) {
+                    return !isNaN(n);
+                });
+            }
+
+            function amsPrefixSearch(query) {
+                var dt = this;
+                if (!dt.hasRows) return false;
+
+                query = String(query || '').toLowerCase().trim();
+                dt.currentPage = 1;
+                dt.searching = true;
+                dt.searchData = [];
+
+                if (!query.length) {
+                    dt.searching = false;
+                    dt.update();
+                    dt.emit('datatable.search', query, dt.searchData);
+                    dt.wrapper.classList.remove('search-results');
+                    return false;
+                }
+
+                var tokens = query.split(/\s+/).filter(Boolean);
+                var allowed = dt._amsSearchColumns;
+
+                dt.clear();
+                dt.data.forEach(function (row, index) {
+                    var matched = tokens.every(function (token) {
+                        for (var c = 0; c < row.cells.length; c++) {
+                            if (allowed && allowed.indexOf(c) === -1) continue;
+                            if (!allowed && c === row.cells.length - 1) continue;
+                            var cell = row.cells[c];
+                            var text = cell.getAttribute('data-content') || cell.textContent || '';
+                            text = String(text).toLowerCase().trim();
+                            if (text && text.indexOf(token) === 0) return true;
+                        }
+                        return false;
+                    });
+
+                    if (matched) {
+                        row.searchIndex = index;
+                        dt.searchData.push(index);
+                    } else {
+                        row.searchIndex = null;
+                    }
+                });
+
+                dt.wrapper.classList.add('search-results');
+                if (dt.searchData.length) {
+                    dt.update();
+                } else {
+                    dt.wrapper.classList.remove('search-results');
+                    dt.setMessage(dt.options.labels.noRows);
+                }
+                dt.emit('datatable.search', query, dt.searchData);
+            }
+
             document.querySelectorAll('table[data-datatable="true"]').forEach(function (table) {
                 if (table.dataset.datatableInit === '1') return;
                 table.dataset.datatableInit = '1';
 
-                new simpleDatatables.DataTable(table, {
+                var isPrefix = table.dataset.searchMode === 'prefix';
+                var dt = new simpleDatatables.DataTable(table, {
                     searchable: true,
-                    fixedHeight: true,
+                    fixedHeight: false,
+                    fixedColumns: false,
+                    truncatePager: true,
+                    pagerDelta: 2,
                     perPage: 10,
                     perPageSelect: [10, 25, 50, 100],
+                    labels: isPrefix ? { placeholder: 'Search starting letters...' } : {},
                 });
+
+                if (isPrefix) {
+                    dt._amsSearchColumns = parseSearchColumns(table);
+                    dt.search = amsPrefixSearch;
+                    if (dt.input) {
+                        dt.input.addEventListener('input', function () {
+                            amsPrefixSearch.call(dt, dt.input.value);
+                        });
+                    }
+                }
             });
         })();
     </script>

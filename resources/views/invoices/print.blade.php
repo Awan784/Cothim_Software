@@ -106,7 +106,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px 24px;
-            margin-bottom: 12px;
+            margin-bottom: 26px;
             font-size: 12.5px;
             font-weight: 700;
         }
@@ -116,7 +116,7 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 11px;
+            font-size: 15.5px;
             border: 1px solid #000;
         }
         table.items col.col-sr { width: 5%; }
@@ -132,7 +132,7 @@
         table.items th,
         table.items td {
             border: 1px solid #000;
-            padding: 5px 4px;
+            padding: 7px 5px;
             vertical-align: top;
         }
         table.items th {
@@ -141,7 +141,7 @@
             text-align: center;
             vertical-align: middle;
             line-height: 1.15;
-            font-size: 10px;
+            font-size: 14px;
         }
         table.items td.num,
         table.items th.num {
@@ -159,7 +159,7 @@
         .totals .note {
             text-align: left;
             font-weight: 700;
-            font-size: 11px;
+            font-size: 15px;
         }
         .lined { border-top: 2px solid #000 !important; }
         .bill td {

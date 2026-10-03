@@ -187,6 +187,8 @@ class SalesInvoiceController extends Controller
         $data['builty_exp'] = ($data['builty_exp'] ?? '') === '' || $data['builty_exp'] === null
             ? null
             : round((float) $data['builty_exp'], 2);
+        $mode = trim((string) ($data['mode'] ?? ''));
+        $data['mode'] = $mode === '' ? null : $mode;
 
         $data['lines'] = array_values(array_filter(
             $data['lines'],

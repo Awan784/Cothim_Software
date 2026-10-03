@@ -58,7 +58,26 @@
                                 <td class="text-gray-900">{{ $item->potency ?: '—' }}</td>
                                 <td class="text-gray-900">{{ strtoupper($item->unit ?: '') }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->quantity, 2) }}</td>
-                                <td class="text-gray-900" style="max-width: 220px;">{{ $item->lotsSummary() }}</td>
+                                <td class="stock-batches" data-content="{{ $item->lotsSummary() }}">
+                                    @php
+                                        $visibleLots = $item->lots->filter(fn ($lot) => (float) $lot->quantity > 0);
+                                    @endphp
+                                    @forelse($visibleLots as $lot)
+                                        <div class="stock-batch-line">
+                                            <span class="stock-batch-no">{{ $lot->batchLabel() }}</span>
+                                            <span class="stock-batch-qty">qty {{ number_format((float) $lot->quantity, 2) }}</span>
+                                        </div>
+                                    @empty
+                                        @if($item->batch_no)
+                                            <div class="stock-batch-line">
+                                                <span class="stock-batch-no">{{ $item->batch_no }}</span>
+                                                <span class="stock-batch-qty">qty {{ number_format((float) $item->quantity, 2) }}</span>
+                                            </div>
+                                        @else
+                                            —
+                                        @endif
+                                    @endforelse
+                                </td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->cost_price, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ $item->sale_price !== null ? number_format((float) $item->sale_price, 2) : '—' }}</td>
                                 <td class="text-gray-900">{{ $item->is_active ? 'Active' : 'Inactive' }}</td>
@@ -90,3 +109,31 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <style>
+        .table td.stock-batches {
+            min-width: 160px;
+            white-space: normal !important;
+            vertical-align: top;
+        }
+        .stock-batch-line {
+            display: flex;
+            align-items: baseline;
+            gap: 0.45rem;
+            line-height: 1.35;
+            margin: 0 0 0.2rem;
+        }
+        .stock-batch-line:last-child { margin-bottom: 0; }
+        .stock-batch-no {
+            color: #dc2626;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+        .stock-batch-qty {
+            color: #111827;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+    </style>
+@endpush

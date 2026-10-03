@@ -52,7 +52,19 @@
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Mode <span class="text-muted fw-normal">(optional)</span></label>
-            <input name="mode" class="form-control" maxlength="50" value="{{ old('mode', $isEdit ? $invoice->mode : '') }}" placeholder="CO">
+            @php
+                $modeOptions = ['CO', 'VP', 'Direct'];
+                $selectedMode = (string) old('mode', $isEdit ? ($invoice->mode ?? '') : '');
+            @endphp
+            <select name="mode" class="form-select">
+                <option value="">Select mode</option>
+                @foreach($modeOptions as $modeOption)
+                    <option value="{{ $modeOption }}" {{ $selectedMode === $modeOption ? 'selected' : '' }}>{{ $modeOption }}</option>
+                @endforeach
+                @if($selectedMode !== '' && ! in_array($selectedMode, $modeOptions, true))
+                    <option value="{{ $selectedMode }}" selected>{{ $selectedMode }}</option>
+                @endif
+            </select>
         </div>
     </div>
     <div class="mb-0">

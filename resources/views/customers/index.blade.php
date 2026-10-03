@@ -15,13 +15,13 @@
 
         <div class="card">
             <div class="table-responsive py-4">
-                <table class="table table-flush" data-datatable="true">
+                <table class="table table-flush" data-datatable="true" data-search-mode="prefix" data-search-columns="0">
                     <thead class="thead-light">
                         <tr>
                             <th>Company / shop</th>
                             <th>Contact</th>
-                            <th>NTN</th>
                             <th>City</th>
+                            <th>Shop address</th>
                             <th>Phone</th>
                             <th class="text-end">Opening</th>
                             <th>Status</th>
@@ -31,13 +31,13 @@
                     <tbody>
                         @forelse($customers as $customer)
                             <tr class="customer-row" data-href="{{ route('customers.show', $customer) }}" tabindex="0">
-                                <td class="text-gray-900">
+                                <td class="text-gray-900" data-content="{{ $customer->displayName() }}">
                                     <a href="{{ route('customers.show', $customer) }}" class="customer-open">{{ $customer->displayName() }}</a>
                                 </td>
-                                <td class="text-gray-900">{{ $customer->name }}</td>
-                                <td class="text-gray-900">{{ $customer->ntn ?: '—' }}</td>
+                                <td class="text-gray-900" data-content="{{ $customer->name }}">{{ $customer->name }}</td>
                                 <td class="text-gray-900">{{ $customer->city ?: '—' }}</td>
-                                <td class="text-gray-900">{{ $customer->mobile ?: $customer->phone }}</td>
+                                <td class="text-gray-900 customer-address">{{ $customer->address ?: '—' }}</td>
+                                <td class="text-gray-900 customer-phone">{{ $customer->mobile ?: $customer->phone }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $customer->opening_balance, 2) }}</td>
                                 <td class="text-gray-900">{{ $customer->is_active ? 'Active' : 'Inactive' }}</td>
                                 <td class="text-end customer-row-actions">
@@ -66,6 +66,19 @@
         .customer-row { cursor: pointer; }
         .customer-row:hover { filter: brightness(0.97); }
         .customer-open { font-weight: 600; text-decoration: none; }
+        .table td.customer-address {
+            min-width: 220px;
+            max-width: 280px;
+            white-space: normal !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.35;
+            vertical-align: top;
+        }
+        .table td.customer-phone {
+            white-space: nowrap;
+            vertical-align: top;
+        }
     </style>
     <script>
         document.addEventListener('click', function (event) {

@@ -439,16 +439,16 @@ class ReportController extends Controller
     private function stockReport(array $item): View
     {
         $items = $this->stockItemsForReport();
-        $rows = $this->stockRows($items);
+        $rows = $this->stockRows($items, availableOnly: true);
 
         return view('reports.simple', $this->printData($item, extra: [
             'wide' => true,
-            'subtitle' => 'Detailed by batch',
-            'columns' => $this->stockColumns(),
-            'numeric' => $this->stockNumeric(),
+            'subtitle' => 'Available stock by batch',
+            'columns' => $this->stockColumns(compact: true),
+            'numeric' => $this->stockNumeric(compact: true),
             'rows' => $rows,
             'footer' => $this->stockFooter($rows, 'Totals · '.$rows->count().' batches'),
-            'empty' => 'No stock items found.',
+            'empty' => 'No available stock found.',
         ]));
     }
 
@@ -1199,9 +1199,9 @@ class ReportController extends Controller
     /**
      * @return array<string, string>
      */
-    private function stockColumns(): array
+    private function stockColumns(bool $compact = false): array
     {
-        return [
+        $columns = [
             'sku' => 'SKU',
             'name' => 'Item',
             'category' => 'Category',
@@ -1214,14 +1214,26 @@ class ReportController extends Controller
             'cost_value' => 'Cost value',
             'sale_value' => 'Sale value',
         ];
+
+        if ($compact) {
+            unset($columns['reorder'], $columns['sale_value']);
+        }
+
+        return $columns;
     }
 
     /**
      * @return list<string>
      */
-    private function stockNumeric(): array
+    private function stockNumeric(bool $compact = false): array
     {
-        return ['qty', 'reorder', 'cost', 'sale', 'cost_value', 'sale_value'];
+        $columns = ['qty', 'reorder', 'cost', 'sale', 'cost_value', 'sale_value'];
+
+        if ($compact) {
+            return array_values(array_diff($columns, ['reorder', 'sale_value']));
+        }
+
+        return $columns;
     }
 
     /**
@@ -1248,7 +1260,7 @@ class ReportController extends Controller
      * @param  Collection<int, StockItem>  $items
      * @return Collection<int, array<string, mixed>>
      */
-    private function stockRows(Collection $items): Collection
+    private function stockRows(Collection $items, bool $availableOnly = false): Collection
     {
         $rows = collect();
 
@@ -1258,12 +1270,20 @@ class ReportController extends Controller
                 : $item->lots()->orderBy('received_at')->orderBy('id')->get();
 
             if ($lots->isEmpty()) {
-                $rows->push($this->stockRow($item, $item->batch_no ?: '—', (float) $item->quantity));
+                $qty = (float) $item->quantity;
+                if ($availableOnly && $qty <= 0) {
+                    continue;
+                }
+                $rows->push($this->stockRow($item, $item->batch_no ?: '—', $qty));
                 continue;
             }
 
             foreach ($lots as $lot) {
-                $rows->push($this->stockRow($item, $lot->batchLabel(), (float) $lot->quantity));
+                $qty = (float) $lot->quantity;
+                if ($availableOnly && $qty <= 0) {
+                    continue;
+                }
+                $rows->push($this->stockRow($item, $lot->batchLabel(), $qty));
             }
         }
 
