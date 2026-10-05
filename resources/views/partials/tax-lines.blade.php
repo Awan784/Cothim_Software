@@ -6,6 +6,7 @@
     $showDiscount = ! empty($showDiscount);
     $showTax = $showTax ?? true;
     $showBatch = ! empty($showBatch);
+    $hideStockQty = ! empty($hideStockQty);
     $frontCols = 3 + ($showDiscount ? 1 : 0) + ($showBatch ? 1 : 0) + ($showTax ? 1 : 0);
     $hiddenVat = $showTax ? $vatRate : 0;
 @endphp
@@ -29,7 +30,7 @@
         </div>
     @endif
     <div class="table-responsive ams-line-table-wrap">
-        <table class="table table-flush mb-0" id="taxLinesTable" data-show-discount="{{ $showDiscount ? '1' : '0' }}" data-show-tax="{{ $showTax ? '1' : '0' }}">
+        <table class="table table-flush mb-0" id="taxLinesTable" data-show-discount="{{ $showDiscount ? '1' : '0' }}" data-show-tax="{{ $showTax ? '1' : '0' }}" data-hide-stock-qty="{{ $hideStockQty ? '1' : '0' }}">
             <thead class="thead-light">
                 <tr>
                     <th>{{ $useItemSelect ? 'Item' : 'Description' }}</th>
@@ -142,7 +143,9 @@
             option.value = lot.id;
             option.setAttribute('data-batch', lot.batch || '');
             option.setAttribute('data-qty', String(qty));
-            option.textContent = (lot.batch || '—') + ' · ' + qty.toFixed(2);
+            option.textContent = table.getAttribute('data-hide-stock-qty') === '1'
+                ? (lot.batch || '—')
+                : ((lot.batch || '—') + ' · ' + qty.toFixed(2));
             lotSelect.appendChild(option);
         });
         if (keep && lotSelect.querySelector('option[value="' + keep + '"]')) {

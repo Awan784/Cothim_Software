@@ -9,6 +9,7 @@
                 <p class="mb-0 text-muted">{{ $invoice->customer?->name }} · {{ $invoice->status }}</p>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                 @if(! $invoice->isDraft())
                     <a href="{{ route('invoices.print', $invoice) }}" class="btn btn-sm btn-primary" target="_blank">Print</a>
                 @endif

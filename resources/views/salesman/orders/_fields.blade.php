@@ -45,6 +45,7 @@
     'showDiscount' => true,
     'showTax' => false,
     'showBatch' => true,
+    'hideStockQty' => true,
 ])
 <div class="card p-4 mb-3">
     <div class="mb-0">

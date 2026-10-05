@@ -71,19 +71,15 @@ class SalesInvoiceController extends Controller
         return view('invoices.show', compact('invoice', 'banks', 'settings', 'receipts'));
     }
 
-    public function edit(SalesInvoice $invoice, SettingsService $settings): View|RedirectResponse
+    public function edit(SalesInvoice $invoice, SettingsService $settings): View
     {
-        if (! $invoice->isDraft()) {
-            return redirect()->route('invoices.show', $invoice)->with('error', 'Issued invoices cannot be edited.');
-        }
-
         $invoice->load('lines');
 
         return view('invoices.edit', [
             'invoice' => $invoice,
             'customers' => Customer::orderBy('name')->get(),
             'salesmen' => $this->salesmen($invoice->salesman_id),
-            'stockItems' => $this->stockItems(),
+            'stockItems' => $this->stockItems($invoice->lines->pluck('stock_item_id')->filter()->all()),
             'vatRate' => $settings->vatRate(),
         ]);
     }
@@ -98,7 +94,7 @@ class SalesInvoiceController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('invoices.show', $invoice)->with('success', 'Draft invoice updated.');
+        return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice updated.');
     }
 
     public function issue(SalesInvoice $invoice): RedirectResponse
@@ -233,12 +229,20 @@ class SalesInvoiceController extends Controller
     }
 
     /**
+     * @param  list<int|string>|null  $currentIds
      * @return Collection<int, StockItem>
      */
-    private function stockItems(): Collection
+    private function stockItems(?array $currentIds = null): Collection
     {
+        $currentIds = array_values(array_unique(array_filter(array_map('intval', $currentIds ?? []))));
+
         return StockItem::query()
-            ->where('is_active', true)
+            ->where(function ($query) use ($currentIds) {
+                $query->where('is_active', true);
+                if ($currentIds !== []) {
+                    $query->orWhereIn('id', $currentIds);
+                }
+            })
             ->with([
                 'variants',
                 'lots' => fn ($query) => $query->orderBy('received_at')->orderBy('id'),

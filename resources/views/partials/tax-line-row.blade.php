@@ -4,6 +4,7 @@
     $showDiscount = $showDiscount ?? false;
     $showTax = $showTax ?? true;
     $showBatch = $showBatch ?? false;
+    $hideStockQty = $hideStockQty ?? false;
     $hiddenVat = $showTax ? ($row['vat_rate'] ?? $vatRate) : 0;
     $selectedLotId = (string) ($row['stock_item_lot_id'] ?? '');
     $lotOptions = collect();
@@ -32,7 +33,7 @@
                         data-batch="{{ $lot->batch_no }}"
                         data-qty="{{ number_format((float) $lot->quantity, 2, '.', '') }}"
                         {{ $selectedLotId === (string) $lot->id ? 'selected' : '' }}>
-                        {{ $lot->batchLabel() }} · {{ number_format((float) $lot->quantity, 2) }}
+                        {{ $hideStockQty ? $lot->batchLabel() : $lot->batchLabel().' · '.number_format((float) $lot->quantity, 2) }}
                     </option>
                 @endforeach
             </select>

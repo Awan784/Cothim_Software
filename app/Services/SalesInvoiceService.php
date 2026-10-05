@@ -70,11 +70,29 @@ class SalesInvoiceService
             }
 
             $payload = array_merge($payload, $this->salesmanSnapshot($data, (float) $computed['total']));
+            $issued = false;
 
             if ($invoice) {
-                if (! $invoice->isDraft()) {
-                    throw new InvalidArgumentException('Issued invoices cannot be edited. Create a credit note instead.');
+                $invoice = SalesInvoice::query()->lockForUpdate()->findOrFail($invoice->id);
+                $issued = ! $invoice->isDraft();
+
+                if ($issued) {
+                    if (SalesmanSettlementAllocation::query()->where('sales_invoice_id', $invoice->id)->exists()) {
+                        throw new InvalidArgumentException('This invoice is in a salesman settlement. Delete the settlement first.');
+                    }
+                    if ((float) $invoice->amount_paid > (float) $computed['total'] + 0.009) {
+                        throw new InvalidArgumentException(
+                            'Invoice total cannot be less than amount already paid ('.number_format((float) $invoice->amount_paid, 2).').'
+                        );
+                    }
+                    if ((float) $invoice->amount_paid > 0.009 && (int) $data['customer_id'] !== (int) $invoice->customer_id) {
+                        throw new InvalidArgumentException('Remove invoice payments before changing the customer.');
+                    }
+
+                    $this->inventory->revertSalesInvoice($invoice);
+                    Customer::whereKey($invoice->customer_id)->decrement('current_balance', (float) $invoice->total);
                 }
+
                 $invoice->update($payload);
                 $invoice->lines()->delete();
             } else {
@@ -104,6 +122,18 @@ class SalesInvoiceService
                     'line_total' => $line['line_total'],
                     'sort_order' => $line['sort_order'],
                 ]);
+            }
+
+            $invoice = $invoice->fresh(['lines', 'customer']);
+
+            if ($issued) {
+                Customer::whereKey($invoice->customer_id)->increment('current_balance', (float) $invoice->total);
+                $this->issueStockLines($invoice);
+                $invoice->zatca_qr_payload = $this->zatca->payload($invoice, $this->settings);
+                $invoice->status = ((float) $invoice->total - (float) $invoice->amount_paid) <= 0.009
+                    ? 'paid'
+                    : 'issued';
+                $invoice->save();
             }
 
             return $invoice->fresh(['lines', 'customer']);
@@ -145,27 +175,7 @@ class SalesInvoiceService
             Customer::whereKey($invoice->customer_id)->increment('current_balance', (float) $invoice->total);
 
             $invoice->load('lines');
-
-            foreach ($invoice->lines as $line) {
-                $stockItemId = $line->stock_item_id;
-                if (! $stockItemId && $line->description) {
-                    $stockItemId = StockItem::query()->where('name', $line->description)->value('id');
-                }
-                if (! $stockItemId) {
-                    continue;
-                }
-
-                $this->inventory->issue((int) $stockItemId, (float) $line->quantity, [
-                    'unit_cost' => $line->unit_price,
-                    'moved_at' => $invoice->invoice_date,
-                    'reference' => $invoice->invoice_no,
-                    'notes' => $line->description,
-                    'source_type' => 'sales_invoice',
-                    'source_id' => $invoice->id,
-                    'stock_item_lot_id' => $line->stock_item_lot_id,
-                    'batch_no' => $line->batch_no,
-                ]);
-            }
+            $this->issueStockLines($invoice);
 
             return $invoice->fresh(['lines', 'customer']);
         });
@@ -297,6 +307,32 @@ class SalesInvoiceService
 
         return str_contains($e->getMessage(), 'invoice_no')
             || str_contains($e->getMessage(), 'sales_invoices_organization_id_invoice_no_unique');
+    }
+
+    private function issueStockLines(SalesInvoice $invoice): void
+    {
+        $invoice->loadMissing('lines');
+
+        foreach ($invoice->lines as $line) {
+            $stockItemId = $line->stock_item_id;
+            if (! $stockItemId && $line->description) {
+                $stockItemId = StockItem::query()->where('name', $line->description)->value('id');
+            }
+            if (! $stockItemId) {
+                continue;
+            }
+
+            $this->inventory->issue((int) $stockItemId, (float) $line->quantity, [
+                'unit_cost' => $line->unit_price,
+                'moved_at' => $invoice->invoice_date,
+                'reference' => $invoice->invoice_no,
+                'notes' => $line->description,
+                'source_type' => 'sales_invoice',
+                'source_id' => $invoice->id,
+                'stock_item_lot_id' => $line->stock_item_lot_id,
+                'batch_no' => $line->batch_no,
+            ]);
+        }
     }
 
     /**
