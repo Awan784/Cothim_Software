@@ -106,7 +106,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px 24px;
-            margin-bottom: 26px;
+            margin-bottom: 18px;
             font-size: 12.5px;
             font-weight: 700;
         }
@@ -116,7 +116,7 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 15.5px;
+            font-size: 11px;
             border: 1px solid #000;
         }
         table.items col.col-sr { width: 5%; }
@@ -132,7 +132,7 @@
         table.items th,
         table.items td {
             border: 1px solid #000;
-            padding: 7px 5px;
+            padding: 5px 4px;
             vertical-align: top;
         }
         table.items th {
@@ -141,7 +141,8 @@
             text-align: center;
             vertical-align: middle;
             line-height: 1.15;
-            font-size: 14px;
+            font-size: 10px;
+            white-space: nowrap;
         }
         table.items td.num,
         table.items th.num {
@@ -159,7 +160,7 @@
         .totals .note {
             text-align: left;
             font-weight: 700;
-            font-size: 15px;
+            font-size: 11px;
         }
         .lined { border-top: 2px solid #000 !important; }
         .bill td {
@@ -280,12 +281,12 @@
                         <th>Products</th>
                         <th>Bat#</th>
                         <th>Exp Date</th>
-                        <th>Quanti<br>ty</th>
+                        <th>Qty</th>
                         <th>Rate</th>
                         <th>Amount</th>
                         <th>Dis%</th>
                         <th>Dis Amt</th>
-                        <th>Net.<br>Amt</th>
+                        <th>Net Amt</th>
                     </tr>
                 </thead>
                 <tbody>
