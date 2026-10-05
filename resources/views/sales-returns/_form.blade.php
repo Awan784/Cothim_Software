@@ -156,7 +156,9 @@
     table.addEventListener('click', function (e) {
         if (!e.target.classList.contains('sr-remove')) return;
         if (table.querySelectorAll('.sr-line').length > 1) {
-            e.target.closest('.sr-line').remove();
+            var row = e.target.closest('.sr-line');
+            if (window.amsDestroySearchSelects) window.amsDestroySearchSelects(row);
+            row.remove();
             recalc();
         }
     });
@@ -164,7 +166,11 @@
     document.getElementById('addSrLine').addEventListener('click', function () {
         var i = table.querySelectorAll('.sr-line').length;
         var tr = table.querySelector('.sr-line').cloneNode(true);
+        if (window.amsStripChoicesFromClone) window.amsStripChoicesFromClone(tr);
         tr.querySelectorAll('input, select').forEach(function (el) {
+            if (el.classList.contains('ams-combo-search') || el.classList.contains('ams-combo-toggle')) {
+                return;
+            }
             el.name = el.name.replace(/items\[\d+]/, 'items[' + i + ']');
             if (el.classList.contains('sr-qty')) el.value = '1';
             else if (el.tagName === 'SELECT') el.selectedIndex = 0;
@@ -177,6 +183,7 @@
         if (err) err.remove();
         tr.querySelector('.sr-item').classList.remove('is-invalid');
         table.querySelector('tbody').appendChild(tr);
+        if (window.amsInitSearchSelects) window.amsInitSearchSelects(tr);
         recalc();
     });
 

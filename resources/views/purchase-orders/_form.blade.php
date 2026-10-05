@@ -151,7 +151,9 @@
         if (!e.target.classList.contains('po-remove')) return;
         var rows = table.querySelectorAll('.po-line');
         if (rows.length > 1) {
-            e.target.closest('.po-line').remove();
+            var row = e.target.closest('.po-line');
+            if (window.amsDestroySearchSelects) window.amsDestroySearchSelects(row);
+            row.remove();
             recalc();
         }
     });
@@ -159,7 +161,11 @@
     document.getElementById('addPoLine').addEventListener('click', function () {
         var i = table.querySelectorAll('.po-line').length;
         var tr = table.querySelector('.po-line').cloneNode(true);
+        if (window.amsStripChoicesFromClone) window.amsStripChoicesFromClone(tr);
         tr.querySelectorAll('input, select').forEach(function (el) {
+            if (el.classList.contains('ams-combo-search') || el.classList.contains('ams-combo-toggle')) {
+                return;
+            }
             el.name = el.name.replace(/items\[\d+]/, 'items[' + i + ']');
             if (el.classList.contains('po-qty')) el.value = '1';
             else if (el.tagName === 'SELECT') el.selectedIndex = 0;
@@ -172,6 +178,7 @@
         if (err) err.remove();
         tr.querySelector('.po-item').classList.remove('is-invalid');
         table.querySelector('tbody').appendChild(tr);
+        if (window.amsInitSearchSelects) window.amsInitSearchSelects(tr);
         recalc();
     });
 
