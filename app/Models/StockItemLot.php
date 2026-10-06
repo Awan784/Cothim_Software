@@ -41,6 +41,20 @@ class StockItemLot extends Model
         return $batch !== '' ? $batch : '—';
     }
 
+    public function qtyLabel(): string
+    {
+        return (string) (int) round((float) $this->quantity);
+    }
+
+    public function dropdownLabel(bool $hideQty = false): string
+    {
+        if ($hideQty) {
+            return $this->batchLabel();
+        }
+
+        return $this->batchLabel().' — Qty '.$this->qtyLabel();
+    }
+
     public function stockItem(): BelongsTo
     {
         return $this->belongsTo(StockItem::class);

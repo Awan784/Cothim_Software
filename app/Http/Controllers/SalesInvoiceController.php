@@ -169,6 +169,7 @@ class SalesInvoiceController extends Controller
             'lines.*.stock_item_id' => ['required', 'exists:stock_items,id'],
             'lines.*.stock_item_lot_id' => ['nullable', 'exists:stock_item_lots,id'],
             'lines.*.description' => ['nullable', 'string', 'max:255'],
+            'lines.*.print_note' => ['nullable', 'string', 'max:100'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
             'lines.*.discount_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
@@ -204,6 +205,9 @@ class SalesInvoiceController extends Controller
             if ($item && blank($line['description'] ?? null)) {
                 $line['description'] = $item->name;
             }
+
+            $note = trim((string) ($line['print_note'] ?? ''));
+            $line['print_note'] = $note === '' ? null : $note;
 
             $line = StockItem::applyLotToLine($line);
         }

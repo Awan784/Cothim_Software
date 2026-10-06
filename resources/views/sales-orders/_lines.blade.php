@@ -14,7 +14,7 @@
             <tbody>
                 @foreach($order->lines as $line)
                     <tr>
-                        <td>{{ $line->description }}</td>
+                        <td>{{ $line->printName() }}</td>
                         <td class="text-end">{{ number_format((float) $line->quantity, 3) }}</td>
                         <td class="text-end">{{ number_format((float) $line->unit_price, 2) }}</td>
                         <td class="text-end">{{ number_format((float) $line->discount_rate, 2) }}%</td>

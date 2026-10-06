@@ -103,7 +103,7 @@ class StockItem extends Model
             if ((float) $lot->quantity <= 0) {
                 continue;
             }
-            $parts[] = $lot->batchLabel().' · '.number_format((float) $lot->quantity, 2);
+            $parts[] = $lot->dropdownLabel();
         }
 
         if ($parts === []) {

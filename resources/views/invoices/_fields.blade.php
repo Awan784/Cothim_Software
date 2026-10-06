@@ -7,6 +7,7 @@
             'stock_item_lot_id' => $l->stock_item_lot_id,
             'batch_no' => $l->batch_no,
             'description' => $l->description,
+            'print_note' => $l->print_note,
             'quantity' => $l->quantity,
             'unit_price' => $l->unit_price,
             'discount_rate' => $l->discount_rate,
@@ -80,4 +81,5 @@
         'showDiscount' => true,
         'showTax' => false,
         'showBatch' => true,
+        'showPrintNote' => true,
     ])

@@ -7,7 +7,8 @@
     $showTax = $showTax ?? true;
     $showBatch = ! empty($showBatch);
     $hideStockQty = ! empty($hideStockQty);
-    $frontCols = 3 + ($showDiscount ? 1 : 0) + ($showBatch ? 1 : 0) + ($showTax ? 1 : 0);
+    $showPrintNote = ! empty($showPrintNote);
+    $frontCols = 3 + ($showDiscount ? 1 : 0) + ($showBatch ? 1 : 0) + ($showTax ? 1 : 0) + ($showPrintNote ? 1 : 0);
     $hiddenVat = $showTax ? $vatRate : 0;
 @endphp
 <div class="card mb-3">
@@ -34,6 +35,9 @@
             <thead class="thead-light">
                 <tr>
                     <th>{{ $useItemSelect ? 'Item' : 'Description' }}</th>
+                    @if($showPrintNote)
+                        <th>Note <span class="text-muted fw-normal">(optional)</span></th>
+                    @endif
                     @if($showBatch)
                         <th>Batch #</th>
                     @endif
@@ -117,6 +121,10 @@
             return [];
         }
     }
+    function formatLotQty(qty) {
+        if (!isFinite(qty)) return '0';
+        return String(Math.round(qty));
+    }
     function fillLots(row, selectedId) {
         var lotSelect = row.querySelector('.line-lot');
         if (!lotSelect) return;
@@ -127,27 +135,30 @@
         lotSelect.innerHTML = '';
         var empty = document.createElement('option');
         empty.value = '';
-        var fallbackBatch = opt ? (opt.getAttribute('data-batch') || '') : '';
-        if (lots.length) {
-            empty.textContent = 'Select batch';
-        } else if (fallbackBatch) {
-            empty.textContent = fallbackBatch;
-        } else {
-            empty.textContent = itemSelect && itemSelect.value ? 'No batch in stock' : 'Select item first';
-        }
         lotSelect.appendChild(empty);
+        var added = 0;
         lots.forEach(function (lot) {
             var qty = parseFloat(lot.qty);
             if (isNaN(qty)) qty = 0;
+            if (qty <= 0 && String(lot.id) !== keep) return;
             var option = document.createElement('option');
             option.value = lot.id;
             option.setAttribute('data-batch', lot.batch || '');
             option.setAttribute('data-qty', String(qty));
             option.textContent = table.getAttribute('data-hide-stock-qty') === '1'
                 ? (lot.batch || '—')
-                : ((lot.batch || '—') + ' · ' + qty.toFixed(2));
+                : ((lot.batch || '—') + ' — Qty ' + formatLotQty(qty));
             lotSelect.appendChild(option);
+            added += 1;
         });
+        var fallbackBatch = opt ? (opt.getAttribute('data-batch') || '') : '';
+        if (added) {
+            empty.textContent = 'Select batch';
+        } else if (fallbackBatch) {
+            empty.textContent = fallbackBatch;
+        } else {
+            empty.textContent = itemSelect && itemSelect.value ? 'No batch in stock' : 'Select item first';
+        }
         if (keep && lotSelect.querySelector('option[value="' + keep + '"]')) {
             lotSelect.value = keep;
             return;

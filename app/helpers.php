@@ -30,6 +30,22 @@ if (! function_exists('ams_datetime_input')) {
     }
 }
 
+if (! function_exists('ams_print_item_name')) {
+    function ams_print_item_name(?string $description, ?string $printNote = null): string
+    {
+        $name = trim((string) $description);
+        $note = trim((string) $printNote);
+        if ($name === '') {
+            $name = 'Item';
+        }
+        if ($note === '') {
+            return $name;
+        }
+
+        return $name.' - '.$note;
+    }
+}
+
 if (! function_exists('ams_num')) {
     function ams_num(mixed $value): string
     {

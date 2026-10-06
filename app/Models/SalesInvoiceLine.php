@@ -13,6 +13,7 @@ class SalesInvoiceLine extends Model
         'stock_item_lot_id',
         'batch_no',
         'description',
+        'print_note',
         'quantity',
         'unit_price',
         'discount_rate',
@@ -57,5 +58,10 @@ class SalesInvoiceLine extends Model
         }
 
         return $this->lot?->batchLabel() ?: ($this->stockItem?->batch_no ?: '—');
+    }
+
+    public function printName(): string
+    {
+        return ams_print_item_name($this->description, $this->print_note);
     }
 }

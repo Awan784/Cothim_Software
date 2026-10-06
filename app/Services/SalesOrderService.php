@@ -68,6 +68,7 @@ class SalesOrderService
                     'stock_item_lot_id' => $line['stock_item_lot_id'] ?? null,
                     'batch_no' => $line['batch_no'] ?? null,
                     'description' => $line['description'] ?? 'Item',
+                    'print_note' => $line['print_note'] ?? null,
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
                     'discount_rate' => $line['discount_rate'],
@@ -109,6 +110,7 @@ class SalesOrderService
                         'stock_item_lot_id' => $line->stock_item_lot_id,
                         'batch_no' => $line->batch_no,
                         'description' => $line->description,
+                        'print_note' => $line->print_note,
                         'quantity' => $line->quantity,
                         'unit_price' => $line->unit_price,
                         'discount_rate' => $line->discount_rate,
@@ -220,6 +222,9 @@ class SalesOrderService
         if ($item && empty($line['description'])) {
             $line['description'] = $item->name;
         }
+
+        $note = trim((string) ($line['print_note'] ?? ''));
+        $line['print_note'] = $note === '' ? null : $note;
 
         return StockItem::applyLotToLine($line);
     }

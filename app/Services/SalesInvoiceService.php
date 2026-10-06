@@ -112,6 +112,7 @@ class SalesInvoiceService
                     'stock_item_lot_id' => $line['stock_item_lot_id'] ?? null,
                     'batch_no' => $line['batch_no'] ?? null,
                     'description' => $line['description'] ?? 'Item',
+                    'print_note' => $line['print_note'] ?? null,
                     'quantity' => $line['quantity'],
                     'unit_price' => $line['unit_price'],
                     'discount_rate' => $line['discount_rate'],

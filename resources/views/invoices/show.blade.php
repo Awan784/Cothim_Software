@@ -8,8 +8,8 @@
                 <h1 class="h4 mb-1">{{ $invoice->invoice_no ?: 'Sales invoice' }}</h1>
                 <p class="mb-0 text-muted">{{ $invoice->customer?->name }} · {{ $invoice->status }}</p>
             </div>
-            <div class="d-flex gap-2">
-                <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ route('invoices.edit', $invoice) }}" class="btn btn-sm btn-gray-800">Edit sale invoice</a>
                 @if(! $invoice->isDraft())
                     <a href="{{ route('invoices.print', $invoice) }}" class="btn btn-sm btn-primary" target="_blank">Print</a>
                 @endif
@@ -40,7 +40,7 @@
                     <tbody>
                         @foreach($invoice->lines as $line)
                             <tr>
-                                <td>{{ $line->description }}</td>
+                                <td>{{ $line->printName() }}</td>
                                 <td class="text-end">{{ number_format((float) $line->quantity, 3) }}</td>
                                 <td class="text-end">{{ number_format((float) $line->unit_price, 2) }}</td>
                                 <td class="text-end">{{ number_format((float) $line->discount_rate, 2) }}%</td>

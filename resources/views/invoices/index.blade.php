@@ -49,7 +49,7 @@
                                 <td class="text-end {{ $invoice->balanceDue() > 0.009 ? 'text-danger fw-semibold' : 'text-muted' }}">{{ ams_num($invoice->balanceDue()) }}</td>
                                 <td class="text-end text-nowrap">
                                     <a class="btn btn-sm btn-outline-primary" href="{{ route('invoices.show', $invoice) }}">Open</a>
-                                    <a class="btn btn-sm btn-outline-secondary" href="{{ route('invoices.edit', $invoice) }}">Edit</a>
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ route('invoices.edit', $invoice) }}">Edit sale invoice</a>
                                     <form action="{{ route('invoices.destroy', $invoice) }}" method="post" class="d-inline">
                                         @csrf
                                         @method('delete')

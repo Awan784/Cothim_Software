@@ -2353,6 +2353,7 @@ body.ams-login {
     }
 
     .ams-light #taxLinesTable .tax-line > .line-item-cell,
+    .ams-light #taxLinesTable .tax-line > .line-print-note-cell,
     .ams-light #taxLinesTable .tax-line > .line-batch,
     .ams-light #taxLinesTable .tax-line > .line-remove {
         grid-column: 1 / -1;

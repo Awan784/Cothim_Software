@@ -299,7 +299,7 @@
                         @endphp
                         <tr>
                             <td class="center">{{ $i + 1 }}</td>
-                            <td class="product-name">{{ $line->description }}</td>
+                            <td class="product-name">{{ $line->printName() }}</td>
                             <td class="batch">{{ $line->batch_no ?: $line->lot?->batchLabel() ?: ($item?->batch_no ?: '') }}</td>
                             <td class="center">{{ ($line->lot?->expiry_date ?? $item?->expiry_date) ? ($line->lot?->expiry_date ?? $item->expiry_date)->format('d-M-y') : '' }}</td>
                             <td class="num">{{ ams_num($qty) }}</td>

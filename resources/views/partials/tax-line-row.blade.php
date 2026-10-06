@@ -5,6 +5,7 @@
     $showTax = $showTax ?? true;
     $showBatch = $showBatch ?? false;
     $hideStockQty = $hideStockQty ?? false;
+    $showPrintNote = $showPrintNote ?? false;
     $hiddenVat = $showTax ? ($row['vat_rate'] ?? $vatRate) : 0;
     $selectedLotId = (string) ($row['stock_item_lot_id'] ?? '');
     $lotOptions = collect();
@@ -24,16 +25,24 @@
             <input type="hidden" name="lines[{{ $index }}][vat_rate]" class="line-rate" value="{{ $hiddenVat }}">
         @endunless
     </td>
+    @if($showPrintNote)
+        <td class="line-print-note-cell" data-label="Note">
+            <input name="lines[{{ $index }}][print_note]" class="form-control form-control-sm line-print-note" maxlength="100" value="{{ $row['print_note'] ?? '' }}" placeholder="e.g. bonus">
+        </td>
+    @endif
     @if($showBatch)
         <td class="line-batch" data-label="Batch #">
             <select name="lines[{{ $index }}][stock_item_lot_id]" class="form-select form-select-sm line-lot" data-ams-plain="1">
-                <option value="">{{ $lotOptions->isNotEmpty() ? 'Select batch' : 'Select item first' }}</option>
-                @foreach($lotOptions as $lot)
+                @php
+                    $availableLots = $lotOptions->filter(fn ($lot) => (float) $lot->quantity > 0 || $selectedLotId === (string) $lot->id);
+                @endphp
+                <option value="">{{ $availableLots->isNotEmpty() ? 'Select batch' : (! empty($row['stock_item_id']) ? 'No batch in stock' : 'Select item first') }}</option>
+                @foreach($availableLots as $lot)
                     <option value="{{ $lot->id }}"
                         data-batch="{{ $lot->batch_no }}"
                         data-qty="{{ number_format((float) $lot->quantity, 2, '.', '') }}"
                         {{ $selectedLotId === (string) $lot->id ? 'selected' : '' }}>
-                        {{ $hideStockQty ? $lot->batchLabel() : $lot->batchLabel().' · '.number_format((float) $lot->quantity, 2) }}
+                        {{ $lot->dropdownLabel($hideStockQty) }}
                     </option>
                 @endforeach
             </select>
