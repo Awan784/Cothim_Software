@@ -117,9 +117,25 @@
             font-weight: 700;
             text-align: left;
         }
-        table.items .num {
-            text-align: right;
-            font-variant-numeric: tabular-nums;
+        table.items td.batch-cell {
+            white-space: normal;
+            vertical-align: top;
+        }
+        .stock-batch-line {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            line-height: 1.35;
+            margin: 0 0 2px;
+            white-space: nowrap;
+        }
+        .stock-batch-line:last-child { margin-bottom: 0; }
+        .stock-batch-no {
+            color: #dc2626;
+            font-weight: 800;
+        }
+        .stock-batch-qty {
+            font-weight: 600;
         }
         table.items tfoot td,
         table.items tr.subtotal td {
@@ -174,6 +190,10 @@
             table.items tr.row-sale td,
             table.items tr.row-receive td,
             table.items tr.row-payment td {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .stock-batch-no {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }

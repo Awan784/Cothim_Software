@@ -17,8 +17,10 @@
                 @forelse($group['rows'] as $row)
                     <tr>
                         @foreach($columns as $key => $label)
-                            <td class="{{ in_array($key, $numeric ?? [], true) ? 'num' : '' }}">
-                                @if(in_array($key, $numeric ?? [], true))
+                            <td class="{{ in_array($key, $numeric ?? [], true) ? 'num' : '' }}{{ $key === 'batch' ? ' batch-cell' : '' }}">
+                                @if(($row[$key] ?? null) instanceof \Illuminate\Support\HtmlString)
+                                    {!! $row[$key] !!}
+                                @elseif(in_array($key, $numeric ?? [], true))
                                     {{ ams_num($row[$key] ?? 0) }}
                                 @else
                                     {{ $row[$key] ?? '—' }}
