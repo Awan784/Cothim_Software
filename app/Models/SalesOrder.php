@@ -125,7 +125,7 @@ class SalesOrder extends Model
     {
         $max = 1000;
 
-        foreach (static::query()->where('order_no', 'like', 'SO-%')->lockForUpdate()->pluck('order_no') as $orderNo) {
+        foreach (static::query()->withTrashed()->where('order_no', 'like', 'SO-%')->lockForUpdate()->pluck('order_no') as $orderNo) {
             if (preg_match('/^SO-(\d+)$/', (string) $orderNo, $match)) {
                 $n = (int) $match[1];
                 if ($n > $max) {
@@ -134,6 +134,11 @@ class SalesOrder extends Model
             }
         }
 
-        return 'SO-'.($max + 1);
+        $next = $max + 1;
+        while (static::query()->withTrashed()->where('order_no', 'SO-'.$next)->exists()) {
+            $next++;
+        }
+
+        return 'SO-'.$next;
     }
 }

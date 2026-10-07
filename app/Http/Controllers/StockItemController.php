@@ -100,19 +100,9 @@ class StockItemController extends Controller
             $variants = $data['variants'] ?? [];
             unset($data['variants']);
 
-            $lotCount = $stockItem->lots()->count();
-            if ($lotCount > 1) {
-                unset($data['quantity'], $data['batch_no']);
-            }
-
             $stockItem->update($data);
             $this->syncVariants($stockItem, $data['has_variants'], $variants);
-
-            if ($lotCount > 1) {
-                $stockItem->syncQuantityFromLots();
-            } else {
-                $stockItem->syncSingleLotFromItem();
-            }
+            $stockItem->syncSingleLotFromItem();
         });
 
         return redirect()->route('stock-items.index')->with('success', 'Item updated.');

@@ -20,6 +20,7 @@
                             data-unit="{{ $it->unit }}"
                             data-cost="{{ number_format((float) $it->cost_price, 2, '.', '') }}"
                             data-qty="{{ number_format((float) $it->quantity, 2, '.', '') }}"
+                            data-batch="{{ $it->batch_no }}"
                             data-name="{{ $it->purchaseLabel() }}"
                             {{ $stockId === (string) $it->id ? 'selected' : '' }}>
                             {{ $it->purchaseLabel() }} — {{ number_format((float) $it->quantity, 2) }} {{ strtoupper($it->unit ?: 'PCS') }}
@@ -43,7 +44,7 @@
         <input name="items[{{ $idx }}][quantity]" class="form-control text-end po-qty" value="{{ $qty }}" inputmode="decimal" required>
     </td>
     <td>
-        <input name="items[{{ $idx }}][batch_no]" class="form-control po-batch" value="{{ $batchNo }}" placeholder="e.g. 002" maxlength="100">
+        <input name="items[{{ $idx }}][batch_no]" class="form-control po-batch" value="{{ $batchNo }}" placeholder="Current batch" maxlength="100">
     </td>
     <td>
         <input name="items[{{ $idx }}][note]" class="form-control po-note" value="{{ $note }}" placeholder="Note">

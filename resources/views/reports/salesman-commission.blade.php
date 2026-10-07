@@ -10,7 +10,7 @@
         $phone = $settings->phone();
         $logoPath = $settings->publicLogoPath();
         $titleDate = $toDate->format('d-m-y');
-        $region = strtoupper(trim((string) $salesman->city));
+        $region = strtoupper(trim($salesman->citiesLabel()));
     @endphp
     <style>
         * { box-sizing: border-box; }

@@ -6,7 +6,7 @@
         <div class="db-welcome">
             <div>
                 <h2>Welcome back, {{ $salesman->name }}</h2>
-                <p>{{ $salesman->city ?: 'All cities' }} · Create an order and admin will confirm it as an invoice.</p>
+                <p>{{ $salesman->citiesLabel() !== '' ? $salesman->citiesLabel() : 'All cities' }} · Create an order and admin will confirm it as an invoice.</p>
             </div>
             <div class="db-welcome-meta">
                 <div class="db-chip"><span>Today</span>{{ now()->format('d M Y') }}</div>

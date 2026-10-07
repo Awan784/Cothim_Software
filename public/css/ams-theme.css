@@ -2082,6 +2082,58 @@ body.ams-light {
     border-radius: 8px;
 }
 
+.ams-light .stock-batch-no,
+.ams-light .line-batch-label {
+    color: #dc2626;
+    font-weight: 800;
+}
+
+.ams-light .stock-batch-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    line-height: 1.35;
+}
+
+.ams-light .stock-batch-qty {
+    color: #111827;
+    font-weight: 600;
+}
+
+.ams-light .salesman-city-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    min-height: 1.6rem;
+}
+
+.ams-light .salesman-city-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.55rem;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e3a5f;
+}
+
+.ams-light .salesman-city-remove {
+    border: 0;
+    background: transparent;
+    color: #6b7280;
+    line-height: 1;
+    padding: 0;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.ams-light .salesman-city-remove:hover {
+    color: #e11d48;
+}
+
 /* Login */
 body.ams-login {
     background: #f4f6fb;

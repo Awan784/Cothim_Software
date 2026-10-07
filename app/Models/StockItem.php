@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class StockItem extends Model
@@ -76,60 +77,23 @@ class StockItem extends Model
         return $this->hasMany(StockItemLot::class);
     }
 
-    /**
-     * @return list<array{id: int, batch: string, qty: float}>
-     */
-    public function lotsPayload(): array
+    public function currentLot(): ?StockItemLot
     {
-        $lots = $this->relationLoaded('lots')
-            ? $this->lots
-            : $this->lots()->get();
+        if ($this->relationLoaded('lots')) {
+            return $this->lots->sortByDesc('id')->first();
+        }
 
-        return $lots->map(fn (StockItemLot $lot) => [
-            'id' => $lot->id,
-            'batch' => StockItemLot::normalizeBatch($lot->batch_no),
-            'qty' => (float) $lot->quantity,
-        ])->values()->all();
+        return $this->lots()->orderByDesc('id')->first();
     }
 
     public function lotsSummary(): string
     {
-        $lots = $this->relationLoaded('lots')
-            ? $this->lots
-            : $this->lots()->get();
-
-        $parts = [];
-        foreach ($lots as $lot) {
-            if ((float) $lot->quantity <= 0) {
-                continue;
-            }
-            $parts[] = $lot->dropdownLabel();
+        $batch = StockItemLot::normalizeBatch($this->batch_no);
+        if ($batch !== '') {
+            return $batch;
         }
 
-        if ($parts === []) {
-            return $this->batch_no ?: '—';
-        }
-
-        return implode(', ', $parts);
-    }
-
-    public function oldestSellableLot(): ?StockItemLot
-    {
-        if ($this->relationLoaded('lots')) {
-            return $this->lots
-                ->filter(fn (StockItemLot $lot) => (float) $lot->quantity > 0)
-                ->sortBy([
-                    fn (StockItemLot $a, StockItemLot $b) => ($a->received_at?->getTimestamp() ?? 0) <=> ($b->received_at?->getTimestamp() ?? 0),
-                    fn (StockItemLot $a, StockItemLot $b) => $a->id <=> $b->id,
-                ])
-                ->first();
-        }
-
-        return $this->lots()
-            ->where('quantity', '>', 0)
-            ->orderBy('received_at')
-            ->orderBy('id')
-            ->first();
+        return $this->currentLot()?->batchLabel() ?: '—';
     }
 
     public function seedOpeningLot(): void
@@ -152,34 +116,72 @@ class StockItem extends Model
         ]);
     }
 
-    public function syncQuantityFromLots(): void
+    public function collapseToSingleLot(?string $batchNo = null): ?StockItemLot
     {
-        $sum = round((float) $this->lots()->sum('quantity'), 2);
-        $latest = $this->lots()
-            ->orderByDesc('received_at')
-            ->orderByDesc('id')
-            ->first();
+        $lots = $this->lots()->orderByDesc('received_at')->orderByDesc('id')->lockForUpdate()->get();
+        if ($lots->isEmpty()) {
+            $this->seedOpeningLot();
+
+            return $this->lots()->first();
+        }
+
+        $keep = $lots->first();
+        $sum = round((float) $lots->sum('quantity'), 2);
+        $batch = StockItemLot::normalizeBatch($batchNo);
+        if ($batch === '') {
+            foreach ($lots as $lot) {
+                $candidate = StockItemLot::normalizeBatch($lot->batch_no);
+                if ($candidate !== '') {
+                    $batch = $candidate;
+                    break;
+                }
+            }
+        }
+
+        $extraIds = $lots->where('id', '!=', $keep->id)->pluck('id')->all();
+        if ($extraIds !== []) {
+            foreach (['stock_movements', 'purchase_order_items', 'sales_invoice_lines', 'sales_order_lines', 'sales_return_items'] as $table) {
+                DB::table($table)->whereIn('stock_item_lot_id', $extraIds)->update([
+                    'stock_item_lot_id' => $keep->id,
+                ]);
+            }
+            StockItemLot::query()->whereIn('id', $extraIds)->delete();
+        }
+
+        $keep->quantity = $sum;
+        $keep->batch_no = $batch;
+        if ($this->expiry_date) {
+            $keep->expiry_date = $this->expiry_date;
+        }
+        $keep->save();
 
         $this->quantity = $sum;
-        $this->batch_no = $latest && StockItemLot::normalizeBatch($latest->batch_no) !== ''
-            ? $latest->batch_no
-            : null;
+        $this->batch_no = $batch !== '' ? $batch : null;
+        $this->save();
+        $this->unsetRelation('lots');
+
+        return $keep;
+    }
+
+    public function syncQuantityFromLots(): void
+    {
+        $lot = $this->collapseToSingleLot() ?? $this->currentLot();
+        $this->quantity = round((float) ($lot?->quantity ?? 0), 2);
+        $batch = StockItemLot::normalizeBatch($lot?->batch_no);
+        $this->batch_no = $batch !== '' ? $batch : null;
         $this->save();
     }
 
     public function syncSingleLotFromItem(): void
     {
-        if ($this->lots()->count() > 1) {
-            $this->syncQuantityFromLots();
-
-            return;
-        }
-
         $qty = round((float) $this->quantity, 2);
         $batch = StockItemLot::normalizeBatch($this->batch_no);
-        $lot = $this->lots()->first();
+        $this->collapseToSingleLot($batch);
+        $lot = $this->currentLot();
 
         if (! $lot) {
+            $this->quantity = $qty;
+            $this->batch_no = $batch !== '' ? $batch : null;
             $this->seedOpeningLot();
 
             return;
@@ -189,7 +191,11 @@ class StockItem extends Model
         $lot->quantity = $qty;
         $lot->expiry_date = $this->expiry_date ?: $lot->expiry_date;
         $lot->save();
-        $this->syncQuantityFromLots();
+
+        $this->batch_no = $batch !== '' ? $batch : null;
+        $this->quantity = $qty;
+        $this->save();
+        $this->unsetRelation('lots');
     }
 
     /**
@@ -204,42 +210,27 @@ class StockItem extends Model
             return $line;
         }
 
-        $item = static::query()->with('lots')->find($line['stock_item_id']);
+        $item = static::query()->find($line['stock_item_id']);
         if (! $item) {
             return $line;
         }
 
-        if ($item->lots->isEmpty() && (float) $item->quantity > 0) {
-            $item->seedOpeningLot();
-            $item->load('lots');
-        }
-
         $qty = (float) ($line['quantity'] ?? 0);
-        $lotId = filled($line['stock_item_lot_id'] ?? null) ? (int) $line['stock_item_lot_id'] : null;
-        $lot = $lotId
-            ? $item->lots->firstWhere('id', $lotId)
-            : $item->oldestSellableLot();
-
-        if (! $lot) {
+        if ($qty > (float) $item->quantity + 0.009) {
             throw ValidationException::withMessages([
-                'lines' => 'Select a batch for '.$item->name.'.',
+                'lines' => $item->name.' has only '.number_format((float) $item->quantity, 2).' remaining.',
             ]);
         }
 
-        if ((int) $lot->stock_item_id !== (int) $item->id) {
-            throw ValidationException::withMessages([
-                'lines' => 'Batch does not belong to '.$item->name.'.',
-            ]);
+        $lot = $item->currentLot();
+        if (! $lot && (float) $item->quantity > 0) {
+            $item->seedOpeningLot();
+            $lot = $item->currentLot();
         }
 
-        if ($qty > (float) $lot->quantity + 0.009) {
-            throw ValidationException::withMessages([
-                'lines' => $item->name.' batch '.$lot->batchLabel().' has only '.number_format((float) $lot->quantity, 2).' remaining. Add another line for the other batch.',
-            ]);
-        }
-
-        $line['stock_item_lot_id'] = $lot->id;
-        $line['batch_no'] = StockItemLot::normalizeBatch($lot->batch_no) !== '' ? $lot->batch_no : null;
+        $line['stock_item_lot_id'] = $lot?->id;
+        $batch = StockItemLot::normalizeBatch($item->batch_no ?: $lot?->batch_no);
+        $line['batch_no'] = $batch !== '' ? $batch : null;
 
         return $line;
     }

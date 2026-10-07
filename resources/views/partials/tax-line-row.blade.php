@@ -8,13 +8,14 @@
     $showPrintNote = $showPrintNote ?? false;
     $hiddenVat = $showTax ? ($row['vat_rate'] ?? $vatRate) : 0;
     $selectedLotId = (string) ($row['stock_item_lot_id'] ?? '');
-    $lotOptions = collect();
-    if ($showBatch && ! empty($row['stock_item_id'])) {
+    $batchLabel = trim((string) ($row['batch_no'] ?? ''));
+    if ($showBatch && $batchLabel === '' && ! empty($row['stock_item_id'])) {
         $matched = $stockItems->firstWhere('id', (int) $row['stock_item_id']);
         if ($matched) {
-            $lotOptions = $matched->relationLoaded('lots')
-                ? $matched->lots
-                : $matched->lots()->orderBy('received_at')->orderBy('id')->get();
+            $batchLabel = (string) ($matched->batch_no ?: '');
+            if ($selectedLotId === '') {
+                $selectedLotId = (string) ($matched->currentLot()?->id ?? '');
+            }
         }
     }
 @endphp
@@ -32,20 +33,9 @@
     @endif
     @if($showBatch)
         <td class="line-batch" data-label="Batch #">
-            <select name="lines[{{ $index }}][stock_item_lot_id]" class="form-select form-select-sm line-lot" data-ams-plain="1">
-                @php
-                    $availableLots = $lotOptions->filter(fn ($lot) => (float) $lot->quantity > 0 || $selectedLotId === (string) $lot->id);
-                @endphp
-                <option value="">{{ $availableLots->isNotEmpty() ? 'Select batch' : (! empty($row['stock_item_id']) ? 'No batch in stock' : 'Select item first') }}</option>
-                @foreach($availableLots as $lot)
-                    <option value="{{ $lot->id }}"
-                        data-batch="{{ $lot->batch_no }}"
-                        data-qty="{{ number_format((float) $lot->quantity, 2, '.', '') }}"
-                        {{ $selectedLotId === (string) $lot->id ? 'selected' : '' }}>
-                        {{ $lot->dropdownLabel($hideStockQty) }}
-                    </option>
-                @endforeach
-            </select>
+            <input type="hidden" name="lines[{{ $index }}][stock_item_lot_id]" class="line-lot-id" value="{{ $selectedLotId }}">
+            <input type="hidden" name="lines[{{ $index }}][batch_no]" class="line-batch-no" value="{{ $batchLabel }}">
+            <span class="line-batch-label stock-batch-no">{{ $batchLabel !== '' ? $batchLabel : '—' }}</span>
         </td>
     @endif
     <td class="line-qty-cell" data-label="Qty">

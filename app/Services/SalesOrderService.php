@@ -8,6 +8,7 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Models\StockItem;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -55,10 +56,7 @@ class SalesOrderService
                 $order->update($payload);
                 $order->lines()->delete();
             } else {
-                $order = SalesOrder::create($payload + [
-                    'order_no' => SalesOrder::nextNumber(),
-                    'status' => SalesOrder::STATUS_PENDING,
-                ]);
+                $order = $this->createWithNextNumber($payload);
             }
 
             foreach ($computed['lines'] as $line) {
@@ -264,5 +262,36 @@ class SalesOrderService
         $mode = trim((string) $mode);
 
         return $mode === '' ? null : $mode;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function createWithNextNumber(array $payload): SalesOrder
+    {
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            try {
+                return SalesOrder::create($payload + [
+                    'order_no' => SalesOrder::nextNumber(),
+                    'status' => SalesOrder::STATUS_PENDING,
+                ]);
+            } catch (QueryException $e) {
+                if (! $this->isOrderNoCollision($e) || $attempt === 7) {
+                    throw $e;
+                }
+            }
+        }
+
+        throw new InvalidArgumentException('Could not assign an order number. Try again.');
+    }
+
+    private function isOrderNoCollision(QueryException $e): bool
+    {
+        if ((string) $e->getCode() !== '23000') {
+            return false;
+        }
+
+        return str_contains($e->getMessage(), 'order_no')
+            || str_contains($e->getMessage(), 'sales_orders_organization_id_order_no_unique');
     }
 }

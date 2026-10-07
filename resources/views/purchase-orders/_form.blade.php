@@ -51,7 +51,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <div>
             <strong>Inventory items</strong>
-            <span class="text-muted small ms-2">Saving a purchase adds quantity to that batch. Same batch number merges; a new batch stays separate.</span>
+            <span class="text-muted small ms-2">Each item has one batch. Entering a batch on purchase updates the current batch and adds qty.</span>
         </div>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addPoLine">Add item</button>
     </div>
@@ -105,11 +105,15 @@
         var onHand = row.querySelector('.po-on-hand');
         var unitInput = row.querySelector('.po-unit');
         var priceInput = row.querySelector('.po-price');
+        var batchInput = row.querySelector('.po-batch');
 
         if (select.value && opt) {
             unitInput.value = unit;
             if (!priceInput.dataset.touched) {
                 priceInput.value = cost;
+            }
+            if (batchInput && !batchInput.value) {
+                batchInput.value = opt.getAttribute('data-batch') || '';
             }
             onHand.textContent = 'On hand: ' + qty + ' ' + String(unit).toUpperCase();
         } else {

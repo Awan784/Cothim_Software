@@ -31,7 +31,7 @@
                         data-price="{{ number_format((float) $variant->price, 2, '.', '') }}"
                         data-qty="{{ number_format((float) $item->quantity, 2, '.', '') }}"
                         data-batch="{{ $item->batch_no }}"
-                        data-lots='@json($item->lotsPayload())'
+                        data-lot-id="{{ $item->currentLot()?->id }}"
                         {{ $selectedId === (string) $item->id && $selectedName === $label ? 'selected' : ($selectedId === (string) $item->id && $selectedName === '' ? 'selected' : '') }}>
                         {{ $label }}
                     </option>
@@ -42,7 +42,7 @@
                     data-price="{{ $item->sale_price !== null ? number_format((float) $item->sale_price, 2, '.', '') : '' }}"
                     data-qty="{{ number_format((float) $item->quantity, 2, '.', '') }}"
                     data-batch="{{ $item->batch_no }}"
-                    data-lots='@json($item->lotsPayload())'
+                    data-lot-id="{{ $item->currentLot()?->id }}"
                     {{ $selectedId === (string) $item->id ? 'selected' : '' }}>
                     {{ $item->name }}
                 </option>

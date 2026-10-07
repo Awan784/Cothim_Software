@@ -44,33 +44,13 @@ class InventoryService
             return;
         }
 
-        $lotId = filled($meta['stock_item_lot_id'] ?? null) ? (int) $meta['stock_item_lot_id'] : null;
-        if ($lotId) {
-            $this->issueFromLot($stockItemId, $lotId, $remaining, $meta);
-
-            return;
-        }
-
-        $lots = StockItemLot::query()
-            ->where('stock_item_id', $stockItemId)
-            ->where('quantity', '>', 0)
-            ->orderBy('received_at')
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
-
-        foreach ($lots as $lot) {
-            if ($remaining <= 0.009) {
-                break;
-            }
-            $take = min($remaining, (float) $lot->quantity);
-            $this->issueFromLot($stockItemId, (int) $lot->id, $take, $meta);
-            $remaining = round($remaining - $take, 2);
-        }
-
-        if ($remaining > 0.009) {
+        $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
+        $lot = $item->collapseToSingleLot();
+        if (! $lot) {
             throw new InvalidArgumentException('Not enough stock for this item.');
         }
+
+        $this->issueFromLot($stockItemId, (int) $lot->id, $remaining, $meta);
     }
 
     public function revertPurchaseOrder(PurchaseOrder $purchaseOrder): void
@@ -175,7 +155,7 @@ class InventoryService
 
         if ((float) $lot->quantity + 0.009 < $qty) {
             throw new InvalidArgumentException(
-                'Batch '.$lot->batchLabel().' has only '.number_format((float) $lot->quantity, 2).' remaining. Add another line for the other batch.'
+                'Not enough stock. Only '.number_format((float) $lot->quantity, 2).' remaining.'
             );
         }
 
@@ -191,37 +171,30 @@ class InventoryService
     private function lotForReceive(int $stockItemId, array $meta): StockItemLot
     {
         $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
-        $lotId = filled($meta['stock_item_lot_id'] ?? null) ? (int) $meta['stock_item_lot_id'] : null;
-        if ($lotId) {
-            $lot = StockItemLot::query()
-                ->where('stock_item_id', $stockItemId)
-                ->whereKey($lotId)
-                ->lockForUpdate()
-                ->first();
-            if ($lot) {
-                return $lot;
-            }
-        }
-
         $batch = StockItemLot::normalizeBatch($meta['batch_no'] ?? null);
-        $lot = StockItemLot::query()
-            ->where('stock_item_id', $stockItemId)
-            ->where('batch_no', $batch)
-            ->lockForUpdate()
-            ->first();
+        $lot = $item->collapseToSingleLot($batch !== '' ? $batch : null);
 
-        if ($lot) {
-            return $lot;
+        if (! $lot) {
+            $lot = StockItemLot::create([
+                'organization_id' => $item->organization_id,
+                'stock_item_id' => $stockItemId,
+                'batch_no' => $batch,
+                'expiry_date' => $meta['expiry_date'] ?? $item->expiry_date,
+                'quantity' => 0,
+                'received_at' => $meta['moved_at'] ?? now(),
+            ]);
+        } elseif ($batch !== '') {
+            $lot->batch_no = $batch;
+            $lot->received_at = $meta['moved_at'] ?? ($lot->received_at ?: now());
+            $lot->save();
         }
 
-        return StockItemLot::create([
-            'organization_id' => $item->organization_id,
-            'stock_item_id' => $stockItemId,
-            'batch_no' => $batch,
-            'expiry_date' => $meta['expiry_date'] ?? $item->expiry_date,
-            'quantity' => 0,
-            'received_at' => $meta['moved_at'] ?? now(),
-        ]);
+        if (! empty($meta['expiry_date'])) {
+            $lot->expiry_date = $meta['expiry_date'];
+            $lot->save();
+        }
+
+        return $lot;
     }
 
     private function adjustLotQty(?int $lotId, int $stockItemId, float $delta, ?string $batchNo): void
@@ -231,27 +204,8 @@ class InventoryService
             return;
         }
 
-        $lot = null;
-        if ($lotId) {
-            $lot = StockItemLot::query()->whereKey($lotId)->lockForUpdate()->first();
-        }
-        if (! $lot) {
-            $batch = StockItemLot::normalizeBatch($batchNo);
-            $lot = StockItemLot::query()
-                ->where('stock_item_id', $stockItemId)
-                ->where('batch_no', $batch)
-                ->lockForUpdate()
-                ->first();
-        }
-        if (! $lot && $delta > 0) {
-            $oldest = StockItemLot::query()
-                ->where('stock_item_id', $stockItemId)
-                ->orderBy('received_at')
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->first();
-            $lot = $oldest;
-        }
+        $item = StockItem::whereKey($stockItemId)->lockForUpdate()->first();
+        $lot = $item?->collapseToSingleLot();
 
         if (! $lot) {
             if ($delta <= 0) {

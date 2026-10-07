@@ -20,6 +20,7 @@ class Salesman extends Authenticatable
         'mobile',
         'email',
         'city',
+        'cities',
         'monthly_target',
         'commission_percent',
         'advance_balance',
@@ -39,7 +40,41 @@ class Salesman extends Authenticatable
             'advance_balance' => 'float',
             'is_active' => 'boolean',
             'password' => 'hashed',
+            'cities' => 'array',
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function cityList(): array
+    {
+        $cities = $this->cities;
+        if (! is_array($cities) || $cities === []) {
+            return filled($this->city) ? [trim((string) $this->city)] : [];
+        }
+
+        $list = [];
+        foreach ($cities as $city) {
+            $city = trim((string) $city);
+            if ($city !== '' && ! in_array($city, $list, true)) {
+                $list[] = $city;
+            }
+        }
+
+        return $list;
+    }
+
+    public function citiesLabel(): string
+    {
+        return implode(', ', $this->cityList());
+    }
+
+    public function scopeAssignedCity(Builder $query, string $city): Builder
+    {
+        return $query->where(function (Builder $inner) use ($city) {
+            $inner->where('city', $city)->orWhereJsonContains('cities', $city);
+        });
     }
 
     public function isPlatformAdmin(): bool
@@ -69,19 +104,21 @@ class Salesman extends Authenticatable
 
     public function customersInCity(): Builder
     {
-        if (! $this->city) {
+        $cities = $this->cityList();
+        if ($cities === []) {
             return Customer::query()->whereRaw('0 = 1');
         }
 
-        return Customer::query()->where('city', $this->city)->orderByRaw('COALESCE(NULLIF(company_name, ""), name)');
+        return Customer::query()->whereIn('city', $cities)->orderByRaw('COALESCE(NULLIF(company_name, ""), name)');
     }
 
     public function assignableCustomers(): Builder
     {
         $query = Customer::query()->orderByRaw('COALESCE(NULLIF(company_name, ""), name)');
+        $cities = $this->cityList();
 
-        if (filled($this->city)) {
-            $query->where('city', $this->city);
+        if ($cities !== []) {
+            $query->whereIn('city', $cities);
         }
 
         return $query;
@@ -89,10 +126,11 @@ class Salesman extends Authenticatable
 
     public function canSellTo(Customer $customer): bool
     {
-        if (! filled($this->city)) {
+        $cities = $this->cityList();
+        if ($cities === []) {
             return true;
         }
 
-        return $customer->city === $this->city;
+        return in_array((string) $customer->city, $cities, true);
     }
 }

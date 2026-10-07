@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-0">Salesmen</h1>
-                <p class="mb-0">Assign a city, username, password, and monthly target.</p>
+                <p class="mb-0">Assign cities, username, password, and monthly target.</p>
             </div>
             <div>
                 <a href="{{ route('salesmen.create') }}" class="btn btn-sm btn-gray-800">Add Salesman</a>
@@ -34,16 +34,21 @@
                     <tbody>
                         @forelse($salesmen as $salesman)
                             @php
-                                $shops = (int) ($shopsByCity[$salesman->city] ?? 0);
+                                $shops = 0;
+                                $citySales = 0.0;
+                                foreach ($salesman->cityList() as $city) {
+                                    $shops += (int) ($shopsByCity[$city] ?? 0);
+                                    $citySales += (float) ($monthSalesByCity[$city] ?? 0);
+                                }
                                 $bySalesman = $monthSalesBySalesman[$salesman->id] ?? null;
                                 $achieved = $bySalesman
                                     ? (float) $bySalesman->month_sales
-                                    : (float) ($monthSalesByCity[$salesman->city] ?? 0);
+                                    : $citySales;
                             @endphp
                             <tr>
                                 <td class="text-gray-900">{{ $salesman->name }}</td>
                                 <td class="text-gray-900">{{ $salesman->username }}</td>
-                                <td class="text-gray-900">{{ $salesman->city ?: '—' }}</td>
+                                <td class="text-gray-900">{{ $salesman->citiesLabel() !== '' ? $salesman->citiesLabel() : '—' }}</td>
                                 <td class="text-gray-900">{{ $salesman->mobile ?: $salesman->phone ?: '—' }}</td>
                                 <td class="text-gray-900 text-end">{{ $shops }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $salesman->monthly_target, 2) }}</td>

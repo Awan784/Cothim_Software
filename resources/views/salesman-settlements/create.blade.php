@@ -23,7 +23,7 @@
                                 <option value="{{ $salesman->id }}"
                                     data-advance="{{ number_format((float) $salesman->advance_balance, 2, '.', '') }}"
                                     @selected((string) old('salesman_id', $selectedSalesmanId) === (string) $salesman->id)>
-                                    {{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}
+                                    {{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}
                                 </option>
                             @endforeach
                         </select>

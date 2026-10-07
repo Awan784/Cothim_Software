@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-0">Create Salesman</h1>
-                <p class="mb-0">Add a salesman with city, username, and password.</p>
+                <p class="mb-0">Add a salesman with cities, username, and password.</p>
             </div>
             <div>
                 <a href="{{ route('salesmen.index') }}" class="btn btn-sm btn-secondary">Back</a>

@@ -16,7 +16,7 @@
         <div>
             <strong>Lines</strong>
             @if($showBatch)
-                <span class="text-muted small ms-2">Pick the batch you are selling. Add another line to sell a second batch of the same item.</span>
+                <span class="text-muted small ms-2">Batch is the item’s current batch. A new purchase updates that same batch.</span>
             @endif
         </div>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addTaxLine">Add line</button>
@@ -106,65 +106,17 @@
     var table = document.getElementById('taxLinesTable');
     if (!table) return;
     function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
-    function parseLots(opt) {
-        if (!opt) return [];
-        var raw = opt.getAttribute('data-lots') || '[]';
-        try {
-            var lots = JSON.parse(raw);
-            if (Array.isArray(lots)) return lots;
-        } catch (e) {}
-        try {
-            var decoded = raw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
-            var lots = JSON.parse(decoded);
-            return Array.isArray(lots) ? lots : [];
-        } catch (e2) {
-            return [];
-        }
-    }
-    function formatLotQty(qty) {
-        if (!isFinite(qty)) return '0';
-        return String(Math.round(qty));
-    }
-    function fillLots(row, selectedId) {
-        var lotSelect = row.querySelector('.line-lot');
-        if (!lotSelect) return;
+    function fillBatch(row) {
         var itemSelect = row.querySelector('.line-item');
         var opt = itemSelect && itemSelect.options[itemSelect.selectedIndex];
-        var lots = parseLots(opt);
-        var keep = selectedId != null ? String(selectedId) : '';
-        lotSelect.innerHTML = '';
-        var empty = document.createElement('option');
-        empty.value = '';
-        lotSelect.appendChild(empty);
-        var added = 0;
-        lots.forEach(function (lot) {
-            var qty = parseFloat(lot.qty);
-            if (isNaN(qty)) qty = 0;
-            if (qty <= 0 && String(lot.id) !== keep) return;
-            var option = document.createElement('option');
-            option.value = lot.id;
-            option.setAttribute('data-batch', lot.batch || '');
-            option.setAttribute('data-qty', String(qty));
-            option.textContent = table.getAttribute('data-hide-stock-qty') === '1'
-                ? (lot.batch || '—')
-                : ((lot.batch || '—') + ' — Qty ' + formatLotQty(qty));
-            lotSelect.appendChild(option);
-            added += 1;
-        });
-        var fallbackBatch = opt ? (opt.getAttribute('data-batch') || '') : '';
-        if (added) {
-            empty.textContent = 'Select batch';
-        } else if (fallbackBatch) {
-            empty.textContent = fallbackBatch;
-        } else {
-            empty.textContent = itemSelect && itemSelect.value ? 'No batch in stock' : 'Select item first';
-        }
-        if (keep && lotSelect.querySelector('option[value="' + keep + '"]')) {
-            lotSelect.value = keep;
-            return;
-        }
-        var first = lots.find(function (lot) { return (parseFloat(lot.qty) || 0) > 0; }) || lots[0];
-        lotSelect.value = first ? String(first.id) : '';
+        var batch = opt ? (opt.getAttribute('data-batch') || '') : '';
+        var lotId = opt ? (opt.getAttribute('data-lot-id') || '') : '';
+        var lotInput = row.querySelector('.line-lot-id');
+        var batchInput = row.querySelector('.line-batch-no');
+        var label = row.querySelector('.line-batch-label');
+        if (lotInput) lotInput.value = lotId;
+        if (batchInput) batchInput.value = batch;
+        if (label) label.textContent = batch || '—';
     }
     function applyItem(select) {
         var opt = select.options[select.selectedIndex];
@@ -175,7 +127,7 @@
         var descInput = row.querySelector('.line-description');
         if (priceInput && price !== null && price !== '') priceInput.value = price;
         if (descInput) descInput.value = desc || '';
-        fillLots(row, '');
+        fillBatch(row);
     }
     function recalc() {
         var sub = 0, discTotal = 0, vat = 0;
@@ -235,10 +187,11 @@
             else if (input.classList.contains('line-price')) input.value = '0';
             else if (input.classList.contains('line-discount')) input.value = '0';
             else if (input.classList.contains('line-rate')) input.value = '{{ $hiddenVat }}';
-            else if (input.classList.contains('line-lot')) input.innerHTML = '<option value="">Select item first</option>';
             else if (input.tagName === 'SELECT') input.selectedIndex = 0;
             else input.value = '';
         });
+        var batchLabel = tr.querySelector('.line-batch-label');
+        if (batchLabel) batchLabel.textContent = '—';
         table.querySelector('tbody').appendChild(tr);
         if (window.amsInitSearchSelects) window.amsInitSearchSelects(tr);
         recalc();
@@ -250,8 +203,7 @@
         if (descInput && opt && !descInput.value) {
             descInput.value = opt.getAttribute('data-description') || '';
         }
-        var lotSelect = row.querySelector('.line-lot');
-        fillLots(row, lotSelect ? lotSelect.value : '');
+        fillBatch(row);
     });
     recalc();
 })();

@@ -59,24 +59,11 @@
                                 <td class="text-gray-900">{{ strtoupper($item->unit ?: '') }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->quantity, 2) }}</td>
                                 <td class="stock-batches" data-content="{{ $item->lotsSummary() }}">
-                                    @php
-                                        $visibleLots = $item->lots->filter(fn ($lot) => (float) $lot->quantity > 0);
-                                    @endphp
-                                    @forelse($visibleLots as $lot)
-                                        <div class="stock-batch-line">
-                                            <span class="stock-batch-no">{{ $lot->batchLabel() }}</span>
-                                            <span class="stock-batch-qty">qty {{ number_format((float) $lot->quantity, 2) }}</span>
-                                        </div>
-                                    @empty
-                                        @if($item->batch_no)
-                                            <div class="stock-batch-line">
-                                                <span class="stock-batch-no">{{ $item->batch_no }}</span>
-                                                <span class="stock-batch-qty">qty {{ number_format((float) $item->quantity, 2) }}</span>
-                                            </div>
-                                        @else
-                                            —
-                                        @endif
-                                    @endforelse
+                                    @if($item->batch_no)
+                                        <span class="stock-batch-no">{{ $item->batch_no }}</span>
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->cost_price, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ $item->sale_price !== null ? number_format((float) $item->sale_price, 2) : '—' }}</td>

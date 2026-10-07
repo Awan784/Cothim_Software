@@ -1,6 +1,18 @@
 @extends('template.layout')
 @section('title', 'Reports')
 
+@push('styles')
+<style>
+    #partyLedgerModal .modal-content,
+    #partyLedgerModal .modal-body {
+        overflow: visible;
+    }
+    #partyLedgerModal .ams-combo-panel {
+        z-index: 1080;
+    }
+</style>
+@endpush
+
 @section('content')
     @php
         $reportHint = function (string $filter): string {
@@ -123,7 +135,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="pl_account_id" class="form-label">Account</label>
-                            <select name="account_id" id="pl_account_id" class="form-select" required disabled>
+                            <select name="account_id" id="pl_account_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search account" required disabled>
                                 <option value="">Select account type first…</option>
                             </select>
                         </div>
@@ -228,7 +240,7 @@
                             <select name="salesman_id" id="sc_salesman_id" class="form-select" required>
                                 <option value="">Select salesman</option>
                                 @foreach($salesmen as $salesman)
-                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}</option>
+                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -287,7 +299,7 @@
                                 <select name="salesman_id" id="sp_salesman_id" class="form-select">
                                     <option value="">All salesmen</option>
                                     @foreach($salesmen as $salesman)
-                                        <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}</option>
+                                        <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -352,7 +364,7 @@
                             <select name="salesman_id" id="rf_salesman_id" class="form-select">
                                 <option value="">All salesmen</option>
                                 @foreach($salesmen as $salesman)
-                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->city ? ' · '.$salesman->city : '' }}</option>
+                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -388,9 +400,23 @@
             const typeSelect = document.getElementById('pl_account_type');
             const accountSelect = document.getElementById('pl_account_id');
 
+            function refreshAccountCombo() {
+                var host = accountSelect.closest('.mb-3');
+                if (window.amsDestroySearchSelects && host) {
+                    window.amsDestroySearchSelects(host);
+                }
+                if (!accountSelect.disabled && window.amsInitSearchSelects && host) {
+                    window.amsInitSearchSelects(host);
+                }
+            }
+
             if (typeSelect && accountSelect) {
                 typeSelect.addEventListener('change', async function () {
                     const type = typeSelect.value;
+                    var host = accountSelect.closest('.mb-3');
+                    if (window.amsDestroySearchSelects && host) {
+                        window.amsDestroySearchSelects(host);
+                    }
                     accountSelect.innerHTML = '<option value="">Loading…</option>';
                     accountSelect.disabled = true;
 
@@ -418,6 +444,7 @@
                             accountSelect.appendChild(option);
                         });
                         accountSelect.disabled = false;
+                        refreshAccountCombo();
                     } catch (e) {
                         accountSelect.innerHTML = '<option value="">Failed to load accounts</option>';
                     }

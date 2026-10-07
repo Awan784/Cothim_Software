@@ -132,7 +132,7 @@ class OrderController extends Controller
 
         $customer = Customer::query()->findOrFail($data['customer_id']);
         if (! $this->salesman()->canSellTo($customer)) {
-            abort(403, 'You can only sell to customers in your city.');
+            abort(403, 'You can only sell to customers in your assigned cities.');
         }
 
         $data['lines'] = array_values(array_filter(

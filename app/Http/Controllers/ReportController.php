@@ -59,15 +59,14 @@ class ReportController extends Controller
     {
         return view('reports.index', [
             'reports' => collect(self::catalog()),
-            'salesmen' => Salesman::query()->orderBy('name')->get(['id', 'name', 'city']),
+            'salesmen' => Salesman::query()->orderBy('name')->get(['id', 'name', 'city', 'cities']),
             'stockCategories' => StockCategory::query()->orderBy('name')->get(['id', 'name']),
             'stockItems' => StockItem::query()->orderBy('name')->get(['id', 'name', 'stock_category_id']),
-            'salesmanCities' => Salesman::query()
-                ->whereNotNull('city')
-                ->where('city', '!=', '')
-                ->orderBy('city')
-                ->distinct()
-                ->pluck('city'),
+            'salesmanCities' => Salesman::query()->get(['city', 'cities'])
+                ->flatMap(fn (Salesman $salesman) => $salesman->cityList())
+                ->unique()
+                ->sort(fn ($a, $b) => strnatcasecmp((string) $a, (string) $b))
+                ->values(),
         ]);
     }
 
@@ -672,7 +671,7 @@ class ReportController extends Controller
 
             return [
                 'name' => $salesman->name,
-                'city' => $salesman->city ?: '—',
+                'city' => $salesman->citiesLabel() ?: '—',
                 'orders' => $salesmanOrders->count(),
                 'order_total' => (float) $salesmanOrders->sum('total'),
                 'invoices' => $salesmanInvoices->count(),
@@ -751,8 +750,8 @@ class ReportController extends Controller
                 }
                 if ($city !== '') {
                     $query->where(function ($inner) use ($city) {
-                        $inner->whereHas('salesman', fn ($salesman) => $salesman->where('city', $city))
-                            ->orWhereHas('salesOrder.salesman', fn ($salesman) => $salesman->where('city', $city));
+                        $inner->whereHas('salesman', fn ($salesman) => $salesman->assignedCity($city))
+                            ->orWhereHas('salesOrder.salesman', fn ($salesman) => $salesman->assignedCity($city));
                     });
                 }
             })
@@ -774,7 +773,7 @@ class ReportController extends Controller
                 $aggregates[$key] = [
                     'salesman' => $salesman?->name ?: 'Unassigned',
                     'salesman_id' => $salesmanIdKey,
-                    'city' => $salesman?->city ?: ($invoice->customer?->city ?: ''),
+                    'city' => $salesman?->citiesLabel() ?: ($invoice->customer?->city ?: ''),
                     'category' => $line->stockItem?->stockCategory?->name ?: 'Uncategorized',
                     'product' => $line->stockItem?->name ?: (trim((string) $line->description) ?: 'Item'),
                     'sku' => $line->stockItem?->sku ?: '',
@@ -1117,7 +1116,7 @@ class ReportController extends Controller
 
             return [
                 'name' => $salesman->name,
-                'city' => $salesman->city ?: '—',
+                'city' => $salesman->citiesLabel() ?: '—',
                 'invoices' => $salesmanInvoices->count(),
                 'sales' => $sales,
                 'commission' => (float) $salesmanInvoices->sum('salesman_commission_amount'),
@@ -1272,7 +1271,7 @@ class ReportController extends Controller
                 'sku' => $item->sku ?: '—',
                 'name' => $item->purchaseLabel(),
                 'category' => $item->stockCategory?->name ?: 'Uncategorized',
-                'batch' => new HtmlString($this->stockBatchHtml($item)),
+                'batch' => new HtmlString('<span class="stock-batch-no">'.e(trim((string) ($item->batch_no ?: '—'))).'</span>'),
                 'unit' => StockItem::UNITS[$item->unit] ?? ($item->unit ?: '—'),
                 'qty' => $qty,
                 'reorder' => (float) $item->reorder_level,
@@ -1282,28 +1281,6 @@ class ReportController extends Controller
                 'sale_value' => $qty * $sale,
             ];
         })->values();
-    }
-
-    private function stockBatchHtml(StockItem $item): string
-    {
-        $lots = $item->relationLoaded('lots')
-            ? $item->lots
-            : $item->lots()->orderBy('received_at')->orderBy('id')->get();
-
-        if ($lots->isEmpty()) {
-            return $this->stockBatchLineHtml($item->batch_no ?: '—', (float) $item->quantity);
-        }
-
-        return $lots
-            ->map(fn ($lot) => $this->stockBatchLineHtml($lot->batchLabel(), (float) $lot->quantity))
-            ->implode('');
-    }
-
-    private function stockBatchLineHtml(string $batch, float $qty): string
-    {
-        $label = trim($batch) !== '' ? $batch : '—';
-
-        return '<div class="stock-batch-line"><span class="stock-batch-no">'.e($label).'</span><span class="stock-batch-qty">qty '.e(ams_num($qty)).'</span></div>';
     }
 
     /**

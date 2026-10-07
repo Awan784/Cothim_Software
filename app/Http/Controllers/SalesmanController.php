@@ -80,10 +80,11 @@ class SalesmanController extends Controller
             ->whereBetween('invoice_date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
             ->where(function ($query) use ($salesman) {
                 $query->where('salesman_id', $salesman->id);
-                if ($salesman->city) {
-                    $query->orWhere(function ($cityQuery) use ($salesman) {
+                $cities = $salesman->cityList();
+                if ($cities !== []) {
+                    $query->orWhere(function ($cityQuery) use ($cities) {
                         $cityQuery->whereNull('salesman_id')
-                            ->whereHas('customer', fn ($customer) => $customer->where('city', $salesman->city));
+                            ->whereHas('customer', fn ($customer) => $customer->whereIn('city', $cities));
                     });
                 }
             })
@@ -125,7 +126,8 @@ class SalesmanController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'mobile' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
-            'city' => ['nullable', 'string', 'max:100'],
+            'cities' => ['nullable', 'array'],
+            'cities.*' => ['nullable', 'string', 'max:100'],
             'monthly_target' => ['nullable', 'numeric', 'min:0'],
             'commission_percent' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
             'is_active' => ['nullable', 'boolean'],
@@ -137,11 +139,21 @@ class SalesmanController extends Controller
             : null;
         $data['is_active'] = $request->boolean('is_active');
 
-        foreach (['phone', 'mobile', 'email', 'city'] as $field) {
+        foreach (['phone', 'mobile', 'email'] as $field) {
             if (($data[$field] ?? '') === '') {
                 $data[$field] = null;
             }
         }
+
+        $cities = [];
+        foreach ($data['cities'] ?? [] as $city) {
+            $city = trim((string) $city);
+            if ($city !== '' && ! in_array($city, $cities, true)) {
+                $cities[] = $city;
+            }
+        }
+        $data['cities'] = $cities === [] ? null : $cities;
+        $data['city'] = $cities[0] ?? null;
 
         if (filled($data['password'] ?? null)) {
             $data['show_password'] = $data['password'];

@@ -65,6 +65,7 @@ class TabEmpHedSeeder extends Seeder
                 $salesman->password = self::DEFAULT_PASSWORD;
                 $salesman->show_password = self::DEFAULT_PASSWORD;
                 $salesman->city = null;
+                $salesman->cities = null;
                 $salesman->monthly_target = 0;
             }
 
