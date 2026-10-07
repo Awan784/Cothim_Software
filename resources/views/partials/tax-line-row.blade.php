@@ -40,19 +40,19 @@
         </td>
     @endif
     <td class="line-qty-cell" data-label="Qty">
-        <input name="lines[{{ $index }}][quantity]" class="form-control form-control-sm text-end line-qty" value="{{ $row['quantity'] ?? 1 }}">
+        <input name="lines[{{ $index }}][quantity]" class="form-control form-control-sm text-end line-qty" value="{{ $row['quantity'] ?? 1 }}" inputmode="decimal" size="6">
     </td>
     <td class="line-price-cell" data-label="Unit price">
-        <input name="lines[{{ $index }}][unit_price]" class="form-control form-control-sm text-end line-price" value="{{ $row['unit_price'] ?? 0 }}">
+        <input name="lines[{{ $index }}][unit_price]" class="form-control form-control-sm text-end line-price" value="{{ $row['unit_price'] ?? 0 }}" inputmode="decimal" size="8">
     </td>
     @if($showDiscount)
         <td class="line-discount-cell" data-label="Disc %">
-            <input name="lines[{{ $index }}][discount_rate]" class="form-control form-control-sm text-end line-discount" value="{{ $row['discount_rate'] ?? 0 }}">
+            <input name="lines[{{ $index }}][discount_rate]" class="form-control form-control-sm text-end line-discount" value="{{ $row['discount_rate'] ?? 0 }}" inputmode="decimal" size="5">
         </td>
     @endif
     @if($showCommission)
-        <td class="line-commission-cell" data-label="Commission">
-            <input name="lines[{{ $index }}][commission_amount]" class="form-control form-control-sm text-end line-commission" value="{{ $row['commission_amount'] ?? 0 }}" min="0" step="0.01">
+        <td class="line-commission-cell" data-label="Comm %">
+            <input name="lines[{{ $index }}][commission_rate]" class="form-control form-control-sm text-end line-commission" value="{{ $row['commission_rate'] ?? 0 }}" min="0" max="100" step="0.01" inputmode="decimal" size="5">
         </td>
     @endif
     @if($showTax)

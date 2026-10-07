@@ -11,7 +11,7 @@
             'quantity' => $l->quantity,
             'unit_price' => $l->unit_price,
             'discount_rate' => $l->discount_rate,
-            'commission_amount' => $l->commission_amount,
+            'commission_rate' => $l->commission_rate,
             'vat_rate' => $l->vat_rate,
         ])->all();
     }

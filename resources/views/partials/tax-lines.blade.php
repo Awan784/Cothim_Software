@@ -20,7 +20,7 @@
                 <span class="text-muted small ms-2">Batch is the item’s current batch. A new purchase updates that same batch.</span>
             @endif
             @if($showCommission)
-                <span class="text-muted small ms-2">Commission is entered per product for the salesman. It totals on the invoice and does not change the customer total.</span>
+                <span class="text-muted small ms-2">Commission % is of the line amount after discount. It totals as salesman commission and does not change the customer total.</span>
             @endif
         </div>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addTaxLine">Add line</button>
@@ -51,7 +51,7 @@
                         <th class="text-end">Disc %</th>
                     @endif
                     @if($showCommission)
-                        <th class="text-end">Commission</th>
+                        <th class="text-end">Comm %</th>
                     @endif
                     @if($showTax)
                         <th class="text-end">Tax %</th>
@@ -154,12 +154,13 @@
             var discInput = row.querySelector('.line-discount');
             var discRate = discInput ? (parseFloat(discInput.value) || 0) : 0;
             var commInput = row.querySelector('.line-commission');
-            var comm = commInput ? (parseFloat(commInput.value) || 0) : 0;
+            var commRate = commInput ? (parseFloat(commInput.value) || 0) : 0;
             var rateInput = row.querySelector('.line-rate');
             var rate = rateInput ? (parseFloat(rateInput.value) || 0) : 0;
             var gross = qty * price;
             var disc = gross * discRate / 100;
             var net = gross - disc;
+            var comm = net * commRate / 100;
             var v = net * rate / 100;
             var vatCell = row.querySelector('.line-vat');
             if (vatCell) vatCell.textContent = money(v);

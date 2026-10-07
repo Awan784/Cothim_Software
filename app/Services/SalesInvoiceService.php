@@ -120,6 +120,7 @@ class SalesInvoiceService
                     'unit_price' => $line['unit_price'],
                     'discount_rate' => $line['discount_rate'],
                     'discount_amount' => $line['discount_amount'],
+                    'commission_rate' => round((float) ($line['commission_rate'] ?? 0), 2),
                     'commission_amount' => round((float) ($line['commission_amount'] ?? 0), 2),
                     'vat_rate' => $line['vat_rate'],
                     'line_net' => $line['line_net'],

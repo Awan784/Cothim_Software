@@ -47,6 +47,10 @@ class VatCalculator
             $discountRate = isset($line['discount_rate']) && $line['discount_rate'] !== ''
                 ? (float) $line['discount_rate']
                 : 0.0;
+            $commissionRate = isset($line['commission_rate']) && $line['commission_rate'] !== ''
+                ? (float) $line['commission_rate']
+                : 0.0;
+            $commissionRate = max(0, min(100, $commissionRate));
             $calc = $this->line($qty, $price, $rate, $discountRate);
             $subtotal += $calc['net'];
             $discountAmount += $calc['discount_amount'];
@@ -56,6 +60,8 @@ class VatCalculator
                 'unit_price' => $price,
                 'discount_rate' => $calc['discount_rate'],
                 'discount_amount' => $calc['discount_amount'],
+                'commission_rate' => $commissionRate,
+                'commission_amount' => round($calc['net'] * ($commissionRate / 100), 2),
                 'vat_rate' => $rate,
                 'line_net' => $calc['net'],
                 'vat_amount' => $calc['vat'],

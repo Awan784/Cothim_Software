@@ -31,7 +31,7 @@
                             <th class="text-end">Qty</th>
                             <th class="text-end">Price</th>
                             <th class="text-end">Disc %</th>
-                            <th class="text-end">Commission</th>
+                            <th class="text-end">Comm %</th>
                             <th>Batch #</th>
                             <th class="text-end">Tax %</th>
                             <th class="text-end">Tax</th>
@@ -45,7 +45,7 @@
                                 <td class="text-end">{{ number_format((float) $line->quantity, 3) }}</td>
                                 <td class="text-end">{{ number_format((float) $line->unit_price, 2) }}</td>
                                 <td class="text-end">{{ number_format((float) $line->discount_rate, 2) }}%</td>
-                                <td class="text-end">{{ number_format((float) $line->commission_amount, 2) }}</td>
+                                <td class="text-end">{{ number_format((float) $line->commission_rate, 2) }}%</td>
                                 <td>{{ $line->batchLabel() }}</td>
                                 <td class="text-end">{{ number_format((float) $line->vat_rate, 2) }}%</td>
                                 <td class="text-end">{{ number_format((float) $line->vat_amount, 2) }}</td>
