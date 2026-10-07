@@ -295,16 +295,6 @@ class ReportController extends Controller
         $afterBuilty = round($afterCommission - $builtyExpenses, 2);
         $netReceivable = round($afterBuilty - $previousAdvance, 2);
 
-        $commissionPercent = $invoices
-            ->pluck('salesman_commission_percent')
-            ->filter(fn ($value) => $value !== null)
-            ->map(fn ($value) => (float) $value)
-            ->unique()
-            ->values();
-        $percentLabel = $commissionPercent->count() === 1
-            ? rtrim(rtrim(number_format((float) $commissionPercent->first(), 2, '.', ''), '0'), '.')
-            : rtrim(rtrim(number_format((float) ($salesman->commission_percent ?? current_organization()?->salesman_commission_percent ?? 25), 2, '.', ''), '0'), '.');
-
         $settings = app(SettingsService::class);
 
         return view('reports.salesman-commission', [
@@ -323,7 +313,6 @@ class ReportController extends Controller
             'afterCommission' => $afterCommission,
             'afterBuilty' => $afterBuilty,
             'netReceivable' => $netReceivable,
-            'percentLabel' => $percentLabel,
         ]);
     }
 

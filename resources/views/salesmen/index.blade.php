@@ -26,7 +26,7 @@
                             <th class="text-end">Monthly target</th>
                             <th class="text-end">Advance</th>
                             <th class="text-end">This month</th>
-                            <th class="text-end">Commission %</th>
+                            <th class="text-end">Commission</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -54,7 +54,7 @@
                                 <td class="text-gray-900 text-end">{{ number_format((float) $salesman->monthly_target, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $salesman->advance_balance, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format($achieved, 2) }}</td>
-                                <td class="text-gray-900 text-end">{{ $salesman->commission_percent !== null ? number_format((float) $salesman->commission_percent, 2).'%' : 'Default' }}</td>
+                                <td class="text-gray-900 text-end">{{ number_format($bySalesman ? (float) $bySalesman->month_commission : 0, 2) }}</td>
                                 <td class="text-gray-900">{{ $salesman->is_active ? 'Active' : 'Inactive' }}</td>
                                 <td class="text-end">
                                     <a href="{{ route('salesmen.edit', $salesman) }}" class="btn btn-sm btn-outline-primary">Edit</a>

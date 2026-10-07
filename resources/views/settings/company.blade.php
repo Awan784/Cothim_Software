@@ -62,16 +62,6 @@
                         @error('invoice_series') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         <div class="form-text">Next invoice number is this plus one. Example: 1000 → Invoice # 1001, 1002, 1003…</div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Company retain %</label>
-                        <input name="company_retain_percent" class="form-control" value="{{ old('company_retain_percent', $settings['company_retain_percent'] ?? 50) }}">
-                        <div class="form-text">Share of each confirmed salesman invoice the company keeps first. Default 50%.</div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Salesman commission %</label>
-                        <input name="salesman_commission_percent" class="form-control" value="{{ old('salesman_commission_percent', $settings['salesman_commission_percent'] ?? 25) }}">
-                        <div class="form-text">Percent of the remaining amount after retain. Example: 1000 at 50/25 → retain 500, commission 125. Override per salesman if needed.</div>
-                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">WhatsApp</label>

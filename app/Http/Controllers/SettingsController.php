@@ -32,8 +32,6 @@ class SettingsController extends Controller
             'remove_logo' => ['nullable', 'boolean'],
             'default_vat_rate' => ['required', 'numeric', 'gte:0', 'lte:100'],
             'invoice_series' => ['required', 'integer', 'gte:0', 'lte:999999999'],
-            'company_retain_percent' => ['required', 'numeric', 'gte:0', 'lte:100'],
-            'salesman_commission_percent' => ['required', 'numeric', 'gte:0', 'lte:100'],
             'whatsapp' => ['nullable', 'string', 'max:32'],
             'print_warranty' => ['nullable', 'string', 'max:4000'],
             'print_note' => ['nullable', 'string', 'max:2000'],

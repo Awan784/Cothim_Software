@@ -4,11 +4,12 @@
     $stockItems = $stockItems ?? collect();
     $useItemSelect = ! empty($useItemSelect);
     $showDiscount = ! empty($showDiscount);
+    $showCommission = ! empty($showCommission);
     $showTax = $showTax ?? true;
     $showBatch = ! empty($showBatch);
     $hideStockQty = ! empty($hideStockQty);
     $showPrintNote = ! empty($showPrintNote);
-    $frontCols = 3 + ($showDiscount ? 1 : 0) + ($showBatch ? 1 : 0) + ($showTax ? 1 : 0) + ($showPrintNote ? 1 : 0);
+    $frontCols = 3 + ($showDiscount ? 1 : 0) + ($showCommission ? 1 : 0) + ($showBatch ? 1 : 0) + ($showTax ? 1 : 0) + ($showPrintNote ? 1 : 0);
     $hiddenVat = $showTax ? $vatRate : 0;
 @endphp
 <div class="card mb-3">
@@ -17,6 +18,9 @@
             <strong>Lines</strong>
             @if($showBatch)
                 <span class="text-muted small ms-2">Batch is the item’s current batch. A new purchase updates that same batch.</span>
+            @endif
+            @if($showCommission)
+                <span class="text-muted small ms-2">Commission is entered per product for the salesman. It totals on the invoice and does not change the customer total.</span>
             @endif
         </div>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addTaxLine">Add line</button>
@@ -45,6 +49,9 @@
                     <th class="text-end">Unit price</th>
                     @if($showDiscount)
                         <th class="text-end">Disc %</th>
+                    @endif
+                    @if($showCommission)
+                        <th class="text-end">Commission</th>
                     @endif
                     @if($showTax)
                         <th class="text-end">Tax %</th>
@@ -96,6 +103,16 @@
                     <td class="text-end"><strong id="docTotal">0.00</strong></td>
                     <td></td>
                 </tr>
+                @if($showCommission)
+                    <tr>
+                        <td colspan="{{ $frontCols }}" class="text-end">Salesman commission</td>
+                        @if($showTax)
+                            <td></td>
+                        @endif
+                        <td class="text-end" id="docCommission">0.00</td>
+                        <td></td>
+                    </tr>
+                @endif
             </tfoot>
         </table>
     </div>
@@ -130,12 +147,14 @@
         fillBatch(row);
     }
     function recalc() {
-        var sub = 0, discTotal = 0, vat = 0;
+        var sub = 0, discTotal = 0, vat = 0, commTotal = 0;
         table.querySelectorAll('.tax-line').forEach(function (row) {
             var qty = parseFloat(row.querySelector('.line-qty').value) || 0;
             var price = parseFloat(row.querySelector('.line-price').value) || 0;
             var discInput = row.querySelector('.line-discount');
             var discRate = discInput ? (parseFloat(discInput.value) || 0) : 0;
+            var commInput = row.querySelector('.line-commission');
+            var comm = commInput ? (parseFloat(commInput.value) || 0) : 0;
             var rateInput = row.querySelector('.line-rate');
             var rate = rateInput ? (parseFloat(rateInput.value) || 0) : 0;
             var gross = qty * price;
@@ -145,7 +164,7 @@
             var vatCell = row.querySelector('.line-vat');
             if (vatCell) vatCell.textContent = money(v);
             row.querySelector('.line-total').textContent = money(net + v);
-            sub += gross; discTotal += disc; vat += v;
+            sub += gross; discTotal += disc; vat += v; commTotal += comm;
         });
         document.getElementById('docSubtotal').textContent = money(sub);
         var discEl = document.getElementById('docDiscount');
@@ -153,6 +172,8 @@
         var vatEl = document.getElementById('docVat');
         if (vatEl) vatEl.textContent = money(vat);
         document.getElementById('docTotal').textContent = money(sub - discTotal + vat);
+        var commEl = document.getElementById('docCommission');
+        if (commEl) commEl.textContent = money(commTotal);
     }
     table.addEventListener('input', recalc);
     table.addEventListener('change', function (e) {
@@ -186,6 +207,7 @@
             if (input.classList.contains('line-qty')) input.value = '1';
             else if (input.classList.contains('line-price')) input.value = '0';
             else if (input.classList.contains('line-discount')) input.value = '0';
+            else if (input.classList.contains('line-commission')) input.value = '0';
             else if (input.classList.contains('line-rate')) input.value = '{{ $hiddenVat }}';
             else if (input.tagName === 'SELECT') input.selectedIndex = 0;
             else input.value = '';

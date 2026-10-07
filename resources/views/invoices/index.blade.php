@@ -19,6 +19,7 @@
                             <th>Date</th>
                             <th>Status</th>
                             <th class="text-end">Total</th>
+                            <th class="text-end">Commission</th>
                             <th class="text-end">Due</th>
                             <th></th>
                         </tr>
@@ -46,6 +47,7 @@
                                     <span class="ams-status-tag is-{{ $status }}">{{ $invoice->listStatusLabel() }}</span>
                                 </td>
                                 <td class="text-end text-gray-900">{{ ams_num($invoice->total) }}</td>
+                                <td class="text-end text-gray-900">{{ ams_num($invoice->salesman_commission_amount) }}</td>
                                 <td class="text-end {{ $invoice->balanceDue() > 0.009 ? 'text-danger fw-semibold' : 'text-muted' }}">{{ ams_num($invoice->balanceDue()) }}</td>
                                 <td class="text-end text-nowrap">
                                     <a class="btn btn-sm btn-outline-primary" href="{{ route('invoices.show', $invoice) }}">Open</a>
@@ -58,7 +60,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="text-center text-muted">No invoices yet.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted">No invoices yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -129,14 +129,10 @@ class SalesmanController extends Controller
             'cities' => ['nullable', 'array'],
             'cities.*' => ['nullable', 'string', 'max:100'],
             'monthly_target' => ['nullable', 'numeric', 'min:0'],
-            'commission_percent' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $data['monthly_target'] = (float) ($data['monthly_target'] ?? 0);
-        $data['commission_percent'] = filled($data['commission_percent'] ?? null)
-            ? (float) $data['commission_percent']
-            : null;
         $data['is_active'] = $request->boolean('is_active');
 
         foreach (['phone', 'mobile', 'email'] as $field) {

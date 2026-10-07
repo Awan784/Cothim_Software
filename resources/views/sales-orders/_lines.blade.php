@@ -29,8 +29,9 @@
                     <tr><td colspan="5" class="text-end">Discount</td><td class="text-end">{{ number_format((float) $order->discount_amount, 2) }}</td></tr>
                 @endif
                 <tr><td colspan="5" class="text-end"><strong>Total</strong></td><td class="text-end"><strong>{{ number_format((float) $order->total, 2) }}</strong></td></tr>
-                <tr><td colspan="5" class="text-end">Company retain ({{ number_format((float) $order->company_retain_percent, 2) }}%)</td><td class="text-end">{{ number_format((float) $order->company_retain_amount, 2) }}</td></tr>
-                <tr><td colspan="5" class="text-end">Salesman commission ({{ number_format((float) $order->salesman_commission_percent, 2) }}% of remaining)</td><td class="text-end">{{ number_format((float) $order->salesman_commission_amount, 2) }}</td></tr>
+                @if((float) $order->salesman_commission_amount > 0)
+                    <tr><td colspan="5" class="text-end">Salesman commission</td><td class="text-end">{{ number_format((float) $order->salesman_commission_amount, 2) }}</td></tr>
+                @endif
             </tfoot>
         </table>
     </div>

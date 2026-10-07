@@ -206,7 +206,7 @@
                         <td class="num">{{ ams_num($totalCommission) }}</td>
                     </tr>
                     <tr class="less">
-                        <td colspan="7" class="lbl">LESS {{ $percentLabel }}% COMMISSION</td>
+                        <td colspan="7" class="lbl">LESS COMMISSION</td>
                         <td class="num">({{ ams_num($totalCommission) }})</td>
                         <td></td>
                     </tr>

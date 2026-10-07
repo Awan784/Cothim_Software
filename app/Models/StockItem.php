@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class StockItem extends Model
 {
@@ -104,9 +103,6 @@ class StockItem extends Model
 
         $qty = round((float) $this->quantity, 2);
         $batch = StockItemLot::normalizeBatch($this->batch_no);
-        if ($qty <= 0 && $batch === '') {
-            return;
-        }
 
         $this->lots()->create([
             'batch_no' => $batch,
@@ -215,15 +211,8 @@ class StockItem extends Model
             return $line;
         }
 
-        $qty = (float) ($line['quantity'] ?? 0);
-        if ($qty > (float) $item->quantity + 0.009) {
-            throw ValidationException::withMessages([
-                'lines' => $item->name.' has only '.number_format((float) $item->quantity, 2).' remaining.',
-            ]);
-        }
-
         $lot = $item->currentLot();
-        if (! $lot && (float) $item->quantity > 0) {
+        if (! $lot) {
             $item->seedOpeningLot();
             $lot = $item->currentLot();
         }

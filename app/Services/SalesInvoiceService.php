@@ -24,7 +24,6 @@ class SalesInvoiceService
         private ZatcaQrService $zatca,
         private CashVoucherService $vouchers,
         private InventoryService $inventory,
-        private CommissionService $commission,
     ) {}
 
     /**
@@ -69,7 +68,11 @@ class SalesInvoiceService
                 }
             }
 
-            $payload = array_merge($payload, $this->salesmanSnapshot($data, (float) $computed['total']));
+            $commissionTotal = 0.0;
+            foreach ($computed['lines'] as $line) {
+                $commissionTotal += round((float) ($line['commission_amount'] ?? 0), 2);
+            }
+            $payload = array_merge($payload, $this->salesmanSnapshot($data, $commissionTotal));
             $issued = false;
 
             if ($invoice) {
@@ -117,6 +120,7 @@ class SalesInvoiceService
                     'unit_price' => $line['unit_price'],
                     'discount_rate' => $line['discount_rate'],
                     'discount_amount' => $line['discount_amount'],
+                    'commission_amount' => round((float) ($line['commission_amount'] ?? 0), 2),
                     'vat_rate' => $line['vat_rate'],
                     'line_net' => $line['line_net'],
                     'vat_amount' => $line['vat_amount'],
@@ -126,6 +130,15 @@ class SalesInvoiceService
             }
 
             $invoice = $invoice->fresh(['lines', 'customer']);
+
+            if ($invoice->sales_order_id) {
+                SalesOrder::query()->where('id', $invoice->sales_order_id)->update([
+                    'company_retain_percent' => 0,
+                    'salesman_commission_percent' => 0,
+                    'company_retain_amount' => 0,
+                    'salesman_commission_amount' => (float) $invoice->salesman_commission_amount,
+                ]);
+            }
 
             if ($issued) {
                 Customer::whereKey($invoice->customer_id)->increment('current_balance', (float) $invoice->total);
@@ -340,7 +353,7 @@ class SalesInvoiceService
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private function salesmanSnapshot(array $data, float $total): array
+    private function salesmanSnapshot(array $data, float $commissionAmount): array
     {
         if (! array_key_exists('salesman_id', $data)) {
             return [];
@@ -362,8 +375,12 @@ class SalesInvoiceService
             throw new InvalidArgumentException('Salesman not found.');
         }
 
-        return $this->commission->snapshot($total, $salesman) + [
+        return [
             'salesman_id' => $salesman->id,
+            'company_retain_percent' => 0,
+            'salesman_commission_percent' => 0,
+            'company_retain_amount' => 0,
+            'salesman_commission_amount' => round(max(0, $commissionAmount), 2),
         ];
     }
 }

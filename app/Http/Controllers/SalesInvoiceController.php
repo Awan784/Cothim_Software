@@ -173,6 +173,7 @@ class SalesInvoiceController extends Controller
             'lines.*.quantity' => ['required', 'numeric', 'gt:0'],
             'lines.*.unit_price' => ['required', 'numeric', 'gte:0'],
             'lines.*.discount_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
+            'lines.*.commission_amount' => ['nullable', 'numeric', 'gte:0'],
             'lines.*.vat_rate' => ['nullable', 'numeric', 'gte:0', 'lte:100'],
         ]);
 
@@ -194,6 +195,7 @@ class SalesInvoiceController extends Controller
 
         foreach ($data['lines'] as &$line) {
             $line['discount_rate'] = $line['discount_rate'] ?? 0;
+            $line['commission_amount'] = round((float) ($line['commission_amount'] ?? 0), 2);
             $line['vat_rate'] = 0;
 
             if (empty($line['stock_item_id'])) {

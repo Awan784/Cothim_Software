@@ -2,6 +2,7 @@
     $index = $index ?? 0;
     $row = $row ?? [];
     $showDiscount = $showDiscount ?? false;
+    $showCommission = $showCommission ?? false;
     $showTax = $showTax ?? true;
     $showBatch = $showBatch ?? false;
     $hideStockQty = $hideStockQty ?? false;
@@ -47,6 +48,11 @@
     @if($showDiscount)
         <td class="line-discount-cell" data-label="Disc %">
             <input name="lines[{{ $index }}][discount_rate]" class="form-control form-control-sm text-end line-discount" value="{{ $row['discount_rate'] ?? 0 }}">
+        </td>
+    @endif
+    @if($showCommission)
+        <td class="line-commission-cell" data-label="Commission">
+            <input name="lines[{{ $index }}][commission_amount]" class="form-control form-control-sm text-end line-commission" value="{{ $row['commission_amount'] ?? 0 }}" min="0" step="0.01">
         </td>
     @endif
     @if($showTax)

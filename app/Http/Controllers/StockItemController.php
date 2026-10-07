@@ -132,7 +132,7 @@ class StockItemController extends Controller
             'sku' => ['nullable', 'string', 'max:255', $skuRule],
             'batch_no' => ['nullable', 'string', 'max:100'],
             'unit' => ['required', Rule::in(array_keys(StockItem::UNITS))],
-            'quantity' => ['required', 'numeric', 'min:0'],
+            'quantity' => ['required', 'numeric'],
             'cost_price' => ['required', 'numeric', 'min:0'],
             'sale_price' => ['nullable', 'numeric', 'min:0'],
             'has_variants' => ['nullable', 'boolean'],

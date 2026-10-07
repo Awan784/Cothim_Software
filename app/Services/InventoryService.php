@@ -47,7 +47,14 @@ class InventoryService
         $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
         $lot = $item->collapseToSingleLot();
         if (! $lot) {
-            throw new InvalidArgumentException('Not enough stock for this item.');
+            $lot = StockItemLot::create([
+                'organization_id' => $item->organization_id,
+                'stock_item_id' => $stockItemId,
+                'batch_no' => StockItemLot::normalizeBatch($item->batch_no),
+                'expiry_date' => $item->expiry_date,
+                'quantity' => round((float) $item->quantity, 2),
+                'received_at' => now(),
+            ]);
         }
 
         $this->issueFromLot($stockItemId, (int) $lot->id, $remaining, $meta);
@@ -151,12 +158,6 @@ class InventoryService
 
         if (! $lot) {
             throw new InvalidArgumentException('Select a valid batch for this item.');
-        }
-
-        if ((float) $lot->quantity + 0.009 < $qty) {
-            throw new InvalidArgumentException(
-                'Not enough stock. Only '.number_format((float) $lot->quantity, 2).' remaining.'
-            );
         }
 
         $lot->quantity = round((float) $lot->quantity - $qty, 2);

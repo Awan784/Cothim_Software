@@ -18,7 +18,6 @@ class SalesOrderService
     public function __construct(
         private VatCalculator $vat,
         private SettingsService $settings,
-        private CommissionService $commission,
         private SalesInvoiceService $invoices,
     ) {}
 
@@ -37,9 +36,7 @@ class SalesOrderService
             throw new InvalidArgumentException('Add at least one order line.');
         }
 
-        $snapshot = $this->commission->snapshot((float) $computed['total'], $salesman);
-
-        return DB::transaction(function () use ($order, $data, $computed, $salesman, $snapshot) {
+        return DB::transaction(function () use ($order, $data, $computed, $salesman) {
             $payload = [
                 'salesman_id' => $salesman->id,
                 'customer_id' => $data['customer_id'],
@@ -50,7 +47,11 @@ class SalesOrderService
                 'discount_amount' => $computed['discount_amount'],
                 'vat_amount' => $computed['vat_amount'],
                 'total' => $computed['total'],
-            ] + $snapshot;
+                'company_retain_percent' => 0,
+                'salesman_commission_percent' => 0,
+                'company_retain_amount' => 0,
+                'salesman_commission_amount' => 0,
+            ];
 
             if ($order) {
                 $order->update($payload);
@@ -130,33 +131,17 @@ class SalesOrderService
                 'builty_exp' => $order->builty_exp,
                 'salesman_id' => $order->salesman_id,
                 'sales_order_id' => $order->id,
-                'company_retain_percent' => $order->company_retain_percent,
-                'salesman_commission_percent' => $order->salesman_commission_percent,
-                'company_retain_amount' => $order->company_retain_amount,
-                'salesman_commission_amount' => $order->salesman_commission_amount,
             ], $lines, $user);
-
-            $split = $this->commission->split(
-                (float) $invoice->total,
-                (float) $order->company_retain_percent,
-                (float) $order->salesman_commission_percent
-            );
-
-            $invoice->fill($split + [
-                'salesman_id' => $order->salesman_id,
-                'sales_order_id' => $order->id,
-                'builty_postal' => $order->builty_postal,
-                'builty_exp' => $order->builty_exp,
-            ]);
-            $invoice->save();
 
             $order->update([
                 'status' => SalesOrder::STATUS_CONFIRMED,
                 'sales_invoice_id' => $invoice->id,
                 'confirmed_by' => $user->id,
                 'confirmed_at' => now(),
-                'company_retain_amount' => $split['company_retain_amount'],
-                'salesman_commission_amount' => $split['salesman_commission_amount'],
+                'company_retain_percent' => 0,
+                'salesman_commission_percent' => 0,
+                'company_retain_amount' => 0,
+                'salesman_commission_amount' => (float) $invoice->salesman_commission_amount,
             ]);
 
             return $invoice->fresh(['customer', 'lines']);
