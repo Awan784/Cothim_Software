@@ -22,6 +22,7 @@ class Salesman extends Authenticatable
         'city',
         'cities',
         'monthly_target',
+        'opening_balance',
         'commission_percent',
         'advance_balance',
         'is_active',
@@ -36,6 +37,7 @@ class Salesman extends Authenticatable
     {
         return [
             'monthly_target' => 'decimal:2',
+            'opening_balance' => 'float',
             'commission_percent' => 'float',
             'advance_balance' => 'float',
             'is_active' => 'boolean',

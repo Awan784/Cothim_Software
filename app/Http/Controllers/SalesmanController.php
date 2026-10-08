@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\Salesman;
+use App\Services\SalesmanLedgerService;
+use App\Services\SettingsService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -55,7 +58,7 @@ class SalesmanController extends Controller
     public function create(): View
     {
         return view('salesmen.create', [
-            'salesman' => new Salesman(['is_active' => true, 'monthly_target' => 0]),
+            'salesman' => new Salesman(['is_active' => true, 'monthly_target' => 0, 'opening_balance' => 0]),
         ]);
     }
 
@@ -66,9 +69,34 @@ class SalesmanController extends Controller
         return redirect()->route('salesmen.index')->with('success', 'Salesman created.');
     }
 
-    public function show(Salesman $salesman): RedirectResponse
+    public function show(Salesman $salesman, SalesmanLedgerService $ledger, SettingsService $settings): View
     {
-        return redirect()->route('salesmen.edit', $salesman);
+        $from = Carbon::parse('2000-01-01')->startOfDay();
+        $to = now()->endOfDay();
+        $result = $ledger->ledger($salesman, $from, $to);
+
+        return view('reports.party-ledger', [
+            'title' => 'Salesman Ledger',
+            'settings' => $settings,
+            'companyName' => $settings->companyName(),
+            'printedAt' => now(),
+            'period' => null,
+            'fromDate' => $from,
+            'toDate' => $to,
+            'wide' => true,
+            'subtitle' => $salesman->name,
+            'partyName' => $salesman->name,
+            'partyCode' => (string) (1000 + (int) $salesman->id),
+            'accountType' => 'salesman',
+            'accountTypeLabel' => 'Salesman',
+            'entries' => $result['entries'],
+            'openingBalance' => $result['openingBalance'],
+            'closingBalance' => $result['closingBalance'],
+            'totalDebit' => $result['totalDebit'],
+            'totalCredit' => $result['totalCredit'],
+            'backUrl' => route('salesmen.index'),
+            'backLabel' => 'Back to Salesmen',
+        ]);
     }
 
     public function edit(Salesman $salesman): View
@@ -129,10 +157,12 @@ class SalesmanController extends Controller
             'cities' => ['nullable', 'array'],
             'cities.*' => ['nullable', 'string', 'max:100'],
             'monthly_target' => ['nullable', 'numeric', 'min:0'],
+            'opening_balance' => ['nullable', 'numeric'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $data['monthly_target'] = (float) ($data['monthly_target'] ?? 0);
+        $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['is_active'] = $request->boolean('is_active');
 
         foreach (['phone', 'mobile', 'email'] as $field) {

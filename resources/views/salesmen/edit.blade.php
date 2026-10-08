@@ -12,7 +12,8 @@
                     of {{ number_format((float) $salesman->monthly_target, 2) }}
                 </p>
             </div>
-            <div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('salesmen.show', $salesman) }}" class="btn btn-sm btn-outline-primary">Open ledger</a>
                 <a href="{{ route('salesmen.index') }}" class="btn btn-sm btn-secondary">Back</a>
             </div>
         </div>

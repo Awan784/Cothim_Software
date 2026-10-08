@@ -87,6 +87,12 @@
         <input name="monthly_target" value="{{ old('monthly_target', $s->monthly_target ?? 0) }}" class="form-control @error('monthly_target') is-invalid @enderror">
         @error('monthly_target') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Opening balance</label>
+        <input name="opening_balance" value="{{ old('opening_balance', $s->opening_balance ?? 0) }}" class="form-control @error('opening_balance') is-invalid @enderror">
+        <div class="form-text">Starting receivable on the salesman ledger. Positive means the salesman owes the company.</div>
+        @error('opening_balance') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
 </div>
 
 <div class="form-check mb-3">

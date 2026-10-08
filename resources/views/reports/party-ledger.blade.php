@@ -4,7 +4,7 @@
     @php
         $balanceLabel = match ($accountType ?? '') {
             'supplier' => 'Payable balance',
-            'customer' => 'Receivable balance',
+            'customer', 'salesman' => 'Receivable balance',
             default => 'Closing balance',
         };
     @endphp
