@@ -318,42 +318,62 @@ class ReportController extends Controller
 
     private function accountReceivablesReport(array $item): View
     {
-        $rows = collect();
+        $salesmen = Salesman::query()->orderBy('name')->get()->keyBy('id');
 
-        foreach (Customer::orderBy('name')->get() as $customer) {
-            $balance = (float) $customer->current_balance;
-            if (abs($balance) < 0.005) {
+        $unpaid = SalesInvoice::query()
+            ->with('salesOrder:id,salesman_id')
+            ->where('status', '!=', 'draft')
+            ->whereRaw('(total - amount_paid) > 0.009')
+            ->where(function ($query) {
+                $query->whereNotNull('salesman_id')
+                    ->orWhereHas('salesOrder', fn ($order) => $order->whereNotNull('salesman_id'));
+            })
+            ->get(['id', 'salesman_id', 'sales_order_id', 'total', 'amount_paid', 'salesman_commission_amount']);
+
+        $totals = [];
+        foreach ($unpaid as $invoice) {
+            $salesmanId = (int) ($invoice->salesman_id ?: $invoice->salesOrder?->salesman_id);
+            if ($salesmanId < 1) {
                 continue;
             }
 
-            $rows->push([
-                'code' => 1000 + (int) $customer->id,
-                'party_name' => $customer->name,
-                'party_type' => 'Customer',
-                'debit' => max($balance, 0),
-                'credit' => $balance < 0 ? abs($balance) : 0,
-            ]);
-        }
+            $due = $invoice->balanceDue();
+            $total = (float) $invoice->total;
+            $commission = (float) $invoice->salesman_commission_amount;
+            $commissionDue = $total > 0.009 ? round($commission * ($due / $total), 2) : 0.0;
 
-        foreach (Supplier::orderBy('name')->get() as $supplier) {
-            $balance = (float) $supplier->current_balance;
-            if (abs($balance) < 0.005) {
-                continue;
+            if (! isset($totals[$salesmanId])) {
+                $totals[$salesmanId] = ['invoices' => 0, 'sales' => 0.0, 'commission' => 0.0];
             }
 
-            $rows->push([
-                'code' => 2000 + (int) $supplier->id,
-                'party_name' => $supplier->name,
-                'party_type' => 'Supplier',
-                'debit' => $balance < 0 ? abs($balance) : 0,
-                'credit' => max($balance, 0),
-            ]);
+            $totals[$salesmanId]['invoices']++;
+            $totals[$salesmanId]['sales'] = round($totals[$salesmanId]['sales'] + $due, 2);
+            $totals[$salesmanId]['commission'] = round($totals[$salesmanId]['commission'] + $commissionDue, 2);
         }
 
-        $rows = $rows->sortBy('code')->values();
+        $rows = $salesmen->map(function (Salesman $salesman) use ($totals) {
+            $row = $totals[$salesman->id] ?? ['invoices' => 0, 'sales' => 0.0, 'commission' => 0.0];
+            $sales = round((float) $row['sales'], 2);
+            $commission = round((float) $row['commission'], 2);
+            $net = round($sales - $commission, 2);
+
+            return [
+                'code' => 1000 + (int) $salesman->id,
+                'salesman' => $salesman->name,
+                'city' => $salesman->citiesLabel() ?: '',
+                'invoices' => (int) $row['invoices'],
+                'sales' => $sales,
+                'commission' => $commission,
+                'debit' => $net > 0.005 ? $net : 0.0,
+                'credit' => $net < -0.005 ? abs($net) : 0.0,
+            ];
+        })->values();
 
         return view('reports.account-receivables', $this->printData($item, extra: [
+            'subtitle' => 'Unpaid salesman invoices · less commission',
             'rows' => $rows,
+            'totalSales' => (float) $rows->sum('sales'),
+            'totalCommission' => (float) $rows->sum('commission'),
             'totalDebit' => (float) $rows->sum('debit'),
             'totalCredit' => (float) $rows->sum('credit'),
         ]));

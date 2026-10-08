@@ -117,6 +117,11 @@
             font-weight: 700;
             text-align: left;
         }
+        table.items th.num,
+        table.items td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
         table.items td.batch-cell {
             white-space: normal;
             vertical-align: top;
