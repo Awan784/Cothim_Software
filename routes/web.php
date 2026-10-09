@@ -24,6 +24,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StockCategoryController;
 use App\Http\Controllers\StockItemController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\VendorController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -112,6 +113,7 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     Route::resource('salesman-settlements', SalesmanSettlementController::class)
         ->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::resource('suppliers', SupplierController::class);
+    Route::resource('vendors', VendorController::class);
     Route::resource('bank-accounts', BankAccountController::class);
     Route::get('bank-accounts/{bankAccount}/balance', [BankAccountController::class, 'balance'])->name('bank-accounts.balance');
     Route::resource('expense-accounts', ExpenseAccountController::class);

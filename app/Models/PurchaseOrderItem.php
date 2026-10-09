@@ -12,6 +12,8 @@ class PurchaseOrderItem extends Model
         'stock_item_id',
         'stock_item_lot_id',
         'batch_no',
+        'manufactured_at',
+        'expiry_date',
         'item_name',
         'unit',
         'unit_price',
@@ -19,6 +21,14 @@ class PurchaseOrderItem extends Model
         'line_total',
         'note',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'manufactured_at' => 'date',
+            'expiry_date' => 'date',
+        ];
+    }
 
     public function displayName(): string
     {

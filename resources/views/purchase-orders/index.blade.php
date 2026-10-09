@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-0">Purchase Orders</h1>
-                <p class="mb-0">Supplier purchase notes with items.</p>
+                <p class="mb-0">Supplier purchases add stock. Vendor purchases stay on the vendor ledger.</p>
             </div>
             <div>
                 <a href="{{ route('purchase-orders.create') }}" class="btn btn-sm btn-gray-800">Create Purchase Order</a>
@@ -20,7 +20,7 @@
                         <tr>
                             <th>Date</th>
                             <th>PO No</th>
-                            <th>Supplier</th>
+                            <th>Party</th>
                             <th class="text-end">Total</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -33,7 +33,13 @@
                                     <button type="button" class="btn btn-link p-0 po-open" data-po-id="{{ $po->id }}">{{ $po->po_no }}</button>
                                 </td>
                                 <td class="text-gray-900">
-                                    <a href="{{ route('suppliers.show', $po->supplier_id) }}">{{ $po->supplier?->name }}</a>
+                                    @if($po->isVendorPurchase())
+                                        <a href="{{ route('vendors.show', $po->vendor_id) }}">{{ $po->vendor?->name }}</a>
+                                        <div class="small text-muted">Vendor</div>
+                                    @else
+                                        <a href="{{ route('suppliers.show', $po->supplier_id) }}">{{ $po->supplier?->name }}</a>
+                                        <div class="small text-muted">Supplier</div>
+                                    @endif
                                 </td>
                                 <td class="text-gray-900 text-end">{{ ams_num($po->total_amount) }}</td>
                                 <td class="text-end text-nowrap po-row-actions">
@@ -62,8 +68,8 @@
             return [$po->id => [
                 'po_no' => $po->po_no,
                 'po_date' => ams_date($po->po_date),
-                'supplier' => $po->supplier?->name ?: '—',
-                'supplier_meta' => collect([$po->supplier?->phone, $po->supplier?->city])->filter()->join(' · ') ?: '—',
+                'supplier' => $po->partyName(),
+                'supplier_meta' => collect([$po->party()?->phone, $po->party()?->city, $po->isVendorPurchase() ? 'Vendor' : 'Supplier'])->filter()->join(' · ') ?: '—',
                 'notes' => $po->notes ?: '—',
                 'total' => ams_num($po->total_amount),
                 'print_url' => route('purchase-orders.print', $po),
@@ -98,7 +104,7 @@
                                 <div class="fw-semibold" id="poDetailDate">—</div>
                             </div>
                             <div class="col-sm-8">
-                                <div class="small text-muted">Supplier</div>
+                                <div class="small text-muted">Party</div>
                                 <div class="fw-semibold" id="poDetailSupplier">—</div>
                                 <div class="small text-muted" id="poDetailSupplierMeta">—</div>
                             </div>

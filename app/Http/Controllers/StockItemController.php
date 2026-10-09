@@ -69,8 +69,11 @@ class StockItemController extends Controller
             $variants = $data['variants'] ?? [];
             unset($data['variants']);
 
+            $manufacturedAt = $data['manufactured_at'] ?? null;
+            unset($data['manufactured_at']);
+
             $item = StockItem::create($data);
-            $item->seedOpeningLot();
+            $item->seedOpeningLot($manufacturedAt);
             $this->syncVariants($item, $data['has_variants'], $variants);
         });
 
@@ -100,9 +103,12 @@ class StockItemController extends Controller
             $variants = $data['variants'] ?? [];
             unset($data['variants']);
 
+            $manufacturedAt = $data['manufactured_at'] ?? null;
+            unset($data['manufactured_at']);
+
             $stockItem->update($data);
             $this->syncVariants($stockItem, $data['has_variants'], $variants);
-            $stockItem->syncSingleLotFromItem();
+            $stockItem->syncSingleLotFromItem($manufacturedAt);
         });
 
         return redirect()->route('stock-items.index')->with('success', 'Item updated.');
@@ -141,6 +147,7 @@ class StockItemController extends Controller
             'pack_size' => ['nullable', 'string', 'max:100'],
             'manufacturer' => ['nullable', 'string', 'max:255'],
             'expiry_date' => ['nullable', 'date'],
+            'manufactured_at' => ['nullable', 'date'],
             'composition' => ['nullable', 'string'],
             'barcode' => ['nullable', 'string', 'max:100'],
             'storage_note' => ['nullable', 'string', 'max:255'],

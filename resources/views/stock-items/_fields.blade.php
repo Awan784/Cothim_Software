@@ -37,7 +37,7 @@
         <label class="form-label">Batch no</label>
         <input name="batch_no" value="{{ old('batch_no', $item->batch_no) }}" class="form-control @error('batch_no') is-invalid @enderror">
         @error('batch_no') <div class="invalid-feedback">{{ $message }}</div> @enderror
-        <div class="form-text">One batch per item. A purchase updates this batch and adds qty.</div>
+        <div class="form-text">Opening batch. A new batch on purchase is stored separately with its own qty.</div>
     </div>
 </div>
 
@@ -131,6 +131,35 @@
     @error('variants') <div class="text-danger small mt-2">{{ $message }}</div> @enderror
 </div>
 
+@if($item->exists && $item->relationLoaded('lots') && $item->lots->isNotEmpty())
+    <div class="mb-4">
+        <label class="form-label">Lots / batches</label>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Batch</th>
+                        <th class="text-end">Qty</th>
+                        <th>Manufacture</th>
+                        <th>Expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($item->lots as $lot)
+                        <tr>
+                            <td><span class="stock-batch-no">{{ $lot->batchLabel() }}</span></td>
+                            <td class="text-end">{{ $lot->qtyLabel() }}</td>
+                            <td>{{ $lot->manufactured_at ? ams_date($lot->manufactured_at) : '—' }}</td>
+                            <td>{{ $lot->expiry_date ? ams_date($lot->expiry_date) : '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <div class="form-text">New batches are added on purchase. The same batch number adds qty to that lot.</div>
+    </div>
+@endif
+
 <div class="row">
     <div class="col-md-6 mb-3">
         <label class="form-label">Manufacturer</label>
@@ -138,17 +167,21 @@
         @error('manufacturer') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
     <div class="col-md-3 mb-3">
-        <label class="form-label">Expiry date</label>
-        <x-ams-date-input name="expiry_date" :value="old('expiry_date', $item->expiry_date)" />
+        <label class="form-label">Manufacture date</label>
+        <x-ams-date-input name="manufactured_at" :value="old('manufactured_at', $item->exists ? $item->lots->first()?->manufactured_at : null)" />
     </div>
     <div class="col-md-3 mb-3">
-        <label class="form-label">Barcode</label>
-        <input name="barcode" value="{{ old('barcode', $item->barcode) }}" class="form-control @error('barcode') is-invalid @enderror">
-        @error('barcode') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        <label class="form-label">Expiry date</label>
+        <x-ams-date-input name="expiry_date" :value="old('expiry_date', $item->expiry_date ?: $item->lots->first()?->expiry_date)" />
     </div>
 </div>
 
 <div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Barcode</label>
+        <input name="barcode" value="{{ old('barcode', $item->barcode) }}" class="form-control @error('barcode') is-invalid @enderror">
+        @error('barcode') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">HS / HS code</label>
         <input name="hs_code" value="{{ old('hs_code', $item->hs_code) }}" class="form-control @error('hs_code') is-invalid @enderror">

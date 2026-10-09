@@ -6,6 +6,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\StockItem;
 use App\Models\Supplier;
+use App\Models\Vendor;
 use App\Services\InventoryService;
 use App\Services\SettingsService;
 use App\Support\AmountInWords;
@@ -21,7 +22,7 @@ class PurchaseOrderController extends Controller
 
     public function index(): View
     {
-        $purchaseOrders = PurchaseOrder::with(['supplier', 'items'])
+        $purchaseOrders = PurchaseOrder::with(['supplier', 'vendor', 'items'])
             ->orderByDesc('po_date')
             ->orderByDesc('id')
             ->limit(500)
@@ -33,22 +34,17 @@ class PurchaseOrderController extends Controller
     public function create(): View|RedirectResponse
     {
         $suppliers = Supplier::orderBy('name')->get();
-        if ($suppliers->isEmpty()) {
+        $vendors = Vendor::orderBy('name')->get();
+        if ($suppliers->isEmpty() && $vendors->isEmpty()) {
             return redirect()
-                ->route('suppliers.create')
-                ->with('error', 'Add a supplier first, then create a purchase.');
-        }
-
-        $stockItems = $this->inventoryItems(true);
-        if ($stockItems->isEmpty()) {
-            return redirect()
-                ->route('stock-items.create')
-                ->with('error', 'Add inventory items first, then create a purchase.');
+                ->route('vendors.create')
+                ->with('error', 'Add a supplier or vendor first, then create a purchase.');
         }
 
         return view('purchase-orders.create', [
             'suppliers' => $suppliers,
-            'stockItems' => $stockItems,
+            'vendors' => $vendors,
+            'stockItems' => $this->inventoryItems(true),
         ]);
     }
 
@@ -57,27 +53,32 @@ class PurchaseOrderController extends Controller
         $data = $this->validatedPurchaseOrder($request);
 
         DB::transaction(function () use ($data) {
-            $supplier = Supplier::whereKey($data['supplier_id'])->lockForUpdate()->firstOrFail();
             $total = $this->calculateItemsTotal($data['items']);
 
             $po = PurchaseOrder::create([
                 'po_no' => PurchaseOrder::nextNumber(),
-                'supplier_id' => $supplier->id,
+                'party_type' => $data['party_type'],
+                'supplier_id' => $data['supplier_id'],
+                'vendor_id' => $data['vendor_id'],
                 'po_date' => $data['po_date'],
                 'notes' => $data['notes'] ?? null,
                 'total_amount' => $total,
             ]);
 
             $this->persistItems($po, $data['items'], $data['po_date']);
-            $supplier->increment('current_balance', $total);
+            $this->adjustPartyBalance($data['party_type'], $data['party_type'] === 'vendor' ? $data['vendor_id'] : $data['supplier_id'], $total);
         });
 
-        return redirect()->route('purchase-orders.index')->with('success', 'Purchase saved. Inventory quantity increased.');
+        $message = ($data['party_type'] ?? '') === 'vendor'
+            ? 'Purchase saved on the vendor ledger. Inventory was not changed.'
+            : 'Purchase saved. Inventory quantity increased.';
+
+        return redirect()->route('purchase-orders.index')->with('success', $message);
     }
 
     public function print(PurchaseOrder $purchaseOrder, SettingsService $settings): View
     {
-        $purchaseOrder->load(['supplier', 'items']);
+        $purchaseOrder->load(['supplier', 'vendor', 'items']);
 
         return view('purchase-orders.print', [
             'purchaseOrder' => $purchaseOrder,
@@ -94,11 +95,12 @@ class PurchaseOrderController extends Controller
 
     public function edit(PurchaseOrder $purchaseOrder): View
     {
-        $purchaseOrder->load('items.stockItem', 'supplier');
+        $purchaseOrder->load('items.stockItem', 'supplier', 'vendor');
 
         return view('purchase-orders.edit', [
             'purchaseOrder' => $purchaseOrder,
             'suppliers' => Supplier::orderBy('name')->get(),
+            'vendors' => Vendor::orderBy('name')->get(),
             'stockItems' => $this->inventoryItems(false),
         ]);
     }
@@ -108,9 +110,9 @@ class PurchaseOrderController extends Controller
         $data = $this->validatedPurchaseOrder($request);
 
         DB::transaction(function () use ($purchaseOrder, $data) {
-            $oldSupplier = Supplier::whereKey($purchaseOrder->supplier_id)->lockForUpdate()->firstOrFail();
-            $oldTotal = (float) $purchaseOrder->total_amount;
-            $oldSupplier->decrement('current_balance', $oldTotal);
+            $oldType = $purchaseOrder->party_type ?: 'supplier';
+            $oldPartyId = $oldType === 'vendor' ? $purchaseOrder->vendor_id : $purchaseOrder->supplier_id;
+            $this->adjustPartyBalance($oldType, $oldPartyId, -((float) $purchaseOrder->total_amount));
 
             $this->inventory->revertPurchaseOrder($purchaseOrder);
             PurchaseOrderItem::where('purchase_order_id', $purchaseOrder->id)->delete();
@@ -118,33 +120,38 @@ class PurchaseOrderController extends Controller
             $newTotal = $this->calculateItemsTotal($data['items']);
 
             $purchaseOrder->update([
+                'party_type' => $data['party_type'],
                 'supplier_id' => $data['supplier_id'],
+                'vendor_id' => $data['vendor_id'],
                 'po_date' => $data['po_date'],
                 'notes' => $data['notes'] ?? null,
                 'total_amount' => $newTotal,
             ]);
 
             $this->persistItems($purchaseOrder, $data['items'], $data['po_date']);
-
-            $newSupplier = Supplier::whereKey($purchaseOrder->supplier_id)->lockForUpdate()->firstOrFail();
-            $newSupplier->increment('current_balance', $newTotal);
+            $this->adjustPartyBalance($data['party_type'], $data['party_type'] === 'vendor' ? $data['vendor_id'] : $data['supplier_id'], $newTotal);
         });
 
-        return redirect()->route('purchase-orders.index')->with('success', 'Purchase updated. Inventory quantity recalculated.');
+        $message = $data['party_type'] === 'vendor'
+            ? 'Purchase updated on the vendor ledger.'
+            : 'Purchase updated. Inventory quantity recalculated.';
+
+        return redirect()->route('purchase-orders.index')->with('success', $message);
     }
 
     public function destroy(PurchaseOrder $purchaseOrder): RedirectResponse
     {
         DB::transaction(function () use ($purchaseOrder) {
-            $supplier = Supplier::whereKey($purchaseOrder->supplier_id)->lockForUpdate()->firstOrFail();
-            $supplier->decrement('current_balance', (float) $purchaseOrder->total_amount);
+            $type = $purchaseOrder->party_type ?: 'supplier';
+            $partyId = $type === 'vendor' ? $purchaseOrder->vendor_id : $purchaseOrder->supplier_id;
+            $this->adjustPartyBalance($type, $partyId, -((float) $purchaseOrder->total_amount));
 
             $this->inventory->revertPurchaseOrder($purchaseOrder);
             $purchaseOrder->items()->delete();
             $purchaseOrder->delete();
         });
 
-        return back()->with('success', 'Purchase deleted. Inventory quantity reversed.');
+        return back()->with('success', 'Purchase deleted.');
     }
 
     /**
@@ -157,33 +164,64 @@ class PurchaseOrderController extends Controller
         ]);
 
         $data = $request->validate([
-            'supplier_id' => ['required', 'exists:suppliers,id'],
+            'party_type' => ['required', 'in:supplier,vendor'],
+            'supplier_id' => ['nullable', 'required_if:party_type,supplier', 'exists:suppliers,id'],
+            'vendor_id' => ['nullable', 'required_if:party_type,vendor', 'exists:vendors,id'],
             'po_date' => ['required', 'date'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.stock_item_id' => ['required', 'exists:stock_items,id'],
+            'items.*.stock_item_id' => ['nullable', 'exists:stock_items,id'],
             'items.*.item_name' => ['nullable', 'string', 'max:255'],
             'items.*.unit' => ['nullable', 'string', 'max:50'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.quantity' => ['required', 'numeric', 'gt:0'],
             'items.*.batch_no' => ['nullable', 'string', 'max:100'],
+            'items.*.manufactured_at' => ['nullable', 'date'],
+            'items.*.expiry_date' => ['nullable', 'date'],
             'items.*.note' => ['nullable', 'string'],
         ], [
-            'items.required' => 'Add at least one inventory item.',
-            'items.min' => 'Add at least one inventory item.',
-            'items.*.stock_item_id.required' => 'Select an inventory item.',
-            'items.*.stock_item_id.exists' => 'Select a valid inventory item.',
+            'supplier_id.required_if' => 'Select a supplier.',
+            'vendor_id.required_if' => 'Select a vendor.',
+            'items.required' => 'Add at least one line.',
+            'items.min' => 'Add at least one line.',
         ]);
+
+        $isVendor = $data['party_type'] === 'vendor';
+        $data['supplier_id'] = $isVendor ? null : (int) $data['supplier_id'];
+        $data['vendor_id'] = $isVendor ? (int) $data['vendor_id'] : null;
 
         $normalized = [];
 
         foreach ($data['items'] as $index => $row) {
-            $stockId = (int) $row['stock_item_id'];
-            $item = StockItem::whereKey($stockId)->first();
+            if ($isVendor) {
+                $name = trim((string) ($row['item_name'] ?? ''));
+                if ($name === '') {
+                    throw ValidationException::withMessages([
+                        'items.'.$index.'.item_name' => 'Enter the item name on row '.($index + 1).'.',
+                    ]);
+                }
+
+                $normalized[] = [
+                    'stock_item_id' => null,
+                    'item_name' => $name,
+                    'unit' => trim((string) ($row['unit'] ?? '')) ?: null,
+                    'unit_price' => (float) $row['unit_price'],
+                    'quantity' => (float) $row['quantity'],
+                    'batch_no' => null,
+                    'manufactured_at' => null,
+                    'expiry_date' => null,
+                    'note' => $row['note'] ?? null,
+                ];
+
+                continue;
+            }
+
+            $stockId = (int) ($row['stock_item_id'] ?? 0);
+            $item = $stockId > 0 ? StockItem::whereKey($stockId)->first() : null;
 
             if (! $item) {
                 throw ValidationException::withMessages([
-                    'items' => 'Select an inventory item on row '.($index + 1).'.',
+                    'items.'.$index.'.stock_item_id' => 'Select an inventory item on row '.($index + 1).'.',
                 ]);
             }
 
@@ -194,6 +232,8 @@ class PurchaseOrderController extends Controller
                 'unit_price' => (float) $row['unit_price'],
                 'quantity' => (float) $row['quantity'],
                 'batch_no' => trim((string) ($row['batch_no'] ?? '')) ?: null,
+                'manufactured_at' => $row['manufactured_at'] ?? null,
+                'expiry_date' => $row['expiry_date'] ?? null,
                 'note' => $row['note'] ?? null,
             ];
         }
@@ -209,7 +249,10 @@ class PurchaseOrderController extends Controller
     private function inventoryItems(bool $activeOnly)
     {
         $query = StockItem::query()
-            ->with('stockCategory')
+            ->with([
+                'stockCategory',
+                'lots' => fn ($lots) => $lots->orderBy('received_at')->orderBy('id'),
+            ])
             ->orderBy('name');
 
         if ($activeOnly) {
@@ -295,27 +338,56 @@ class PurchaseOrderController extends Controller
             $unitPrice = (float) $row['unit_price'];
             $qty = (float) $row['quantity'];
 
+            $lot = null;
+            if (! $po->isVendorPurchase() && ! empty($row['stock_item_id'])) {
+                $lot = $this->inventory->receive((int) $row['stock_item_id'], $qty, [
+                    'unit_cost' => $unitPrice,
+                    'moved_at' => $poDate,
+                    'reference' => $po->po_no,
+                    'notes' => $row['item_name'] ?? 'Purchase',
+                    'source_type' => 'purchase_order',
+                    'source_id' => $po->id,
+                    'batch_no' => $row['batch_no'] ?? null,
+                    'manufactured_at' => $row['manufactured_at'] ?? null,
+                    'expiry_date' => $row['expiry_date'] ?? null,
+                ]);
+            }
+
             PurchaseOrderItem::create([
                 'purchase_order_id' => $po->id,
                 'stock_item_id' => $row['stock_item_id'],
+                'stock_item_lot_id' => $lot?->id,
                 'item_name' => $row['item_name'],
                 'unit' => $row['unit'] ?? null,
                 'unit_price' => $unitPrice,
                 'quantity' => $qty,
                 'line_total' => $unitPrice * $qty,
                 'batch_no' => $row['batch_no'] ?? null,
+                'manufactured_at' => $row['manufactured_at'] ?? null,
+                'expiry_date' => $row['expiry_date'] ?? null,
                 'note' => $row['note'] ?? null,
             ]);
+        }
+    }
 
-            $this->inventory->receive((int) $row['stock_item_id'], $qty, [
-                'unit_cost' => $unitPrice,
-                'moved_at' => $poDate,
-                'reference' => $po->po_no,
-                'notes' => $row['item_name'] ?? 'Purchase',
-                'source_type' => 'purchase_order',
-                'source_id' => $po->id,
-                'batch_no' => $row['batch_no'] ?? null,
-            ]);
+    private function adjustPartyBalance(string $partyType, ?int $partyId, float $delta): void
+    {
+        if (! $partyId || $delta == 0.0) {
+            return;
+        }
+
+        $party = $partyType === 'vendor'
+            ? Vendor::whereKey($partyId)->lockForUpdate()->first()
+            : Supplier::whereKey($partyId)->lockForUpdate()->first();
+
+        if (! $party) {
+            return;
+        }
+
+        if ($delta > 0) {
+            $party->increment('current_balance', $delta);
+        } else {
+            $party->decrement('current_balance', abs($delta));
         }
     }
 }

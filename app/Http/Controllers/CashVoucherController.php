@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\ExpenseAccount;
 use App\Models\Salesman;
 use App\Models\Supplier;
+use App\Models\Vendor;
 use App\Services\CashVoucherService;
 use App\Services\SettingsService;
 use App\Support\AmountInWords;
@@ -45,7 +46,7 @@ class CashVoucherController extends Controller
             $typeFilter = null;
         }
 
-        $allowedAccountTypes = ['customer', 'supplier', 'expense', 'salesman', 'other'];
+        $allowedAccountTypes = ['customer', 'supplier', 'vendor', 'expense', 'salesman', 'other'];
         if (in_array($accountTypeFilter, $allowedAccountTypes, true)) {
             $query->where('account_type', $accountTypeFilter);
 
@@ -63,6 +64,7 @@ class CashVoucherController extends Controller
 
         $customers = Customer::orderBy('name')->get(['id', 'name']);
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
+        $vendors = Vendor::orderBy('name')->get(['id', 'name']);
         $expenseAccounts = ExpenseAccount::orderBy('name')->get(['id', 'name']);
         $salesmen = Salesman::orderBy('name')->get(['id', 'name']);
 
@@ -73,6 +75,7 @@ class CashVoucherController extends Controller
             'accountIdFilter',
             'customers',
             'suppliers',
+            'vendors',
             'expenseAccounts',
             'salesmen',
         ));
@@ -85,12 +88,13 @@ class CashVoucherController extends Controller
     {
         $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
+        $vendors = Vendor::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
         $cashAccountId = $this->defaultCashAccountId();
         $cashBalance = (float) CashAccount::whereKey($cashAccountId)->value('current_balance');
 
-        return view('cash-vouchers.create', compact('customers', 'suppliers', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
+        return view('cash-vouchers.create', compact('customers', 'suppliers', 'vendors', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
     }
 
     /**
@@ -102,7 +106,7 @@ class CashVoucherController extends Controller
             'type' => ['required', 'in:receive,payment'],
             'payment_method' => ['required', 'in:cash,bank'],
             'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
-            'account_type' => ['required', 'in:customer,supplier,expense,other'],
+            'account_type' => ['required', 'in:customer,supplier,vendor,expense,other'],
             'account_id' => ['nullable', 'integer'],
             'other_name' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'gt:0'],
@@ -144,6 +148,7 @@ class CashVoucherController extends Controller
         $partyTypeLabel = match ($cashVoucher->account_type) {
             'customer' => 'Customer',
             'supplier' => 'Supplier',
+            'vendor' => 'Vendor',
             'investor' => 'Investor',
             'salesman' => 'Salesman',
             'expense' => 'Expense Account',
@@ -182,12 +187,13 @@ class CashVoucherController extends Controller
         }
         $customers = Customer::orderBy('name')->get();
         $suppliers = Supplier::orderBy('name')->get();
+        $vendors = Vendor::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
         $cashAccountId = $this->defaultCashAccountId();
         $cashBalance = (float) CashAccount::whereKey($cashAccountId)->value('current_balance');
 
-        return view('cash-vouchers.edit', compact('cashVoucher', 'customers', 'suppliers', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
+        return view('cash-vouchers.edit', compact('cashVoucher', 'customers', 'suppliers', 'vendors', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
     }
 
     /**
@@ -203,7 +209,7 @@ class CashVoucherController extends Controller
             'type' => ['required', 'in:receive,payment'],
             'payment_method' => ['required', 'in:cash,bank'],
             'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
-            'account_type' => ['required', 'in:customer,supplier,expense,other'],
+            'account_type' => ['required', 'in:customer,supplier,vendor,expense,other'],
             'account_id' => ['nullable', 'integer'],
             'other_name' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'gt:0'],

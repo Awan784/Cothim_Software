@@ -12,6 +12,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
+use App\Models\Vendor;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -21,6 +22,7 @@ class PartyLedgerService
     public const ACCOUNT_TYPES = [
         'customer' => 'Customer',
         'supplier' => 'Supplier',
+        'vendor' => 'Vendor',
         'expense' => 'Expense Account',
     ];
 
@@ -31,6 +33,7 @@ class PartyLedgerService
         $query = match ($accountType) {
             'customer' => Customer::query(),
             'supplier' => Supplier::query(),
+            'vendor' => Vendor::query(),
             'expense' => ExpenseAccount::query(),
         };
 
@@ -47,6 +50,7 @@ class PartyLedgerService
         $prefix = match ($accountType) {
             'customer' => 1000,
             'supplier' => 2000,
+            'vendor' => 3000,
             'expense' => 4000,
             default => 0,
         };
@@ -261,8 +265,13 @@ class PartyLedgerService
             }
         }
 
-        if ($accountType === 'supplier') {
-            foreach (PurchaseOrder::where('supplier_id', $accountId)->get() as $po) {
+        if ($accountType === 'supplier' || $accountType === 'vendor') {
+            $purchaseQuery = $accountType === 'vendor'
+                ? PurchaseOrder::where('vendor_id', $accountId)->where('party_type', 'vendor')
+                : PurchaseOrder::where('supplier_id', $accountId)->where(function ($query) {
+                    $query->where('party_type', 'supplier')->orWhereNull('party_type');
+                });
+            foreach ($purchaseQuery->get() as $po) {
                 $date = $po->po_date instanceof Carbon ? $po->po_date : Carbon::parse($po->po_date);
                 $entries->push([
                     'date' => $date,
@@ -280,6 +289,7 @@ class PartyLedgerService
                 ]);
             }
 
+            if ($accountType === 'supplier') {
             foreach (PurchaseReturn::where('supplier_id', $accountId)->get() as $pr) {
                 $date = $pr->return_date instanceof Carbon ? $pr->return_date : Carbon::parse($pr->return_date);
                 $entries->push([
@@ -296,6 +306,7 @@ class PartyLedgerService
                     'tone' => null,
                     'source' => 'purchase_return',
                 ]);
+            }
             }
         }
 
@@ -406,7 +417,7 @@ class PartyLedgerService
         if ($accountType === 'customer') {
             $debit = $voucher->type === 'payment' ? $amount : 0.0;
             $credit = $voucher->type === 'receive' ? $amount : 0.0;
-        } elseif ($accountType === 'supplier') {
+        } elseif ($accountType === 'supplier' || $accountType === 'vendor') {
             $debit = $voucher->type === 'payment' ? $amount : 0.0;
             $credit = $voucher->type === 'receive' ? $amount : 0.0;
         } elseif ($accountType === 'expense') {
@@ -438,7 +449,7 @@ class PartyLedgerService
     {
         return match ($accountType) {
             'customer', 'expense' => $debit - $credit,
-            'supplier' => $credit - $debit,
+            'supplier', 'vendor' => $credit - $debit,
             default => 0.0,
         };
     }
@@ -466,6 +477,7 @@ class PartyLedgerService
         return match ($accountType) {
             'customer' => (float) (Customer::whereKey($accountId)->value('opening_balance') ?? 0),
             'supplier' => (float) (Supplier::whereKey($accountId)->value('opening_balance') ?? 0),
+            'vendor' => (float) (Vendor::whereKey($accountId)->value('opening_balance') ?? 0),
             default => 0.0,
         };
     }
@@ -475,6 +487,7 @@ class PartyLedgerService
         $createdAt = match ($accountType) {
             'customer' => Customer::whereKey($accountId)->value('created_at'),
             'supplier' => Supplier::whereKey($accountId)->value('created_at'),
+            'vendor' => Vendor::whereKey($accountId)->value('created_at'),
             default => null,
         };
 
@@ -497,6 +510,7 @@ class PartyLedgerService
         $exists = match ($accountType) {
             'customer' => Customer::whereKey($accountId)->exists(),
             'supplier' => Supplier::whereKey($accountId)->exists(),
+            'vendor' => Vendor::whereKey($accountId)->exists(),
             'expense' => ExpenseAccount::whereKey($accountId)->exists(),
             default => false,
         };

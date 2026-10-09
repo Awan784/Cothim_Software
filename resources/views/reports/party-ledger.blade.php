@@ -3,7 +3,7 @@
 @section('body')
     @php
         $balanceLabel = match ($accountType ?? '') {
-            'supplier' => 'Payable balance',
+            'supplier', 'vendor' => 'Payable balance',
             'customer', 'salesman' => 'Receivable balance',
             default => 'Closing balance',
         };

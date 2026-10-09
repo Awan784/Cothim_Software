@@ -23,6 +23,8 @@ class NormalizeAmsDateInputs
         'bill_date',
         'extracted_date',
         'settlement_date',
+        'expiry_date',
+        'manufactured_at',
     ];
 
     /** @var list<string> */
@@ -32,44 +34,42 @@ class NormalizeAmsDateInputs
 
     public function handle(Request $request, Closure $next): Response
     {
-        $normalized = [];
-
-        foreach (self::DATE_FIELDS as $field) {
-            if (! $request->has($field)) {
-                continue;
-            }
-
-            $value = $request->input($field);
-            if (! is_string($value) || trim($value) === '') {
-                continue;
-            }
-
-            $parsed = AmsDate::parse($value);
-            if ($parsed) {
-                $normalized[$field] = $parsed->format('Y-m-d');
-            }
-        }
-
-        foreach (self::DATETIME_FIELDS as $field) {
-            if (! $request->has($field)) {
-                continue;
-            }
-
-            $value = $request->input($field);
-            if (! is_string($value) || trim($value) === '') {
-                continue;
-            }
-
-            $parsed = AmsDate::parseDateTime($value);
-            if ($parsed) {
-                $normalized[$field] = $parsed->format('Y-m-d H:i:s');
-            }
-        }
-
-        if ($normalized !== []) {
-            $request->merge($normalized);
-        }
+        $request->merge($this->normalize($request->all()));
 
         return $next($request);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalize(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->normalize($value);
+                continue;
+            }
+
+            if (! is_string($value) || trim($value) === '') {
+                continue;
+            }
+
+            if (in_array($key, self::DATE_FIELDS, true)) {
+                $parsed = AmsDate::parse($value);
+                if ($parsed) {
+                    $data[$key] = $parsed->format('Y-m-d');
+                }
+            }
+
+            if (in_array($key, self::DATETIME_FIELDS, true)) {
+                $parsed = AmsDate::parseDateTime($value);
+                if ($parsed) {
+                    $data[$key] = $parsed->format('Y-m-d H:i:s');
+                }
+            }
+        }
+
+        return $data;
     }
 }

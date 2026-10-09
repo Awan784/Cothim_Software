@@ -10,6 +10,7 @@ use App\Models\Salesman;
 use App\Models\SalesmanSettlementAllocation;
 use App\Models\SalesOrder;
 use App\Models\StockItem;
+use App\Models\StockItemLot;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -337,7 +338,7 @@ class SalesInvoiceService
                 continue;
             }
 
-            $this->inventory->issue((int) $stockItemId, (float) $line->quantity, [
+            $lot = $this->inventory->issue((int) $stockItemId, (float) $line->quantity, [
                 'unit_cost' => $line->unit_price,
                 'moved_at' => $invoice->invoice_date,
                 'reference' => $invoice->invoice_no,
@@ -347,6 +348,13 @@ class SalesInvoiceService
                 'stock_item_lot_id' => $line->stock_item_lot_id,
                 'batch_no' => $line->batch_no,
             ]);
+
+            if ($lot && (int) $line->stock_item_lot_id !== (int) $lot->id) {
+                $batch = StockItemLot::normalizeBatch($lot->batch_no);
+                $line->stock_item_lot_id = $lot->id;
+                $line->batch_no = $batch !== '' ? $batch : null;
+                $line->save();
+            }
         }
     }
 

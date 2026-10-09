@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use App\Support\AmsDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 
 class StockItem extends Model
 {
@@ -76,26 +79,82 @@ class StockItem extends Model
         return $this->hasMany(StockItemLot::class);
     }
 
-    public function currentLot(): ?StockItemLot
+    /**
+     * @return Collection<int, StockItemLot>
+     */
+    public function lotsCollection(): Collection
     {
         if ($this->relationLoaded('lots')) {
-            return $this->lots->sortByDesc('id')->first();
+            return $this->lots->sortBy([
+                ['received_at', 'asc'],
+                ['id', 'asc'],
+            ])->values();
         }
 
-        return $this->lots()->orderByDesc('id')->first();
+        return $this->lots()->orderBy('received_at')->orderBy('id')->get();
+    }
+
+    public function currentLot(): ?StockItemLot
+    {
+        $lots = $this->lotsCollection();
+
+        return $lots->first(fn (StockItemLot $lot) => (float) $lot->quantity > 0)
+            ?? $lots->first();
     }
 
     public function lotsSummary(): string
     {
-        $batch = StockItemLot::normalizeBatch($this->batch_no);
-        if ($batch !== '') {
-            return $batch;
+        $lots = $this->lotsCollection();
+        if ($lots->isEmpty()) {
+            $batch = StockItemLot::normalizeBatch($this->batch_no);
+
+            return $batch !== '' ? $batch : '—';
         }
 
-        return $this->currentLot()?->batchLabel() ?: '—';
+        return $lots->map(fn (StockItemLot $lot) => $lot->batchLabel().' Qty '.$lot->qtyLabel())->implode(' / ');
     }
 
-    public function seedOpeningLot(): void
+    public function lotsHtml(): HtmlString
+    {
+        $lots = $this->lotsCollection();
+        if ($lots->isEmpty()) {
+            $batch = StockItemLot::normalizeBatch($this->batch_no);
+            $text = $batch !== '' ? $batch : '—';
+
+            return new HtmlString('<span class="stock-batch-no">'.e($text).'</span>');
+        }
+
+        $html = $lots->map(function (StockItemLot $lot) {
+            $extra = [];
+            if ($lot->manufactured_at) {
+                $extra[] = 'Mfg '.AmsDate::format($lot->manufactured_at);
+            }
+            if ($lot->expiry_date) {
+                $extra[] = 'Exp '.AmsDate::format($lot->expiry_date);
+            }
+            $meta = $extra !== []
+                ? '<span class="stock-batch-meta">'.e(implode(' · ', $extra)).'</span>'
+                : '';
+
+            return '<div class="stock-batch-line"><span class="stock-batch-no">'.e($lot->batchLabel()).'</span><span class="stock-batch-qty">Qty '.e($lot->qtyLabel()).'</span>'.$meta.'</div>';
+        })->implode('');
+
+        return new HtmlString($html);
+    }
+
+    /**
+     * @return list<array{id: int, batch: string, qty: int}>
+     */
+    public function lotsPickerPayload(): array
+    {
+        return $this->lotsCollection()->map(fn (StockItemLot $lot) => [
+            'id' => (int) $lot->id,
+            'batch' => $lot->batchLabel(),
+            'qty' => (int) round((float) $lot->quantity),
+        ])->values()->all();
+    }
+
+    public function seedOpeningLot(?string $manufacturedAt = null): void
     {
         if ($this->lots()->exists()) {
             return;
@@ -107,6 +166,7 @@ class StockItem extends Model
         $this->lots()->create([
             'batch_no' => $batch,
             'quantity' => $qty,
+            'manufactured_at' => $manufacturedAt,
             'expiry_date' => $this->expiry_date,
             'received_at' => now(),
         ]);
@@ -161,24 +221,33 @@ class StockItem extends Model
 
     public function syncQuantityFromLots(): void
     {
-        $lot = $this->collapseToSingleLot() ?? $this->currentLot();
-        $this->quantity = round((float) ($lot?->quantity ?? 0), 2);
-        $batch = StockItemLot::normalizeBatch($lot?->batch_no);
+        $lots = $this->lots()->orderByDesc('received_at')->orderByDesc('id')->get();
+        $this->quantity = round((float) $lots->sum('quantity'), 2);
+        $primary = $lots->first(fn (StockItemLot $lot) => (float) $lot->quantity != 0.0) ?? $lots->first();
+        $batch = StockItemLot::normalizeBatch($primary?->batch_no);
         $this->batch_no = $batch !== '' ? $batch : null;
         $this->save();
+        $this->unsetRelation('lots');
     }
 
-    public function syncSingleLotFromItem(): void
+    public function syncSingleLotFromItem(?string $manufacturedAt = null): void
     {
+        $count = $this->lots()->count();
+        if ($count > 1) {
+            $this->syncQuantityFromLots();
+
+            return;
+        }
+
         $qty = round((float) $this->quantity, 2);
         $batch = StockItemLot::normalizeBatch($this->batch_no);
-        $this->collapseToSingleLot($batch);
-        $lot = $this->currentLot();
+        $lot = $this->lots()->lockForUpdate()->first();
 
         if (! $lot) {
             $this->quantity = $qty;
             $this->batch_no = $batch !== '' ? $batch : null;
-            $this->seedOpeningLot();
+            $this->save();
+            $this->seedOpeningLot($manufacturedAt);
 
             return;
         }
@@ -186,6 +255,9 @@ class StockItem extends Model
         $lot->batch_no = $batch;
         $lot->quantity = $qty;
         $lot->expiry_date = $this->expiry_date ?: $lot->expiry_date;
+        if ($manufacturedAt) {
+            $lot->manufactured_at = $manufacturedAt;
+        }
         $lot->save();
 
         $this->batch_no = $batch !== '' ? $batch : null;
@@ -211,14 +283,30 @@ class StockItem extends Model
             return $line;
         }
 
-        $lot = $item->currentLot();
+        $lot = null;
+        $lotId = (int) ($line['stock_item_lot_id'] ?? 0);
+        if ($lotId > 0) {
+            $lot = $item->lots()->whereKey($lotId)->first();
+        }
+
+        if (! $lot) {
+            $batch = StockItemLot::normalizeBatch($line['batch_no'] ?? null);
+            if ($batch !== '') {
+                $lot = $item->lots()->where('batch_no', $batch)->first();
+            }
+        }
+
+        if (! $lot) {
+            $lot = $item->currentLot();
+        }
+
         if (! $lot) {
             $item->seedOpeningLot();
             $lot = $item->currentLot();
         }
 
         $line['stock_item_lot_id'] = $lot?->id;
-        $batch = StockItemLot::normalizeBatch($item->batch_no ?: $lot?->batch_no);
+        $batch = StockItemLot::normalizeBatch($lot?->batch_no);
         $line['batch_no'] = $batch !== '' ? $batch : null;
 
         return $line;

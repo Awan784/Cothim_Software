@@ -218,14 +218,14 @@
                     <div class="party-meta">{{ $settings->contactLine() }}</div>
                 </div>
                 <div>
-                    <div class="party-label">Supplier</div>
-                    <div class="party-name">{{ $purchaseOrder->supplier?->name ?: '—' }}</div>
+                    <div class="party-label">{{ $purchaseOrder->isVendorPurchase() ? 'Vendor' : 'Supplier' }}</div>
+                    <div class="party-name">{{ $purchaseOrder->partyName() }}</div>
                     <div class="party-meta">
                         {{ collect([
-                            $purchaseOrder->supplier?->phone,
-                            $purchaseOrder->supplier?->email,
-                            $purchaseOrder->supplier?->address,
-                            $purchaseOrder->supplier?->city,
+                            $purchaseOrder->party()?->phone,
+                            $purchaseOrder->party()?->email,
+                            $purchaseOrder->party()?->address,
+                            $purchaseOrder->party()?->city,
                         ])->filter()->join(' · ') ?: '—' }}
                     </div>
                 </div>

@@ -13,6 +13,7 @@ return [
         'salesmen' => 'Salesmen',
         'salesman-settlements' => 'Salesman Settlements',
         'suppliers' => 'Suppliers',
+        'vendors' => 'Vendors',
         'expense-accounts' => 'Expense Accounts',
         'bank-accounts' => 'Bank Accounts',
         'cash-vouchers' => 'Cash Vouchers',

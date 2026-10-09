@@ -14,7 +14,9 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_no',
+        'party_type',
         'supplier_id',
+        'vendor_id',
         'po_date',
         'total_amount',
         'notes',
@@ -27,6 +29,30 @@ class PurchaseOrder extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
+    public function isVendorPurchase(): bool
+    {
+        return $this->party_type === 'vendor';
+    }
+
+    public function partyName(): string
+    {
+        if ($this->isVendorPurchase()) {
+            return $this->vendor?->name ?: '—';
+        }
+
+        return $this->supplier?->name ?: '—';
+    }
+
+    public function party(): Supplier|Vendor|null
+    {
+        return $this->isVendorPurchase() ? $this->vendor : $this->supplier;
     }
 
     public function items(): HasMany

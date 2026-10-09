@@ -4,7 +4,7 @@
         $brandParts = preg_split('/\s+/', $product, 2) ?: [$product];
         $brandTop = strtoupper($brandParts[0] ?? $product);
         $brandBottom = strtoupper($brandParts[1] ?? '');
-        $isAccounts = request()->routeIs('customers.*') || request()->routeIs('salesmen.*') || request()->routeIs('suppliers.*') || request()->routeIs('bank-accounts.*');
+        $isAccounts = request()->routeIs('customers.*') || request()->routeIs('salesmen.*') || request()->routeIs('suppliers.*') || request()->routeIs('vendors.*') || request()->routeIs('bank-accounts.*');
         $isSales = request()->routeIs('invoices.*') || request()->routeIs('sales-returns.*') || request()->routeIs('sales-orders.*') || request()->routeIs('salesman-settlements.*');
         $isPurchases = request()->routeIs('purchase-orders.*') || request()->routeIs('purchase-returns.*');
         $isAccounting = request()->routeIs('cash-vouchers.*') || request()->routeIs('journal-vouchers.*');
@@ -49,6 +49,7 @@
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}"><span class="sidebar-text">Customers</span></a></li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('salesmen.*') ? 'active' : '' }}" href="{{ route('salesmen.index') }}"><span class="sidebar-text">Salesmen</span></a></li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}" href="{{ route('suppliers.index') }}"><span class="sidebar-text">Suppliers</span></a></li>
+                        <li class="nav-item"><a class="nav-link {{ request()->routeIs('vendors.*') ? 'active' : '' }}" href="{{ route('vendors.index') }}"><span class="sidebar-text">Vendors</span></a></li>
                         <li class="nav-item"><a class="nav-link {{ request()->routeIs('bank-accounts.*') ? 'active' : '' }}" href="{{ route('bank-accounts.index') }}"><span class="sidebar-text">Bank Accounts</span></a></li>
                     </ul>
                 </div>

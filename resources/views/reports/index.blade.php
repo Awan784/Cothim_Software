@@ -130,6 +130,7 @@
                                 <option value="">Select type…</option>
                                 <option value="customer">Customer</option>
                                 <option value="supplier">Supplier</option>
+                                <option value="vendor">Vendor</option>
                                 <option value="expense">Expense Account</option>
                             </select>
                         </div>

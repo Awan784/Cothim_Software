@@ -47,7 +47,7 @@
                         <label for="filter_account_type" class="form-label small mb-1">Account Type</label>
                         <select name="account_type" id="filter_account_type" class="form-select form-select-sm">
                             <option value="">All account types</option>
-                            @foreach (['customer' => 'Customer', 'supplier' => 'Supplier', 'expense' => 'Expense', 'salesman' => 'Salesman', 'other' => 'Other'] as $value => $label)
+                            @foreach (['customer' => 'Customer', 'supplier' => 'Supplier', 'vendor' => 'Vendor', 'expense' => 'Expense', 'salesman' => 'Salesman', 'other' => 'Other'] as $value => $label)
                                 <option value="{{ $value }}" @selected($accountTypeFilter === $value)>{{ $label }}</option>
                             @endforeach
                         </select>
@@ -252,6 +252,7 @@
             const accountOptions = {
                 customer: @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()),
                 supplier: @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()),
+                vendor: @json($vendors->map(fn ($v) => ['id' => $v->id, 'name' => $v->name])->values()),
                 expense: @json($expenseAccounts->map(fn ($e) => ['id' => $e->id, 'name' => $e->name])->values()),
                 salesman: @json($salesmen->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()),
             };

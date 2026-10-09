@@ -32,6 +32,7 @@
                         data-qty="{{ number_format((float) $item->quantity, 2, '.', '') }}"
                         data-batch="{{ $item->batch_no }}"
                         data-lot-id="{{ $item->currentLot()?->id }}"
+                        data-lots='@json($item->lotsPickerPayload())'
                         {{ $selectedId === (string) $item->id && $selectedName === $label ? 'selected' : ($selectedId === (string) $item->id && $selectedName === '' ? 'selected' : '') }}>
                         {{ $label }}
                     </option>
@@ -43,6 +44,7 @@
                     data-qty="{{ number_format((float) $item->quantity, 2, '.', '') }}"
                     data-batch="{{ $item->batch_no }}"
                     data-lot-id="{{ $item->currentLot()?->id }}"
+                    data-lots='@json($item->lotsPickerPayload())'
                     {{ $selectedId === (string) $item->id ? 'selected' : '' }}>
                     {{ $item->name }}
                 </option>

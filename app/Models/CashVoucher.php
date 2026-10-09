@@ -80,6 +80,7 @@ class CashVoucher extends Model
         return match ($this->account_type) {
             'customer' => Customer::find($this->account_id)?->name,
             'supplier' => Supplier::find($this->account_id)?->name,
+            'vendor' => Vendor::find($this->account_id)?->name,
             'investor' => Investor::find($this->account_id)?->name,
             'expense' => ExpenseAccount::find($this->account_id)?->name,
             'salesman' => Salesman::find($this->account_id)?->name,
@@ -97,6 +98,7 @@ class CashVoucher extends Model
         $models = [
             'customer' => Customer::class,
             'supplier' => Supplier::class,
+            'vendor' => Vendor::class,
             'investor' => Investor::class,
             'expense' => ExpenseAccount::class,
             'salesman' => Salesman::class,

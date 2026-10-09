@@ -14,13 +14,13 @@ use InvalidArgumentException;
 class InventoryService
 {
     /**
-     * @param  array{unit_cost?: mixed, moved_at?: mixed, reference?: ?string, notes?: ?string, source_type?: ?string, source_id?: ?int, batch_no?: ?string, stock_item_lot_id?: ?int, expiry_date?: mixed}  $meta
+     * @param  array{unit_cost?: mixed, moved_at?: mixed, reference?: ?string, notes?: ?string, source_type?: ?string, source_id?: ?int, batch_no?: ?string, stock_item_lot_id?: ?int, expiry_date?: mixed, manufactured_at?: mixed}  $meta
      */
-    public function receive(int $stockItemId, float $quantity, array $meta = []): void
+    public function receive(int $stockItemId, float $quantity, array $meta = []): ?StockItemLot
     {
         $qty = round($quantity, 2);
         if ($qty <= 0) {
-            return;
+            return null;
         }
 
         $lot = $this->lotForReceive($stockItemId, $meta);
@@ -28,36 +28,91 @@ class InventoryService
         if (! empty($meta['expiry_date'])) {
             $lot->expiry_date = $meta['expiry_date'];
         }
+        if (! empty($meta['manufactured_at'])) {
+            $lot->manufactured_at = $meta['manufactured_at'];
+        }
         $lot->save();
 
         $this->syncItemFromLots($stockItemId);
         $this->move($stockItemId, 'in', $qty, $meta, (int) $lot->id);
+
+        return $lot;
     }
 
     /**
      * @param  array{unit_cost?: mixed, moved_at?: mixed, reference?: ?string, notes?: ?string, source_type?: ?string, source_id?: ?int, batch_no?: ?string, stock_item_lot_id?: ?int}  $meta
      */
-    public function issue(int $stockItemId, float $quantity, array $meta = []): void
+    public function issue(int $stockItemId, float $quantity, array $meta = []): ?StockItemLot
     {
         $remaining = round($quantity, 2);
         if ($remaining <= 0) {
-            return;
+            return null;
+        }
+
+        $lotId = (int) ($meta['stock_item_lot_id'] ?? 0);
+        if ($lotId > 0) {
+            $lot = $this->saleLot($stockItemId, $lotId);
+            $this->issueFromLot($stockItemId, (int) $lot->id, $remaining, $meta);
+
+            return $lot;
         }
 
         $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
-        $lot = $item->collapseToSingleLot();
-        if (! $lot) {
-            $lot = StockItemLot::create([
-                'organization_id' => $item->organization_id,
-                'stock_item_id' => $stockItemId,
-                'batch_no' => StockItemLot::normalizeBatch($item->batch_no),
-                'expiry_date' => $item->expiry_date,
-                'quantity' => round((float) $item->quantity, 2),
-                'received_at' => now(),
-            ]);
+        $lots = $item->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->get();
+        if ($lots->isEmpty()) {
+            $item->seedOpeningLot();
+            $lots = $item->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->get();
         }
 
-        $this->issueFromLot($stockItemId, (int) $lot->id, $remaining, $meta);
+        $last = $lots->last();
+        foreach ($lots as $lot) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $onHand = round((float) $lot->quantity, 2);
+            $isLast = $last && (int) $lot->id === (int) $last->id;
+            if ($onHand <= 0 && ! $isLast) {
+                continue;
+            }
+
+            $take = $isLast ? $remaining : min($onHand, $remaining);
+            if ($take <= 0) {
+                continue;
+            }
+
+            $this->issueFromLot($stockItemId, (int) $lot->id, $take, $meta);
+            $remaining = round($remaining - $take, 2);
+        }
+
+        return null;
+    }
+
+    /**
+     * Oldest batch that still has qty. A chosen batch with qty 0 is skipped
+     * when a later batch still has stock. If every batch is empty, the chosen
+     * batch (or the oldest) is used so the sale can go negative.
+     */
+    private function saleLot(int $stockItemId, int $requestedId): StockItemLot
+    {
+        $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
+        $lots = $item->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->get();
+        if ($lots->isEmpty()) {
+            $item->seedOpeningLot();
+            $lots = $item->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->get();
+        }
+
+        $requested = $lots->firstWhere('id', $requestedId);
+        if ($requested && (float) $requested->quantity > 0) {
+            return $requested;
+        }
+
+        $withStock = $lots->first(fn (StockItemLot $lot) => (float) $lot->quantity > 0);
+        if ($withStock) {
+            return $withStock;
+        }
+
+        return $requested ?? $lots->first();
     }
 
     public function revertPurchaseOrder(PurchaseOrder $purchaseOrder): void
@@ -173,26 +228,24 @@ class InventoryService
     {
         $item = StockItem::whereKey($stockItemId)->lockForUpdate()->firstOrFail();
         $batch = StockItemLot::normalizeBatch($meta['batch_no'] ?? null);
-        $lot = $item->collapseToSingleLot($batch !== '' ? $batch : null);
+        $lotId = (int) ($meta['stock_item_lot_id'] ?? 0);
+
+        $lot = null;
+        if ($lotId > 0) {
+            $lot = $item->lots()->whereKey($lotId)->lockForUpdate()->first();
+        }
+        if (! $lot) {
+            $lot = $item->lots()->where('batch_no', $batch)->lockForUpdate()->first();
+        }
 
         if (! $lot) {
-            $lot = StockItemLot::create([
-                'organization_id' => $item->organization_id,
-                'stock_item_id' => $stockItemId,
+            $lot = $item->lots()->create([
                 'batch_no' => $batch,
+                'manufactured_at' => $meta['manufactured_at'] ?? null,
                 'expiry_date' => $meta['expiry_date'] ?? $item->expiry_date,
                 'quantity' => 0,
                 'received_at' => $meta['moved_at'] ?? now(),
             ]);
-        } elseif ($batch !== '') {
-            $lot->batch_no = $batch;
-            $lot->received_at = $meta['moved_at'] ?? ($lot->received_at ?: now());
-            $lot->save();
-        }
-
-        if (! empty($meta['expiry_date'])) {
-            $lot->expiry_date = $meta['expiry_date'];
-            $lot->save();
         }
 
         return $lot;
@@ -206,23 +259,21 @@ class InventoryService
         }
 
         $item = StockItem::whereKey($stockItemId)->lockForUpdate()->first();
-        $lot = $item?->collapseToSingleLot();
+        if (! $item) {
+            return;
+        }
+
+        $lot = $this->findLot($item, $lotId, $batchNo);
 
         if (! $lot) {
             if ($delta <= 0) {
-                $item = StockItem::whereKey($stockItemId)->lockForUpdate()->first();
-                if ($item) {
-                    $item->quantity = round((float) $item->quantity + $delta, 2);
-                    $item->save();
-                }
+                $item->quantity = round((float) $item->quantity + $delta, 2);
+                $item->save();
 
                 return;
             }
 
-            $item = StockItem::whereKey($stockItemId)->firstOrFail();
-            $lot = StockItemLot::create([
-                'organization_id' => $item->organization_id,
-                'stock_item_id' => $stockItemId,
+            $lot = $item->lots()->create([
                 'batch_no' => StockItemLot::normalizeBatch($batchNo),
                 'quantity' => 0,
                 'received_at' => now(),
@@ -231,6 +282,26 @@ class InventoryService
 
         $lot->quantity = round((float) $lot->quantity + $delta, 2);
         $lot->save();
+    }
+
+    private function findLot(StockItem $item, ?int $lotId, ?string $batchNo): ?StockItemLot
+    {
+        if ($lotId) {
+            $lot = $item->lots()->whereKey($lotId)->lockForUpdate()->first();
+            if ($lot) {
+                return $lot;
+            }
+        }
+
+        $batch = StockItemLot::normalizeBatch($batchNo);
+        if ($batch !== '') {
+            $lot = $item->lots()->where('batch_no', $batch)->lockForUpdate()->first();
+            if ($lot) {
+                return $lot;
+            }
+        }
+
+        return $item->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->first();
     }
 
     private function syncItemFromLots(int $stockItemId): void

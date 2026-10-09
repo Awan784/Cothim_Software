@@ -191,6 +191,7 @@ class CashRegisterService
         return match ($voucher->account_type) {
             'customer' => $isReceive ? 'Cash Receive (Customer)' : 'Cash Payment (Customer)',
             'supplier' => $isReceive ? 'Cash Receive (Supplier)' : 'Cash Payment (Supplier)',
+            'vendor' => $isReceive ? 'Cash Receive (Vendor)' : 'Cash Payment (Vendor)',
             'investor' => $isReceive ? 'Cash Receive (Investor)' : 'Cash Payment (Investor)',
             'expense' => $isReceive ? 'Expense Receive' : 'Expense Payment',
             'salesman' => $isReceive ? 'Cash Receive (Salesman)' : 'Cash Payment (Salesman)',
@@ -247,6 +248,7 @@ class CashRegisterService
         return match ($accountType) {
             'customer' => 'Customer',
             'supplier' => 'Supplier',
+            'vendor' => 'Vendor',
             'investor' => 'Investor',
             'expense' => 'Expense',
             'salesman' => 'Salesman',

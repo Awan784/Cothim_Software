@@ -17,7 +17,7 @@
         <div>
             <strong>Lines</strong>
             @if($showBatch)
-                <span class="text-muted small ms-2">Batch is the item’s current batch. A new purchase updates that same batch.</span>
+                <span class="text-muted small ms-2">The oldest batch with stock is selected. A batch with no qty is skipped.</span>
             @endif
             @if($showCommission)
                 <span class="text-muted small ms-2">Commission % is of the line amount after discount. It totals as salesman commission and does not change the customer total.</span>
@@ -118,22 +118,73 @@
     </div>
 </div>
 @push('scripts')
+<script type="application/json" id="amsItemLots">@json($stockItems->mapWithKeys(fn ($item) => [(string) $item->id => $item->lotsPickerPayload()]))</script>
 <script>
 (function () {
     var table = document.getElementById('taxLinesTable');
     if (!table) return;
     function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
-    function fillBatch(row) {
+    var lotMap = {};
+    var lotMapEl = document.getElementById('amsItemLots');
+    if (lotMapEl) {
+        try { lotMap = JSON.parse(lotMapEl.textContent || '{}'); } catch (e) { lotMap = {}; }
+    }
+    function parseLots(opt) {
+        if (!opt) return [];
+        var mapped = opt.value && lotMap[opt.value];
+        if (mapped && mapped.length) return mapped;
+        try { return JSON.parse(opt.getAttribute('data-lots') || '[]'); } catch (e) { return []; }
+    }
+    function oldestWithStock(lots) {
+        for (var i = 0; i < lots.length; i++) {
+            if (Number(lots[i].qty) > 0) return lots[i];
+        }
+        return lots.length ? lots[0] : null;
+    }
+    function syncLotHidden(row) {
+        var select = row.querySelector('select.line-lot');
+        var batchInput = row.querySelector('.line-batch-no');
+        if (!select || !batchInput) return;
+        var opt = select.options[select.selectedIndex];
+        batchInput.value = opt ? (opt.getAttribute('data-batch') || '') : '';
+    }
+    function fillLots(row, keepSelection) {
+        var select = row.querySelector('select.line-lot');
+        if (!select) return;
+        var hideQty = table.dataset.hideStockQty === '1';
         var itemSelect = row.querySelector('.line-item');
         var opt = itemSelect && itemSelect.options[itemSelect.selectedIndex];
-        var batch = opt ? (opt.getAttribute('data-batch') || '') : '';
-        var lotId = opt ? (opt.getAttribute('data-lot-id') || '') : '';
-        var lotInput = row.querySelector('.line-lot-id');
-        var batchInput = row.querySelector('.line-batch-no');
-        var label = row.querySelector('.line-batch-label');
-        if (lotInput) lotInput.value = lotId;
-        if (batchInput) batchInput.value = batch;
-        if (label) label.textContent = batch || '—';
+        var lots = parseLots(opt);
+        var current = keepSelection ? String(select.value || '') : '';
+        var preferred = oldestWithStock(lots);
+        var chosen = preferred ? String(preferred.id) : '';
+        if (current) {
+            for (var i = 0; i < lots.length; i++) {
+                if (String(lots[i].id) === current) {
+                    chosen = current;
+                    break;
+                }
+            }
+        }
+        select.innerHTML = '';
+        if (!lots.length) {
+            var empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '—';
+            select.appendChild(empty);
+        }
+        lots.forEach(function (lot) {
+            var option = document.createElement('option');
+            var batch = lot.batch === '—' ? '' : (lot.batch || '');
+            option.value = String(lot.id);
+            option.setAttribute('data-batch', batch);
+            option.setAttribute('data-qty', String(lot.qty));
+            option.textContent = hideQty ? (batch || '—') : ((batch || '—') + ' — Qty ' + lot.qty);
+            if (chosen && String(lot.id) === chosen) option.selected = true;
+            select.appendChild(option);
+        });
+        if (chosen) select.value = chosen;
+        syncLotHidden(row);
     }
     function applyItem(select) {
         var opt = select.options[select.selectedIndex];
@@ -144,7 +195,7 @@
         var descInput = row.querySelector('.line-description');
         if (priceInput && price !== null && price !== '') priceInput.value = price;
         if (descInput) descInput.value = desc || '';
-        fillBatch(row);
+        fillLots(row, false);
     }
     function recalc() {
         var sub = 0, discTotal = 0, vat = 0, commTotal = 0;
@@ -183,6 +234,9 @@
             select = e.target;
         }
         if (select) applyItem(select);
+        if (e.target.classList && e.target.classList.contains('line-lot')) {
+            syncLotHidden(e.target.closest('tr'));
+        }
         recalc();
     });
     table.addEventListener('click', function (e) {
@@ -213,8 +267,7 @@
             else if (input.tagName === 'SELECT') input.selectedIndex = 0;
             else input.value = '';
         });
-        var batchLabel = tr.querySelector('.line-batch-label');
-        if (batchLabel) batchLabel.textContent = '—';
+        fillLots(tr, false);
         table.querySelector('tbody').appendChild(tr);
         if (window.amsInitSearchSelects) window.amsInitSearchSelects(tr);
         recalc();
@@ -226,7 +279,7 @@
         if (descInput && opt && !descInput.value) {
             descInput.value = opt.getAttribute('data-description') || '';
         }
-        fillBatch(row);
+        fillLots(row, true);
     });
     recalc();
 })();

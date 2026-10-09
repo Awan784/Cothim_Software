@@ -2116,6 +2116,7 @@ body.ams-light {
 .ams-light .stock-batch-line {
     display: flex;
     align-items: baseline;
+    flex-wrap: wrap;
     gap: 0.45rem;
     line-height: 1.35;
 }
@@ -2123,6 +2124,16 @@ body.ams-light {
 .ams-light .stock-batch-qty {
     color: #111827;
     font-weight: 600;
+}
+
+.ams-light .stock-batch-meta {
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.ams-light #taxLinesTable .line-lot {
+    min-width: 10.5rem;
 }
 
 .ams-light .salesman-city-list {

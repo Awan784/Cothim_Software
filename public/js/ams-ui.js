@@ -578,6 +578,7 @@
     window.amsInitSearchSelects = initSearchSelects;
     window.amsStripChoicesFromClone = stripChoicesFromClone;
     window.amsDestroySearchSelects = destroySearchSelects;
+    window.amsInitDatePickers = initAmsDatePickers;
 
     document.addEventListener('DOMContentLoaded', function () {
         initAlerts();

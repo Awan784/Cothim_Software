@@ -59,11 +59,7 @@
                                 <td class="text-gray-900">{{ strtoupper($item->unit ?: '') }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->quantity, 2) }}</td>
                                 <td class="stock-batches" data-content="{{ $item->lotsSummary() }}">
-                                    @if($item->batch_no)
-                                        <span class="stock-batch-no">{{ $item->batch_no }}</span>
-                                    @else
-                                        —
-                                    @endif
+                                    {!! $item->lotsHtml() !!}
                                 </td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->cost_price, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ $item->sale_price !== null ? number_format((float) $item->sale_price, 2) : '—' }}</td>
@@ -121,6 +117,11 @@
             color: #111827;
             font-weight: 600;
             white-space: nowrap;
+        }
+        .stock-batch-meta {
+            color: #6b7280;
+            font-size: 0.78rem;
+            font-weight: 500;
         }
     </style>
 @endpush

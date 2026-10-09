@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\ExpenseAccount;
 use App\Models\Investor;
 use App\Models\Supplier;
+use App\Models\Vendor;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
@@ -135,6 +136,12 @@ class CashVoucherService
                 Supplier::whereKey($voucher->account_id)->decrement('current_balance', $amount * $multiplier);
             } else {
                 Supplier::whereKey($voucher->account_id)->increment('current_balance', $amount * $multiplier);
+            }
+        } elseif ($voucher->account_type === 'vendor') {
+            if ($type === 'payment') {
+                Vendor::whereKey($voucher->account_id)->decrement('current_balance', $amount * $multiplier);
+            } else {
+                Vendor::whereKey($voucher->account_id)->increment('current_balance', $amount * $multiplier);
             }
         } elseif ($voucher->account_type === 'investor') {
             if ($type === 'receive') {

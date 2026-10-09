@@ -15,6 +15,7 @@ class StockItemLot extends Model
         'organization_id',
         'stock_item_id',
         'batch_no',
+        'manufactured_at',
         'expiry_date',
         'quantity',
         'received_at',
@@ -24,6 +25,7 @@ class StockItemLot extends Model
     {
         return [
             'quantity' => 'decimal:2',
+            'manufactured_at' => 'date',
             'expiry_date' => 'date',
             'received_at' => 'datetime',
         ];

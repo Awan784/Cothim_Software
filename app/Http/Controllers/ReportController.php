@@ -1280,7 +1280,7 @@ class ReportController extends Controller
                 'sku' => $item->sku ?: '—',
                 'name' => $item->purchaseLabel(),
                 'category' => $item->stockCategory?->name ?: 'Uncategorized',
-                'batch' => new HtmlString('<span class="stock-batch-no">'.e(trim((string) ($item->batch_no ?: '—'))).'</span>'),
+                'batch' => $item->lotsHtml(),
                 'unit' => StockItem::UNITS[$item->unit] ?? ($item->unit ?: '—'),
                 'qty' => $qty,
                 'reorder' => (float) $item->reorder_level,

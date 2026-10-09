@@ -3,7 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $supplier->name }} — Supplier Ledger</title>
+    @php
+        $party = $party ?? $supplier;
+        $partyKind = $partyKind ?? 'Supplier';
+        $listUrl = $listUrl ?? route('suppliers.index');
+        $editUrl = $editUrl ?? route('suppliers.edit', $party);
+    @endphp
+    <title>{{ $party->name }} — {{ $partyKind }} Ledger</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -180,10 +186,10 @@
 </head>
 <body>
     <div class="toolbar">
-        <span>Supplier Ledger — {{ $supplier->name }}</span>
+        <span>{{ $partyKind }} Ledger — {{ $party->name }}</span>
         <div>
-            <a class="btn-back" href="{{ route('suppliers.index') }}">Back</a>
-            <a class="btn-back" href="{{ route('suppliers.edit', $supplier) }}">Edit</a>
+            <a class="btn-back" href="{{ $listUrl }}">Back</a>
+            <a class="btn-back" href="{{ $editUrl }}">Edit</a>
             <button type="button" class="btn-print" onclick="window.print()">Print</button>
         </div>
     </div>
@@ -193,7 +199,7 @@
             <header class="header">
                 <x-print-company-brand :settings="$settings" />
                 <div class="doc-meta">
-                    <p class="doc-label">Supplier ledger</p>
+                    <p class="doc-label">{{ $partyKind }} ledger</p>
                     <p class="doc-no">{{ ams_num($closingBalance) }}</p>
                     <p class="doc-date">Payable balance</p>
                     <p class="doc-date">Opening: {{ ams_num($openingBalance) }}</p>
@@ -207,14 +213,14 @@
                     <div class="party-meta">{{ $settings->contactLine() }}</div>
                 </div>
                 <div>
-                    <div class="party-label">Supplier</div>
-                    <div class="party-name">{{ $supplier->name }}</div>
+                    <div class="party-label">{{ $partyKind }}</div>
+                    <div class="party-name">{{ $party->name }}</div>
                     <div class="party-meta">
                         {{ collect([
-                            $supplier->phone,
-                            $supplier->email,
-                            $supplier->address,
-                            $supplier->city,
+                            $party->phone,
+                            $party->email,
+                            $party->address,
+                            $party->city,
                         ])->filter()->join(' · ') ?: '—' }}
                     </div>
                 </div>
