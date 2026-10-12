@@ -10,11 +10,13 @@ use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceLine;
 use App\Models\Salesman;
+use App\Models\SalesmanSettlement;
 use App\Models\SalesOrder;
 use App\Models\SalesReturn;
 use App\Models\StockCategory;
 use App\Models\StockItem;
 use App\Models\Supplier;
+use App\Models\Vendor;
 use App\Services\CashRegisterService;
 use App\Services\JournalReportService;
 use App\Services\PartyLedgerService;
@@ -39,6 +41,7 @@ class ReportController extends Controller
             ['slug' => 'journal-report', 'title' => 'Journal Report', 'color' => 'pink', 'group' => 'Accounts', 'filter' => 'journal-report'],
             ['slug' => 'customers', 'title' => 'Customers', 'color' => 'blue', 'group' => 'Accounts', 'filter' => 'none'],
             ['slug' => 'payables', 'title' => 'Supplier Payables', 'color' => 'navy', 'group' => 'Accounts', 'filter' => 'none'],
+            ['slug' => 'vendor-payables', 'title' => 'Vendor Payables', 'color' => 'purple', 'group' => 'Accounts', 'filter' => 'none'],
             ['slug' => 'stock', 'title' => 'Stock Report', 'color' => 'teal', 'group' => 'Stock', 'filter' => 'none'],
             ['slug' => 'stock-category', 'title' => 'Stock by Category', 'color' => 'blue', 'group' => 'Stock', 'filter' => 'none'],
             ['slug' => 'low-stock', 'title' => 'Low Stock', 'color' => 'pink', 'group' => 'Stock', 'filter' => 'none'],
@@ -80,6 +83,7 @@ class ReportController extends Controller
             'account-receivables' => $this->accountReceivablesReport($item),
             'customers' => $this->customersReport($item),
             'payables' => $this->payablesReport($item),
+            'vendor-payables' => $this->vendorPayablesReport($item),
             'stock' => $this->stockReport($item),
             'stock-category' => $this->stockByCategoryReport($item),
             'low-stock' => $this->lowStockReport($item),
@@ -288,12 +292,17 @@ class ReportController extends Controller
         $totalSales = round((float) $rows->sum('amount'), 2);
         $totalCommission = round((float) $rows->sum('commission'), 2);
         $builtyExpenses = round((float) $rows->sum('builty_exp') + (float) ($data['builty_expenses'] ?? 0), 2);
+        $settlementPaid = round((float) SalesmanSettlement::query()
+            ->where('salesman_id', $salesman->id)
+            ->whereBetween('settlement_date', [$fromStr, $toStr])
+            ->sum('cash_received'), 2);
         $previousAdvance = array_key_exists('previous_advance', $data) && $data['previous_advance'] !== null
             ? round((float) $data['previous_advance'], 2)
             : app(SalesmanSettlementService::class)->currentAdvance($salesman);
         $afterCommission = round($totalSales - $totalCommission, 2);
         $afterBuilty = round($afterCommission - $builtyExpenses, 2);
-        $netReceivable = round($afterBuilty - $previousAdvance, 2);
+        $afterSettlement = round($afterBuilty - $settlementPaid, 2);
+        $netReceivable = round($afterSettlement - $previousAdvance, 2);
 
         $settings = app(SettingsService::class);
 
@@ -309,9 +318,11 @@ class ReportController extends Controller
             'totalSales' => $totalSales,
             'totalCommission' => $totalCommission,
             'builtyExpenses' => $builtyExpenses,
+            'settlementPaid' => $settlementPaid,
             'previousAdvance' => $previousAdvance,
             'afterCommission' => $afterCommission,
             'afterBuilty' => $afterBuilty,
+            'afterSettlement' => $afterSettlement,
             'netReceivable' => $netReceivable,
         ]);
     }
@@ -442,6 +453,40 @@ class ReportController extends Controller
                 'balance' => (float) $rows->sum('balance'),
             ],
             'empty' => 'No suppliers found.',
+        ]));
+    }
+
+    private function vendorPayablesReport(array $item): View
+    {
+        $vendors = Vendor::query()->orderBy('name')->get();
+
+        $rows = $vendors->map(fn (Vendor $vendor) => [
+            'name' => $vendor->name,
+            'city' => $vendor->city ?: '—',
+            'phone' => $vendor->phone ?: '—',
+            'opening' => (float) $vendor->opening_balance,
+            'balance' => (float) $vendor->current_balance,
+            'status' => $vendor->is_active ? 'Active' : 'Inactive',
+        ]);
+
+        return view('reports.simple', $this->printData($item, extra: [
+            'subtitle' => 'Amount payable to vendors',
+            'columns' => [
+                'name' => 'Vendor',
+                'city' => 'City',
+                'phone' => 'Phone',
+                'opening' => 'Opening',
+                'balance' => 'Payable',
+                'status' => 'Status',
+            ],
+            'numeric' => ['opening', 'balance'],
+            'rows' => $rows,
+            'footer' => [
+                'name' => 'Totals · '.$rows->count().' vendors',
+                'opening' => (float) $rows->sum('opening'),
+                'balance' => (float) $rows->sum('balance'),
+            ],
+            'empty' => 'No vendors found.',
         ]));
     }
 

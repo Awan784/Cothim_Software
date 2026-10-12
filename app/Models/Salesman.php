@@ -20,6 +20,7 @@ class Salesman extends Authenticatable
         'mobile',
         'email',
         'city',
+        'area',
         'cities',
         'monthly_target',
         'opening_balance',

@@ -154,6 +154,7 @@ class SalesmanController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'mobile' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
+            'area' => ['nullable', 'string', 'max:100'],
             'cities' => ['nullable', 'array'],
             'cities.*' => ['nullable', 'string', 'max:100'],
             'monthly_target' => ['nullable', 'numeric', 'min:0'],
@@ -165,7 +166,7 @@ class SalesmanController extends Controller
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['is_active'] = $request->boolean('is_active');
 
-        foreach (['phone', 'mobile', 'email'] as $field) {
+        foreach (['phone', 'mobile', 'email', 'area'] as $field) {
             if (($data[$field] ?? '') === '') {
                 $data[$field] = null;
             }

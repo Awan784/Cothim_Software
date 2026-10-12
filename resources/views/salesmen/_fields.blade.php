@@ -44,6 +44,15 @@
 </div>
 
 <div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">Area</label>
+        <input name="area" value="{{ old('area', $s->area) }}" class="form-control @error('area') is-invalid @enderror" maxlength="100" placeholder="Optional">
+        <div class="form-text">Shown on the commission report, before the city.</div>
+        @error('area') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
+</div>
+
+<div class="row">
     <div class="col-md-4 mb-3">
         <label class="form-label">Username</label>
         <input name="username" value="{{ old('username', $s->username) }}" class="form-control @error('username') is-invalid @enderror" required autocomplete="off">

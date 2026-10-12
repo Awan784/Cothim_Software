@@ -10,7 +10,9 @@
         $phone = $settings->phone();
         $logoPath = $settings->publicLogoPath();
         $titleDate = $toDate->format('d-m-y');
-        $region = strtoupper(trim($salesman->citiesLabel()));
+        $area = trim((string) $salesman->area);
+        $region = trim($salesman->citiesLabel());
+        $place = collect([$area, $region])->filter()->implode(', ');
     @endphp
     <style>
         * { box-sizing: border-box; }
@@ -160,7 +162,7 @@
             <h2 class="doc-title">
                 Commission Report of {{ strtoupper($salesman->name) }}
                 {{ $titleDate }}
-                @if($region !== '') {{ $region }}@endif
+                @if($place !== '') {{ $place }}@endif
             </h2>
             <p style="margin:0 0 6px;font-size:11px;text-align:center;">
                 {{ $fromDate->format('d-m-y') }} to {{ $toDate->format('d-m-y') }}
@@ -210,19 +212,14 @@
                         <td class="num">({{ ams_num($totalCommission) }})</td>
                         <td></td>
                     </tr>
-                    <tr class="net">
-                        <td colspan="7" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
-                        <td class="num">{{ ams_num($afterCommission) }}</td>
-                        <td></td>
-                    </tr>
                     <tr class="less">
                         <td colspan="7" class="lbl">LESS BUILTY EXPENSES</td>
                         <td class="num">({{ ams_num($builtyExpenses) }})</td>
                         <td></td>
                     </tr>
-                    <tr class="net">
-                        <td colspan="7" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
-                        <td class="num">{{ ams_num($afterBuilty) }}</td>
+                    <tr class="less">
+                        <td colspan="7" class="lbl">LESS SETTLEMENT</td>
+                        <td class="num">({{ ams_num($settlementPaid) }})</td>
                         <td></td>
                     </tr>
                     <tr class="less">
