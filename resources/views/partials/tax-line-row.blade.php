@@ -42,6 +42,7 @@
             <select name="lines[{{ $index }}][stock_item_lot_id]" class="form-select form-select-sm line-lot" data-ams-plain="1">
                 <option value="">Select batch</option>
                 @foreach($lineLots as $lot)
+                    @continue((float) $lot->quantity <= 0 && $selectedLotId !== (string) $lot->id)
                     <option value="{{ $lot->id }}"
                         data-batch="{{ $lot->batchLabel() === '—' ? '' : $lot->batchLabel() }}"
                         {{ $selectedLotId === (string) $lot->id ? 'selected' : '' }}>

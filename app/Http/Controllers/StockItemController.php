@@ -19,10 +19,7 @@ class StockItemController extends Controller
             $filter = 'all';
         }
 
-        $query = StockItem::with([
-            'stockCategory',
-            'lots' => fn ($q) => $q->orderBy('received_at')->orderBy('id'),
-        ])->withCount('variants');
+        $query = StockItem::with('stockCategory')->withCount('variants');
 
         if ($filter === 'low') {
             $query->lowStock();

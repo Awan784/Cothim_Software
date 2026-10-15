@@ -17,7 +17,7 @@
         <div>
             <strong>Lines</strong>
             @if($showBatch)
-                <span class="text-muted small ms-2">The oldest batch with stock is selected. A batch with no qty is skipped.</span>
+                <span class="text-muted small ms-2">The oldest batch with stock is selected. A batch with no qty is not shown.</span>
             @endif
             @if($showCommission)
                 <span class="text-muted small ms-2">Commission % is of the line amount after discount. It totals as salesman commission and does not change the customer total.</span>
@@ -156,6 +156,10 @@
         var opt = itemSelect && itemSelect.options[itemSelect.selectedIndex];
         var lots = parseLots(opt);
         var current = keepSelection ? String(select.value || '') : '';
+        lots = lots.filter(function (lot) {
+            if (Number(lot.qty) > 0) return true;
+            return current !== '' && String(lot.id) === current;
+        });
         var preferred = oldestWithStock(lots);
         var chosen = preferred ? String(preferred.id) : '';
         if (current) {

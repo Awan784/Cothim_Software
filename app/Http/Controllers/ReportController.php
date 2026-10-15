@@ -497,7 +497,7 @@ class ReportController extends Controller
 
         return view('reports.simple', $this->printData($item, extra: [
             'wide' => true,
-            'subtitle' => 'All stock with batches',
+            'subtitle' => 'Total quantity on hand',
             'columns' => $this->stockColumns(compact: true),
             'numeric' => $this->stockNumeric(compact: true),
             'rows' => $rows,
@@ -1270,7 +1270,7 @@ class ReportController extends Controller
         ];
 
         if ($compact) {
-            unset($columns['reorder'], $columns['sale_value']);
+            unset($columns['batch'], $columns['reorder'], $columns['sale_value']);
         }
 
         return $columns;

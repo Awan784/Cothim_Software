@@ -37,7 +37,6 @@
                             <th>Potency</th>
                             <th>Unit</th>
                             <th class="text-end">Qty</th>
-                            <th>Batch</th>
                             <th class="text-end">Cost</th>
                             <th class="text-end">Sale</th>
                             <th>Status</th>
@@ -58,9 +57,6 @@
                                 <td class="text-gray-900">{{ $item->potency ?: '—' }}</td>
                                 <td class="text-gray-900">{{ strtoupper($item->unit ?: '') }}</td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->quantity, 2) }}</td>
-                                <td class="stock-batches" data-content="{{ $item->lotsSummary() }}">
-                                    {!! $item->lotsHtml() !!}
-                                </td>
                                 <td class="text-gray-900 text-end">{{ number_format((float) $item->cost_price, 2) }}</td>
                                 <td class="text-gray-900 text-end">{{ $item->sale_price !== null ? number_format((float) $item->sale_price, 2) : '—' }}</td>
                                 <td class="text-gray-900">{{ $item->is_active ? 'Active' : 'Inactive' }}</td>
@@ -75,7 +71,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="text-center text-gray-600">
+                                <td colspan="10" class="text-center text-gray-600">
                                     @if($filter === 'low')
                                         No low-stock items.
                                     @elseif($filter === 'zero')
@@ -92,36 +88,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-    <style>
-        .table td.stock-batches {
-            min-width: 160px;
-            white-space: normal !important;
-            vertical-align: top;
-        }
-        .stock-batch-line {
-            display: flex;
-            align-items: baseline;
-            gap: 0.45rem;
-            line-height: 1.35;
-            margin: 0 0 0.2rem;
-        }
-        .stock-batch-line:last-child { margin-bottom: 0; }
-        .stock-batch-no {
-            color: #dc2626;
-            font-weight: 800;
-            letter-spacing: 0.01em;
-        }
-        .stock-batch-qty {
-            color: #111827;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .stock-batch-meta {
-            color: #6b7280;
-            font-size: 0.78rem;
-            font-weight: 500;
-        }
-    </style>
-@endpush
