@@ -257,8 +257,8 @@
                         </div>
                         <div class="mb-3">
                             <label for="sc_previous_advance" class="form-label">Previous advance override</label>
-                            <input type="number" min="0" step="0.01" name="previous_advance" id="sc_previous_advance" class="form-control" placeholder="Leave blank to use salesman advance">
-                            <div class="form-text">Leave blank to use the salesman's current advance from settlements. Builty postal and expenses come from each order when admin confirms it.</div>
+                            <input type="number" min="0" step="0.01" name="previous_advance" id="sc_previous_advance" class="form-control" placeholder="Leave blank for the advance before these dates">
+                            <div class="form-text">Leave blank to use the advance before the selected dates. Payments received in the dates are listed on the sheet and deducted once.</div>
                         </div>
                     </div>
                     <div class="modal-footer">

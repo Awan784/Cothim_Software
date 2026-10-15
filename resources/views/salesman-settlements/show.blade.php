@@ -22,7 +22,7 @@
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card p-3">
                     <div class="small text-muted">Cash received</div>
                     <div class="fs-5 fw-semibold">{{ number_format((float) $settlement->cash_received, 2) }}</div>
@@ -31,22 +31,16 @@
                     @endif
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card p-3">
                     <div class="small text-muted">Allocated to customers</div>
                     <div class="fs-5 fw-semibold">{{ number_format((float) $settlement->allocated_amount, 2) }}</div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card p-3">
-                    <div class="small text-muted">Opening advance</div>
-                    <div class="fs-5 fw-semibold">{{ number_format((float) $settlement->opening_advance, 2) }}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-3">
-                    <div class="small text-muted">Advance after this settlement</div>
-                    <div class="fs-5 fw-semibold">{{ number_format((float) $settlement->closing_advance, 2) }}</div>
+                    <div class="small text-muted">Opening balance</div>
+                    <div class="fs-5 fw-semibold">{{ number_format((float) $settlement->opening_receivable, 2) }}</div>
                 </div>
             </div>
         </div>
@@ -92,7 +86,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted">No customer allocations — the full cash received is held as salesman advance.</td>
+                                <td colspan="4" class="text-center text-muted">No customer allocations. Leftover cash is applied to the opening balance first.</td>
                             </tr>
                         @endforelse
                     </tbody>

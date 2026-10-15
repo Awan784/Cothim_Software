@@ -28,21 +28,6 @@ class SalesmanController extends Controller
 
         $monthRange = [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()];
 
-        $monthSalesByCity = SalesInvoice::query()
-            ->where('status', '!=', 'draft')
-            ->whereBetween('invoice_date', $monthRange)
-            ->join('customers', function ($join) {
-                $join->on('customers.id', '=', 'sales_invoices.customer_id');
-                if ($orgId = organization_id()) {
-                    $join->where('customers.organization_id', $orgId);
-                }
-            })
-            ->whereNotNull('customers.city')
-            ->where('customers.city', '!=', '')
-            ->selectRaw('customers.city, SUM(sales_invoices.total) as month_sales')
-            ->groupBy('customers.city')
-            ->pluck('month_sales', 'city');
-
         $monthSalesBySalesman = SalesInvoice::query()
             ->where('status', '!=', 'draft')
             ->whereBetween('invoice_date', $monthRange)
@@ -52,7 +37,7 @@ class SalesmanController extends Controller
             ->get()
             ->keyBy('salesman_id');
 
-        return view('salesmen.index', compact('salesmen', 'shopsByCity', 'monthSalesByCity', 'monthSalesBySalesman'));
+        return view('salesmen.index', compact('salesmen', 'shopsByCity', 'monthSalesBySalesman'));
     }
 
     public function create(): View

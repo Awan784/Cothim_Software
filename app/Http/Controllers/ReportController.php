@@ -20,7 +20,6 @@ use App\Models\Vendor;
 use App\Services\CashRegisterService;
 use App\Services\JournalReportService;
 use App\Services\PartyLedgerService;
-use App\Services\SalesmanSettlementService;
 use App\Services\SettingsService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -292,17 +291,49 @@ class ReportController extends Controller
         $totalSales = round((float) $rows->sum('amount'), 2);
         $totalCommission = round((float) $rows->sum('commission'), 2);
         $builtyExpenses = round((float) $rows->sum('builty_exp') + (float) ($data['builty_expenses'] ?? 0), 2);
-        $settlementPaid = round((float) SalesmanSettlement::query()
+        $settlements = SalesmanSettlement::query()
+            ->with('bankAccount')
             ->where('salesman_id', $salesman->id)
             ->whereBetween('settlement_date', [$fromStr, $toStr])
-            ->sum('cash_received'), 2);
-        $previousAdvance = array_key_exists('previous_advance', $data) && $data['previous_advance'] !== null
-            ? round((float) $data['previous_advance'], 2)
-            : app(SalesmanSettlementService::class)->currentAdvance($salesman);
+            ->orderBy('settlement_date')
+            ->orderBy('id')
+            ->get();
+        $payments = $settlements->map(function (SalesmanSettlement $settlement) {
+            $method = $settlement->payment_method === 'bank' ? 'Bank' : 'Cash';
+            $bank = trim((string) ($settlement->bankAccount?->name ?: $settlement->bankAccount?->bank_name));
+            if ($method === 'Bank' && $bank !== '') {
+                $method .= ' · '.$bank;
+            }
+
+            return [
+                'date' => $settlement->settlement_date,
+                'no' => $settlement->settlement_no,
+                'method' => $method,
+                'opening' => round((float) $settlement->opening_advance, 2),
+                'received' => round((float) $settlement->cash_received, 2),
+                'closing' => round((float) $settlement->closing_advance, 2),
+            ];
+        })->values();
+        $settlementPaid = round((float) $payments->sum('received'), 2);
+        if (array_key_exists('previous_advance', $data) && $data['previous_advance'] !== null) {
+            $openingAdvance = round((float) $data['previous_advance'], 2);
+        } else {
+            $priorClosing = SalesmanSettlement::query()
+                ->where('salesman_id', $salesman->id)
+                ->where('settlement_date', '<', $fromStr)
+                ->orderByDesc('settlement_date')
+                ->orderByDesc('id')
+                ->value('closing_advance');
+            $openingAdvance = round((float) ($priorClosing ?? 0), 2);
+        }
+        $appliedSinceFrom = (float) SalesmanSettlement::query()
+            ->where('salesman_id', $salesman->id)
+            ->where('settlement_date', '>=', $fromStr)
+            ->sum('applied_to_opening');
+        $openingBalance = round((float) $salesman->opening_balance + $appliedSinceFrom, 2);
         $afterCommission = round($totalSales - $totalCommission, 2);
         $afterBuilty = round($afterCommission - $builtyExpenses, 2);
-        $afterSettlement = round($afterBuilty - $settlementPaid, 2);
-        $netReceivable = round($afterSettlement - $previousAdvance, 2);
+        $netReceivable = round($openingBalance + $afterBuilty - $openingAdvance - $settlementPaid, 2);
 
         $settings = app(SettingsService::class);
 
@@ -318,11 +349,10 @@ class ReportController extends Controller
             'totalSales' => $totalSales,
             'totalCommission' => $totalCommission,
             'builtyExpenses' => $builtyExpenses,
+            'payments' => $payments,
             'settlementPaid' => $settlementPaid,
-            'previousAdvance' => $previousAdvance,
-            'afterCommission' => $afterCommission,
-            'afterBuilty' => $afterBuilty,
-            'afterSettlement' => $afterSettlement,
+            'openingBalance' => $openingBalance,
+            'openingAdvance' => $openingAdvance,
             'netReceivable' => $netReceivable,
         ]);
     }

@@ -20,6 +20,8 @@ class SalesmanSettlement extends Model
         'allocated_amount',
         'opening_advance',
         'closing_advance',
+        'opening_receivable',
+        'applied_to_opening',
         'payment_method',
         'bank_account_id',
         'cash_voucher_id',
@@ -33,6 +35,8 @@ class SalesmanSettlement extends Model
         'allocated_amount' => 'float',
         'opening_advance' => 'float',
         'closing_advance' => 'float',
+        'opening_receivable' => 'float',
+        'applied_to_opening' => 'float',
     ];
 
     public static function nextNumber(): string

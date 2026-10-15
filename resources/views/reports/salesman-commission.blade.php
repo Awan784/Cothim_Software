@@ -201,6 +201,11 @@
                 </tbody>
                 <tfoot>
                     <tr class="total">
+                        <td colspan="7" class="lbl" style="text-align:right;">OPENING BALANCE</td>
+                        <td class="num">{{ ams_num($openingBalance) }}</td>
+                        <td></td>
+                    </tr>
+                    <tr class="total">
                         <td colspan="4" class="ctr">TOTAL</td>
                         <td class="num">{{ $builtyExpenses > 0 ? ams_num($builtyExpenses) : '' }}</td>
                         <td colspan="2"></td>
@@ -218,15 +223,17 @@
                         <td></td>
                     </tr>
                     <tr class="less">
-                        <td colspan="7" class="lbl">LESS SETTLEMENT</td>
-                        <td class="num">({{ ams_num($settlementPaid) }})</td>
+                        <td colspan="7" class="lbl">LESS OPENING ADVANCE</td>
+                        <td class="num">({{ ams_num($openingAdvance) }})</td>
                         <td></td>
                     </tr>
-                    <tr class="less">
-                        <td colspan="7" class="lbl">LESS PREVIOUS ADVANCE</td>
-                        <td class="num">({{ ams_num($previousAdvance) }})</td>
-                        <td></td>
-                    </tr>
+                    @foreach($payments as $payment)
+                        <tr class="less">
+                            <td colspan="7" class="lbl">LESS PAYMENT {{ optional($payment['date'])->format('d-m-y') }} · {{ $payment['method'] }}</td>
+                            <td class="num">({{ ams_num($payment['received']) }})</td>
+                            <td></td>
+                        </tr>
+                    @endforeach
                     <tr class="net">
                         <td colspan="7" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
                         <td class="num">{{ ams_num($netReceivable) }}</td>

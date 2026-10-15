@@ -6,7 +6,7 @@
         <div class="py-4 d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h4 mb-1">New salesman settlement</h1>
-                <p class="mb-0 text-muted">Cash from the salesman is recorded once. Tick invoices to post customer receive payments for verification. Leftover becomes advance.</p>
+                <p class="mb-0 text-muted">Cash from the salesman is recorded once. Tick invoices to post customer receive payments. Leftover cash reduces the opening balance before any advance.</p>
             </div>
             <a href="{{ route('salesman-settlements.index') }}" class="btn btn-sm btn-secondary">Back</a>
         </div>
@@ -22,6 +22,7 @@
                             @foreach($salesmen as $salesman)
                                 <option value="{{ $salesman->id }}"
                                     data-advance="{{ number_format((float) $salesman->advance_balance, 2, '.', '') }}"
+                                    data-receivable="{{ number_format((float) ($receivables[$salesman->id] ?? 0), 2, '.', '') }}"
                                     @selected((string) old('salesman_id', $selectedSalesmanId) === (string) $salesman->id)>
                                     {{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}
                                 </option>
@@ -92,21 +93,17 @@
 
             <div class="card p-4 mb-3">
                 <div class="row text-center g-3">
-                    <div class="col-md-3">
-                        <div class="small text-muted">Opening advance</div>
+                    <div class="col-md-4">
+                        <div class="small text-muted">Net receivable</div>
                         <div class="fs-5 fw-semibold" id="sumOpening">0.00</div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="small text-muted">Cash received</div>
                         <div class="fs-5 fw-semibold" id="sumCash">0.00</div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="small text-muted">Allocated to customers</div>
                         <div class="fs-5 fw-semibold" id="sumAllocated">0.00</div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="small text-muted">New advance</div>
-                        <div class="fs-5 fw-semibold text-primary" id="sumAdvance">0.00</div>
                     </div>
                 </div>
                 <p class="small text-muted mb-0 mt-3" id="sumWarning"></p>
@@ -134,9 +131,18 @@
                 return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
+            function selectedSalesman() {
+                return salesmanSelect.options[salesmanSelect.selectedIndex] || null;
+            }
+
             function openingAdvance() {
-                const option = salesmanSelect.options[salesmanSelect.selectedIndex];
+                const option = selectedSalesman();
                 return option ? Number(option.dataset.advance || 0) : 0;
+            }
+
+            function netReceivable() {
+                const option = selectedSalesman();
+                return option ? Number(option.dataset.receivable || 0) : 0;
             }
 
             function allocatedTotal() {
@@ -149,21 +155,18 @@
             }
 
             function refreshSummary() {
-                const opening = openingAdvance();
                 const cash = Number(cashInput.value || 0);
                 const allocated = allocatedTotal();
-                const available = Math.round((opening + cash) * 100) / 100;
-                const advance = Math.round((available - allocated) * 100) / 100;
-                document.getElementById('sumOpening').textContent = money(opening);
+                const available = Math.round((openingAdvance() + cash) * 100) / 100;
+                document.getElementById('sumOpening').textContent = money(netReceivable());
                 document.getElementById('sumCash').textContent = money(cash);
                 document.getElementById('sumAllocated').textContent = money(allocated);
-                document.getElementById('sumAdvance').textContent = money(advance);
                 const warning = document.getElementById('sumWarning');
                 if (allocated - available > 0.009) {
-                    warning.textContent = 'Allocated amount is more than opening advance plus cash received.';
+                    warning.textContent = 'Allocated amount is more than cash received.';
                     warning.classList.add('text-danger');
                 } else {
-                    warning.textContent = 'New advance is deducted as LESS PREVIOUS ADVANCE on the next commission report.';
+                    warning.textContent = 'Net receivable matches the commission report: opening balance, sales, commission, and payments.';
                     warning.classList.remove('text-danger');
                 }
             }
@@ -235,6 +238,7 @@
                     const option = salesmanSelect.options[salesmanSelect.selectedIndex];
                     if (option) {
                         option.dataset.advance = payload.opening_advance;
+                        option.dataset.receivable = payload.net_receivable;
                     }
                     renderInvoices(payload.invoices || []);
                 }).catch(function () {

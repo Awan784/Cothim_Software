@@ -36,15 +36,11 @@
                         @forelse($salesmen as $salesman)
                             @php
                                 $shops = 0;
-                                $citySales = 0.0;
                                 foreach ($salesman->cityList() as $city) {
                                     $shops += (int) ($shopsByCity[$city] ?? 0);
-                                    $citySales += (float) ($monthSalesByCity[$city] ?? 0);
                                 }
                                 $bySalesman = $monthSalesBySalesman[$salesman->id] ?? null;
-                                $achieved = $bySalesman
-                                    ? (float) $bySalesman->month_sales
-                                    : $citySales;
+                                $achieved = (float) ($bySalesman->month_sales ?? 0);
                             @endphp
                             <tr class="salesman-row" data-href="{{ route('salesmen.show', $salesman) }}" tabindex="0">
                                 <td class="text-gray-900">

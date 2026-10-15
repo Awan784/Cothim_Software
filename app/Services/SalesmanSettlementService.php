@@ -7,6 +7,8 @@ use App\Models\SalesInvoice;
 use App\Models\Salesman;
 use App\Models\SalesmanSettlement;
 use App\Models\SalesmanSettlementAllocation;
+use App\Models\SalesOrder;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -37,6 +39,62 @@ class SalesmanSettlementService
     public function currentAdvance(Salesman $salesman): float
     {
         return round((float) $salesman->advance_balance, 2);
+    }
+
+    /**
+     * Same net as the commission report: opening balance, sales, commission, and payments.
+     */
+    public function netReceivable(Salesman $salesman, ?Carbon $from = null, ?Carbon $to = null): float
+    {
+        $from = ($from ?? Carbon::parse('2000-01-01'))->copy()->startOfDay();
+        $to = ($to ?? now())->copy()->endOfDay();
+        $fromStr = $from->toDateString();
+        $toStr = $to->toDateString();
+
+        $invoiceQuery = SalesInvoice::query()
+            ->with('salesOrder')
+            ->where('status', '!=', 'draft')
+            ->where(function ($query) use ($salesman) {
+                $query->where('salesman_id', $salesman->id)
+                    ->orWhereHas('salesOrder', fn ($order) => $order->where('salesman_id', $salesman->id));
+            })
+            ->where(function ($query) use ($from, $to, $fromStr, $toStr) {
+                $query->whereBetween('invoice_date', [$fromStr, $toStr])
+                    ->orWhereBetween('created_at', [$from, $to])
+                    ->orWhereHas('salesOrder', function ($order) use ($from, $to, $fromStr, $toStr) {
+                        $order->whereBetween('order_date', [$fromStr, $toStr])
+                            ->orWhereBetween('created_at', [$from, $to]);
+                    });
+            });
+
+        $sales = round((float) (clone $invoiceQuery)->sum('total'), 2);
+        $commission = round((float) (clone $invoiceQuery)->sum('salesman_commission_amount'), 2);
+
+        $openOrders = SalesOrder::query()
+            ->where('salesman_id', $salesman->id)
+            ->whereNull('sales_invoice_id')
+            ->where('status', '!=', SalesOrder::STATUS_REJECTED)
+            ->where(function ($query) use ($from, $to, $fromStr, $toStr) {
+                $query->whereBetween('order_date', [$fromStr, $toStr])
+                    ->orWhereBetween('created_at', [$from, $to]);
+            })
+            ->get(['total', 'salesman_commission_amount', 'builty_exp']);
+
+        $sales = round($sales + (float) $openOrders->sum('total'), 2);
+        $commission = round($commission + (float) $openOrders->sum('salesman_commission_amount'), 2);
+
+        $builty = round((float) (clone $invoiceQuery)->sum('builty_exp') + (float) $openOrders->sum('builty_exp'), 2);
+        $paid = round((float) SalesmanSettlement::query()
+            ->where('salesman_id', $salesman->id)
+            ->whereBetween('settlement_date', [$fromStr, $toStr])
+            ->sum('cash_received'), 2);
+        $applied = (float) SalesmanSettlement::query()
+            ->where('salesman_id', $salesman->id)
+            ->where('settlement_date', '>=', $fromStr)
+            ->sum('applied_to_opening');
+        $opening = round((float) $salesman->opening_balance + $applied, 2);
+
+        return round($opening + $sales - $commission - $builty - $paid, 2);
     }
 
     /**
@@ -84,6 +142,7 @@ class SalesmanSettlementService
                 app()->instance('current_organization_id', (int) $salesman->organization_id);
             }
             $opening = round((float) $salesman->advance_balance, 2);
+            $openingReceivable = round(max(0, (float) $salesman->opening_balance), 2);
             $available = round($opening + $cashReceived, 2);
 
             if ($allocatedTotal - $available > 0.009) {
@@ -93,7 +152,9 @@ class SalesmanSettlementService
                 );
             }
 
-            $closing = round($available - $allocatedTotal, 2);
+            $leftover = round($available - $allocatedTotal, 2);
+            $appliedToOpening = round(min($leftover, $openingReceivable), 2);
+            $closing = round($leftover - $appliedToOpening, 2);
             $date = $data['settlement_date'] ?? now()->toDateString();
 
             $settlement = SalesmanSettlement::create([
@@ -105,6 +166,8 @@ class SalesmanSettlementService
                 'allocated_amount' => $allocatedTotal,
                 'opening_advance' => $opening,
                 'closing_advance' => $closing,
+                'opening_receivable' => $openingReceivable,
+                'applied_to_opening' => $appliedToOpening,
                 'payment_method' => $method,
                 'bank_account_id' => $bankAccountId,
                 'created_by' => $userId,
@@ -124,6 +187,7 @@ class SalesmanSettlementService
                     'reference' => $settlement->settlement_no,
                     'notes' => 'Cash received from salesman '.$salesman->name
                         .' · allocated '.number_format($allocatedTotal, 2)
+                        .' · applied to opening balance '.number_format($appliedToOpening, 2)
                         .' · advance '.number_format($closing, 2),
                     'affects_cash' => true,
                     'salesman_settlement_id' => $settlement->id,
@@ -172,6 +236,7 @@ class SalesmanSettlementService
                 ]);
             }
 
+            $salesman->opening_balance = round($openingReceivable - $appliedToOpening, 2);
             $salesman->advance_balance = $closing;
             $salesman->save();
 
@@ -224,6 +289,7 @@ class SalesmanSettlementService
                 }
             }
 
+            $salesman->opening_balance = round((float) $salesman->opening_balance + (float) $settlement->applied_to_opening, 2);
             $salesman->advance_balance = round((float) $settlement->opening_advance, 2);
             $salesman->save();
 

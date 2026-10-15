@@ -33,8 +33,11 @@ class SalesmanSettlementController extends Controller
         $salesmen = Salesman::query()->where('is_active', true)->orderBy('name')->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
         $selectedSalesmanId = $request->query('salesman_id');
+        $receivables = $salesmen->mapWithKeys(fn (Salesman $salesman) => [
+            $salesman->id => $this->settlements->netReceivable($salesman),
+        ]);
 
-        return view('salesman-settlements.create', compact('salesmen', 'bankAccounts', 'selectedSalesmanId'));
+        return view('salesman-settlements.create', compact('salesmen', 'bankAccounts', 'selectedSalesmanId', 'receivables'));
     }
 
     public function invoices(Request $request): JsonResponse
@@ -59,6 +62,8 @@ class SalesmanSettlementController extends Controller
         return response()->json([
             'salesman' => $salesman->name,
             'opening_advance' => $this->settlements->currentAdvance($salesman),
+            'opening_balance' => round((float) $salesman->opening_balance, 2),
+            'net_receivable' => $this->settlements->netReceivable($salesman),
             'invoices' => $invoices,
         ]);
     }
