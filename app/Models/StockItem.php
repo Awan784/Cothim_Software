@@ -230,14 +230,65 @@ class StockItem extends Model
         $this->unsetRelation('lots');
     }
 
-    public function syncSingleLotFromItem(?string $manufacturedAt = null): void
+    /**
+     * Save a quantity typed on the item form.
+     * One batch takes that quantity. Several batches keep each edited qty, and a total-only change is applied to the current batch.
+     *
+     * @param  array<int|string, array{quantity?: mixed}>  $lotQuantities
+     */
+    public function applyEditedQuantities(array $lotQuantities, ?string $manufacturedAt = null): void
     {
-        $count = $this->lots()->count();
-        if ($count > 1) {
-            $this->syncQuantityFromLots();
+        $targetQty = round((float) $this->quantity, 2);
+        $lots = $this->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->get();
+
+        if ($lots->count() <= 1) {
+            $this->quantity = $targetQty;
+            $this->save();
+            $this->syncSingleLotFromItem($manufacturedAt);
 
             return;
         }
+
+        $editedLot = false;
+        foreach ($lots as $lot) {
+            $posted = $lotQuantities[$lot->id]['quantity'] ?? $lotQuantities[(string) $lot->id]['quantity'] ?? null;
+            if ($posted === null || $posted === '') {
+                continue;
+            }
+
+            $next = round((float) $posted, 2);
+            if (abs($next - (float) $lot->quantity) >= 0.001) {
+                $lot->quantity = $next;
+                $lot->save();
+                $editedLot = true;
+            }
+        }
+
+        $lots = $this->lots()->orderBy('received_at')->orderBy('id')->lockForUpdate()->get();
+        $sum = round((float) $lots->sum('quantity'), 2);
+
+        if (! $editedLot) {
+            $delta = round($targetQty - $sum, 2);
+            if (abs($delta) >= 0.001) {
+                $batch = StockItemLot::normalizeBatch($this->batch_no);
+                $target = ($batch !== ''
+                    ? $lots->first(fn (StockItemLot $lot) => StockItemLot::normalizeBatch($lot->batch_no) === $batch)
+                    : null)
+                    ?? $lots->first(fn (StockItemLot $lot) => (float) $lot->quantity > 0)
+                    ?? $lots->first();
+                $target->quantity = round((float) $target->quantity + $delta, 2);
+                $target->save();
+                $sum = round($sum + $delta, 2);
+            }
+        }
+
+        $this->quantity = $sum;
+        $this->save();
+        $this->unsetRelation('lots');
+    }
+
+    public function syncSingleLotFromItem(?string $manufacturedAt = null): void
+    {
 
         $qty = round((float) $this->quantity, 2);
         $batch = StockItemLot::normalizeBatch($this->batch_no);

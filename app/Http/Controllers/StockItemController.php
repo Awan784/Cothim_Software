@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PurchaseOrderItem;
+use App\Models\PurchaseReturnItem;
+use App\Models\SalesReturnItem;
 use App\Models\StockCategory;
 use App\Models\StockItem;
+use App\Models\StockMovement;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -101,11 +106,12 @@ class StockItemController extends Controller
             unset($data['variants']);
 
             $manufacturedAt = $data['manufactured_at'] ?? null;
-            unset($data['manufactured_at']);
+            $lotQuantities = $data['lots'] ?? [];
+            unset($data['manufactured_at'], $data['lots']);
 
             $stockItem->update($data);
             $this->syncVariants($stockItem, $data['has_variants'], $variants);
-            $stockItem->syncSingleLotFromItem($manufacturedAt);
+            $stockItem->applyEditedQuantities($lotQuantities, $manufacturedAt);
         });
 
         return redirect()->route('stock-items.index')->with('success', 'Item updated.');
@@ -113,9 +119,83 @@ class StockItemController extends Controller
 
     public function destroy(StockItem $stockItem): RedirectResponse
     {
-        $stockItem->delete();
+        $reason = $this->deleteBlockedReason($stockItem);
+        if ($reason !== null) {
+            return back()->with('error', $reason);
+        }
+
+        try {
+            $stockItem->delete();
+        } catch (QueryException) {
+            return back()->with('error', 'This item cannot be deleted because it is still used on other records.');
+        }
 
         return back()->with('success', 'Item deleted.');
+    }
+
+    private function deleteBlockedReason(StockItem $stockItem): ?string
+    {
+        $id = $stockItem->id;
+        $parts = array_filter([
+            $this->usagePhrase($this->distinctCount(PurchaseOrderItem::class, 'purchase_order_id', $id), 'purchase', 'purchases'),
+            $this->usagePhrase($this->distinctCount(PurchaseReturnItem::class, 'purchase_return_id', $id), 'purchase return', 'purchase returns'),
+            $this->usagePhrase($this->distinctCount(SalesReturnItem::class, 'sales_return_id', $id), 'sales return', 'sales returns'),
+            $this->usagePhrase($this->movementCount($id, 'sales_invoice'), 'sales invoice', 'sales invoices'),
+            $this->usagePhrase($this->movementCount($id, null), 'stock movement', 'stock movements'),
+        ]);
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return 'This item cannot be deleted because it is used on '.$this->joinReasons(array_values($parts)).'.';
+    }
+
+    private function distinctCount(string $model, string $column, int $itemId): int
+    {
+        return (int) $model::query()
+            ->where('stock_item_id', $itemId)
+            ->distinct()
+            ->count($column);
+    }
+
+    private function movementCount(int $itemId, ?string $sourceType): int
+    {
+        $known = ['sales_invoice', 'purchase_order', 'purchase_return', 'sales_return'];
+        $query = StockMovement::query()->where('stock_item_id', $itemId);
+
+        if ($sourceType === null) {
+            $query->where(function ($inner) use ($known) {
+                $inner->whereNull('source_type')->orWhereNotIn('source_type', $known);
+            });
+
+            return (int) $query->count();
+        }
+
+        return (int) $query->where('source_type', $sourceType)->distinct()->count('source_id');
+    }
+
+    /**
+     * @param  list<string>  $parts
+     */
+    private function joinReasons(array $parts): string
+    {
+        if (count($parts) === 1) {
+            return $parts[0];
+        }
+
+        $last = array_pop($parts);
+
+        return implode(', ', $parts).' and '.$last;
+    }
+
+    private function usagePhrase(int $count, string $singular, string $plural): ?string
+    {
+        if ($count < 1) {
+            return null;
+        }
+
+        return $count.' '.($count === 1 ? $singular : $plural);
     }
 
     /**
@@ -145,6 +225,8 @@ class StockItemController extends Controller
             'manufacturer' => ['nullable', 'string', 'max:255'],
             'expiry_date' => ['nullable', 'date'],
             'manufactured_at' => ['nullable', 'date'],
+            'lots' => ['nullable', 'array'],
+            'lots.*.quantity' => ['nullable', 'numeric'],
             'composition' => ['nullable', 'string'],
             'barcode' => ['nullable', 'string', 'max:100'],
             'storage_note' => ['nullable', 'string', 'max:255'],

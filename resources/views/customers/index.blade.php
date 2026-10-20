@@ -34,7 +34,7 @@
                                 <td class="text-gray-900" data-content="{{ $customer->searchText() }}">
                                     <a href="{{ route('customers.show', $customer) }}" class="customer-open">{{ $customer->displayName() }}</a>
                                 </td>
-                                <td class="text-gray-900" data-content="{{ $customer->name }}">{{ $customer->name }}</td>
+                                <td class="text-gray-900" data-content="{{ $customer->name }}">{{ $customer->name ?: '—' }}</td>
                                 <td class="text-gray-900">{{ $customer->city ?: '—' }}</td>
                                 <td class="text-gray-900 customer-address">{{ $customer->address ?: '—' }}</td>
                                 <td class="text-gray-900 customer-phone">{{ $customer->mobile ?: $customer->phone }}</td>

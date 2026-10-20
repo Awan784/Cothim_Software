@@ -53,8 +53,9 @@
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Quantity</label>
-        <input name="quantity" value="{{ old('quantity', $item->quantity ?? 0) }}" class="form-control text-end @error('quantity') is-invalid @enderror" required>
+        <input name="quantity" id="item_quantity" value="{{ old('quantity', $item->quantity ?? 0) }}" class="form-control text-end @error('quantity') is-invalid @enderror" inputmode="decimal" required>
         @error('quantity') <div class="invalid-feedback">{{ $message }}</div> @enderror
+        <div class="form-text">Total on hand. Saving this updates stock.</div>
     </div>
     <div class="col-md-3 mb-3">
         <label class="form-label">Potency</label>
@@ -148,7 +149,16 @@
                     @foreach($item->lots as $lot)
                         <tr>
                             <td><span class="stock-batch-no">{{ $lot->batchLabel() }}</span></td>
-                            <td class="text-end">{{ $lot->qtyLabel() }}</td>
+                            <td class="text-end">
+                                <input
+                                    name="lots[{{ $lot->id }}][quantity]"
+                                    value="{{ old('lots.'.$lot->id.'.quantity', $lot->quantity) }}"
+                                    class="form-control form-control-sm text-end lot-qty"
+                                    data-lot-qty
+                                    data-batch="{{ $lot->batch_no }}"
+                                    inputmode="decimal"
+                                >
+                            </td>
                             <td>{{ $lot->manufactured_at ? ams_date($lot->manufactured_at) : '—' }}</td>
                             <td>{{ $lot->expiry_date ? ams_date($lot->expiry_date) : '—' }}</td>
                         </tr>
@@ -156,7 +166,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="form-text">New batches are added on purchase. The same batch number adds qty to that lot.</div>
+        <div class="form-text">Change a batch quantity here, or change the total above. A new batch is added on purchase.</div>
     </div>
 @endif
 
@@ -219,3 +229,74 @@
         {{ old('is_active', $item->is_active ?? true) ? 'checked' : '' }}>
     <label class="form-check-label" for="is_active">Active</label>
 </div>
+
+@once
+    @push('page_scripts')
+        <script>
+            (function () {
+                const total = document.getElementById('item_quantity');
+                const lots = Array.from(document.querySelectorAll('[data-lot-qty]'));
+                if (!total || lots.length === 0) {
+                    return;
+                }
+
+                let syncing = false;
+
+                function lotValue(input) {
+                    const value = parseFloat(String(input.value).replace(/,/g, ''));
+                    return Number.isFinite(value) ? value : 0;
+                }
+
+                function sumLots() {
+                    return lots.reduce(function (sum, input) {
+                        return sum + lotValue(input);
+                    }, 0);
+                }
+
+                function primaryLot() {
+                    const batch = (document.querySelector('[name="batch_no"]')?.value || '').trim().toLowerCase();
+                    if (batch !== '') {
+                        const match = lots.find(function (input) {
+                            return (input.dataset.batch || '').trim().toLowerCase() === batch;
+                        });
+                        if (match) {
+                            return match;
+                        }
+                    }
+
+                    return lots.find(function (input) { return lotValue(input) > 0; }) || lots[0];
+                }
+
+                function writeTotal() {
+                    total.value = sumLots().toFixed(2);
+                }
+
+                lots.forEach(function (input) {
+                    input.addEventListener('input', function () {
+                        if (syncing) {
+                            return;
+                        }
+                        syncing = true;
+                        writeTotal();
+                        syncing = false;
+                    });
+                });
+
+                total.addEventListener('input', function () {
+                    if (syncing) {
+                        return;
+                    }
+                    const next = parseFloat(String(total.value).replace(/,/g, ''));
+                    if (!Number.isFinite(next)) {
+                        return;
+                    }
+                    syncing = true;
+                    const lot = primaryLot();
+                    const delta = next - sumLots();
+                    lot.value = (lotValue(lot) + delta).toFixed(2);
+                    syncing = false;
+                });
+            })();
+        </script>
+    @endpush
+@endonce

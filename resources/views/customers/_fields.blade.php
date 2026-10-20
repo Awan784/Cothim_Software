@@ -8,7 +8,7 @@
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Contact person</label>
-        <input name="name" value="{{ old('name', $c->name) }}" class="form-control @error('name') is-invalid @enderror" required>
+        <input name="name" value="{{ old('name', $c->name) }}" class="form-control @error('name') is-invalid @enderror">
         @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 </div>

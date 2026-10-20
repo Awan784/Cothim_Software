@@ -8,6 +8,7 @@ use App\Services\SettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CustomerController extends Controller
@@ -82,7 +83,7 @@ class CustomerController extends Controller
     private function validated(Request $request): array
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'proprietor_name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
@@ -101,10 +102,16 @@ class CustomerController extends Controller
         $data['opening_balance'] = (float) ($data['opening_balance'] ?? 0);
         $data['vat_number'] = $data['strn'] ?? null;
 
-        foreach (['company_name', 'proprietor_name', 'phone', 'mobile', 'email', 'ntn', 'strn', 'license_no', 'city', 'area', 'address'] as $field) {
+        foreach (['name', 'company_name', 'proprietor_name', 'phone', 'mobile', 'email', 'ntn', 'strn', 'license_no', 'city', 'area', 'address'] as $field) {
             if (($data[$field] ?? '') === '') {
                 $data[$field] = null;
             }
+        }
+
+        if ($data['name'] === null && $data['company_name'] === null) {
+            throw ValidationException::withMessages([
+                'company_name' => 'Enter a company / shop name or a contact person.',
+            ]);
         }
 
         return $data;
