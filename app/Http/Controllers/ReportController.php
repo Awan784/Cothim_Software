@@ -105,8 +105,7 @@ class ReportController extends Controller
             'account_type' => ['required', 'string', 'in:'.implode(',', array_keys(PartyLedgerService::ACCOUNT_TYPES))],
         ]);
 
-        $accounts = $ledger->accountsForType($data['account_type'])
-            ->map(fn ($row) => ['id' => $row->id, 'name' => $row->name]);
+        $accounts = $ledger->accountOptions($data['account_type']);
 
         return response()->json($accounts);
     }
@@ -256,9 +255,18 @@ class ReportController extends Controller
                 $date = $invoice->created_at;
             }
 
+            $mode = trim((string) $invoice->mode);
+            if ($mode === '') {
+                $mode = trim((string) ($invoice->salesOrder?->mode ?? ''));
+            }
+            if ($mode === '') {
+                $mode = $invoice->isPaid() ? 'Cash' : 'CO';
+            }
+
             return [
                 'date' => $date,
                 'bill_no' => $invoice->invoice_no,
+                'mode' => $mode,
                 'builty_postal' => $invoice->builty_postal ?: $invoice->salesOrder?->builty_postal,
                 'builty_exp' => (float) ($invoice->builty_exp ?? $invoice->salesOrder?->builty_exp ?? 0),
                 'party' => $invoice->customer?->displayName() ?: '—',
@@ -275,6 +283,7 @@ class ReportController extends Controller
             return [
                 'date' => $date,
                 'bill_no' => $order->order_no,
+                'mode' => trim((string) $order->mode),
                 'builty_postal' => $order->builty_postal,
                 'builty_exp' => (float) ($order->builty_exp ?? 0),
                 'party' => $order->customer?->displayName() ?: '—',
@@ -589,24 +598,32 @@ class ReportController extends Controller
         [$from, $to] = $this->period($request);
 
         $invoices = SalesInvoice::with(['customer', 'salesman'])
+            ->withSum('lines as qty', 'quantity')
             ->where('status', '!=', 'draft')
             ->whereBetween('invoice_date', [$from->toDateString(), $to->toDateString()])
             ->orderBy('invoice_date')
             ->orderBy('id')
             ->get();
 
-        $rows = $invoices->map(fn (SalesInvoice $invoice) => [
-            'date' => ams_date($invoice->invoice_date),
-            'no' => $invoice->invoice_no,
-            'customer' => $invoice->customer?->displayName() ?: '—',
-            'salesman' => $invoice->salesman?->name ?: '—',
-            'status' => $invoice->listStatusLabel(),
-            'subtotal' => (float) $invoice->subtotal,
-            'tax' => (float) $invoice->vat_amount,
-            'total' => (float) $invoice->total,
-            'paid' => (float) $invoice->amount_paid,
-            'balance' => $invoice->balanceDue(),
-        ]);
+        $rows = $invoices->map(function (SalesInvoice $invoice) {
+            $mode = trim((string) $invoice->mode);
+            if ($mode === '') {
+                $mode = $invoice->isPaid() ? 'Cash' : 'CO';
+            }
+
+            return [
+                'date' => ams_date($invoice->invoice_date),
+                'no' => $invoice->invoice_no,
+                'customer' => $invoice->customer?->displayName() ?: '—',
+                'salesman' => $invoice->salesman?->name ?: '—',
+                'mode' => $mode,
+                'subtotal' => (float) $invoice->subtotal,
+                'qty' => (float) $invoice->qty,
+                'total' => (float) $invoice->total,
+                'paid' => (float) $invoice->amount_paid,
+                'balance' => $invoice->balanceDue(),
+            ];
+        });
 
         return view('reports.simple', $this->printData($item, $from, $to, [
             'wide' => true,
@@ -615,19 +632,19 @@ class ReportController extends Controller
                 'no' => 'Invoice',
                 'customer' => 'Customer',
                 'salesman' => 'Salesman',
-                'status' => 'Status',
+                'mode' => 'Mode',
                 'subtotal' => 'Subtotal',
-                'tax' => 'Tax',
+                'qty' => 'Qty',
                 'total' => 'Total',
                 'paid' => 'Paid',
                 'balance' => 'Balance',
             ],
-            'numeric' => ['subtotal', 'tax', 'total', 'paid', 'balance'],
+            'numeric' => ['subtotal', 'qty', 'total', 'paid', 'balance'],
             'rows' => $rows,
             'footer' => [
                 'date' => 'Totals',
                 'subtotal' => (float) $rows->sum('subtotal'),
-                'tax' => (float) $rows->sum('tax'),
+                'qty' => (float) $rows->sum('qty'),
                 'total' => (float) $rows->sum('total'),
                 'paid' => (float) $rows->sum('paid'),
                 'balance' => (float) $rows->sum('balance'),

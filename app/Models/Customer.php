@@ -32,4 +32,27 @@ class Customer extends Model
     {
         return $this->company_name ?: $this->name;
     }
+
+    public function searchText(): string
+    {
+        $values = [];
+        foreach ([
+            $this->company_name,
+            $this->name,
+            $this->proprietor_name,
+            $this->phone,
+            $this->mobile,
+            $this->city,
+            $this->area,
+            $this->address,
+            $this->license_no,
+        ] as $part) {
+            $part = trim((string) $part);
+            if ($part !== '' && ! in_array($part, $values, true)) {
+                $values[] = $part;
+            }
+        }
+
+        return implode(' ', $values);
+    }
 }

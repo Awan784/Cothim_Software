@@ -178,6 +178,7 @@
                         <th>Builty<br>Exp</th>
                         <th>Party Names</th>
                         <th>City<br>Names</th>
+                        <th>Mode</th>
                         <th class="num">Amount</th>
                         <th class="num">Commission</th>
                     </tr>
@@ -192,50 +193,51 @@
                             <td class="num">{{ ((float) $row['builty_exp']) > 0 ? ams_num($row['builty_exp']) : '' }}</td>
                             <td>{{ $row['party'] }}</td>
                             <td class="ctr">{{ $row['city'] }}</td>
+                            <td class="ctr">{{ $row['mode'] }}</td>
                             <td class="num">{{ ams_num($row['amount']) }}</td>
                             <td class="num">{{ ams_num($row['commission']) }}</td>
                         </tr>
                     @empty
-                        <tr><td class="empty" colspan="9">No invoices for this salesman in the selected dates.</td></tr>
+                        <tr><td class="empty" colspan="10">No invoices for this salesman in the selected dates.</td></tr>
                     @endforelse
                 </tbody>
                 <tfoot>
                     <tr class="total">
-                        <td colspan="7" class="lbl" style="text-align:right;">OPENING BALANCE</td>
+                        <td colspan="8" class="lbl" style="text-align:right;">OPENING BALANCE</td>
                         <td class="num">{{ ams_num($openingBalance) }}</td>
                         <td></td>
                     </tr>
                     <tr class="total">
                         <td colspan="4" class="ctr">TOTAL</td>
                         <td class="num">{{ $builtyExpenses > 0 ? ams_num($builtyExpenses) : '' }}</td>
-                        <td colspan="2"></td>
+                        <td colspan="3"></td>
                         <td class="num">{{ ams_num($totalSales) }}</td>
                         <td class="num">{{ ams_num($totalCommission) }}</td>
                     </tr>
                     <tr class="less">
-                        <td colspan="7" class="lbl">LESS COMMISSION</td>
+                        <td colspan="8" class="lbl">LESS COMMISSION</td>
                         <td class="num">({{ ams_num($totalCommission) }})</td>
                         <td></td>
                     </tr>
                     <tr class="less">
-                        <td colspan="7" class="lbl">LESS BUILTY EXPENSES</td>
+                        <td colspan="8" class="lbl">LESS BUILTY EXPENSES</td>
                         <td class="num">({{ ams_num($builtyExpenses) }})</td>
                         <td></td>
                     </tr>
                     <tr class="less">
-                        <td colspan="7" class="lbl">LESS OPENING ADVANCE</td>
+                        <td colspan="8" class="lbl">LESS OPENING ADVANCE</td>
                         <td class="num">({{ ams_num($openingAdvance) }})</td>
                         <td></td>
                     </tr>
                     @foreach($payments as $payment)
                         <tr class="less">
-                            <td colspan="7" class="lbl">LESS PAYMENT {{ optional($payment['date'])->format('d-m-y') }} · {{ $payment['method'] }}</td>
+                            <td colspan="8" class="lbl">LESS PAYMENT {{ optional($payment['date'])->format('d-m-y') }} · {{ $payment['method'] }}</td>
                             <td class="num">({{ ams_num($payment['received']) }})</td>
                             <td></td>
                         </tr>
                     @endforeach
                     <tr class="net">
-                        <td colspan="7" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
+                        <td colspan="8" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
                         <td class="num">{{ ams_num($netReceivable) }}</td>
                         <td></td>
                     </tr>

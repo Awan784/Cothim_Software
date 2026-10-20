@@ -23,7 +23,7 @@
             <select name="customer_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search customer" required>
                 <option value="">Select customer</option>
                 @foreach($customers as $customer)
-                    <option value="{{ $customer->id }}" {{ (string) old('customer_id', $isEdit ? $invoice->customer_id : '') === (string) $customer->id ? 'selected' : '' }}>
+                    <option value="{{ $customer->id }}" data-search="{{ $customer->searchText() }}" {{ (string) old('customer_id', $isEdit ? $invoice->customer_id : '') === (string) $customer->id ? 'selected' : '' }}>
                         {{ $customer->displayName() }}
                     </option>
                 @endforeach

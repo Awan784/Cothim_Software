@@ -88,7 +88,7 @@
 
     <div class="col-md-8 mb-3" id="account_select_wrap">
         <label class="form-label">Account</label>
-        <select name="account_id" class="form-select @error('account_id') is-invalid @enderror" id="account_id" required>
+        <select name="account_id" class="form-select ams-search-select @error('account_id') is-invalid @enderror" id="account_id" data-ams-search="1" data-search-placeholder="Search company / shop, name, owner, phone" required>
             <option value="">Select account</option>
         </select>
         @error('account_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
@@ -126,6 +126,46 @@
     </div>
 </div>
 
+@php
+    $customerAccountOptions = $customers->map(function ($customer) {
+        $shop = trim((string) $customer->company_name);
+        $person = trim((string) ($customer->proprietor_name ?: $customer->name));
+        $label = $shop !== '' ? $shop : $person;
+        if ($shop !== '' && $person !== '' && strcasecmp($shop, $person) !== 0) {
+            $label .= ' — '.$person;
+        }
+
+        return ['id' => $customer->id, 'name' => $label, 'search' => $customer->searchText()];
+    })->values();
+    $supplierAccountOptions = $suppliers->map(fn ($supplier) => [
+        'id' => $supplier->id,
+        'name' => $supplier->name,
+        'search' => trim(implode(' ', array_filter([
+            $supplier->name,
+            $supplier->phone,
+            $supplier->email,
+            $supplier->city,
+            $supplier->address,
+            $supplier->vat_number,
+        ]))),
+    ])->values();
+    $vendorAccountOptions = ($vendors ?? collect())->map(fn ($vendor) => [
+        'id' => $vendor->id,
+        'name' => $vendor->name,
+        'search' => trim(implode(' ', array_filter([
+            $vendor->name,
+            $vendor->phone,
+            $vendor->email,
+            $vendor->city,
+            $vendor->address,
+        ]))),
+    ])->values();
+    $expenseAccountOptions = ($expenseAccounts ?? collect())->map(fn ($account) => [
+        'id' => $account->id,
+        'name' => $account->name,
+        'search' => trim(implode(' ', array_filter([$account->name, $account->description ?? null]))),
+    ])->values();
+@endphp
 @push('page_scripts')
     <script>
         (function () {
@@ -136,10 +176,10 @@
             const bankBalanceText = document.getElementById('bank_balance_text');
 
             const accountOptions = {
-                customer: @json($customers->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()),
-                supplier: @json($suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()),
-                vendor: @json(($vendors ?? collect())->map(fn ($v) => ['id' => $v->id, 'name' => $v->name])->values()),
-                expense: @json(($expenseAccounts ?? collect())->map(fn ($e) => ['id' => $e->id, 'name' => $e->name])->values()),
+                customer: @json($customerAccountOptions),
+                supplier: @json($supplierAccountOptions),
+                vendor: @json($vendorAccountOptions),
+                expense: @json($expenseAccountOptions),
             };
 
             const typeSelect = document.getElementById('account_type');
@@ -173,23 +213,38 @@
                 }
             }
 
+            function refreshAccountCombo() {
+                if (window.amsDestroySearchSelects) {
+                    window.amsDestroySearchSelects(accountWrap);
+                }
+                if (!accountWrap.classList.contains('d-none') && window.amsInitSearchSelects) {
+                    window.amsInitSearchSelects(accountWrap);
+                }
+            }
+
             function rebuildAccountSelect() {
                 const t = typeSelect.value;
                 const list = accountOptions[t] || [];
                 const labels = { customer: 'customer', supplier: 'supplier', vendor: 'vendor', expense: 'expense' };
+
+                if (window.amsDestroySearchSelects) {
+                    window.amsDestroySearchSelects(accountWrap);
+                }
 
                 accountSelect.innerHTML = '<option value="">Select ' + (labels[t] || 'account') + '</option>';
                 list.forEach(function (item) {
                     const opt = document.createElement('option');
                     opt.value = item.id;
                     opt.textContent = item.name;
-                    if (String(item.id) === String(selectedId)) {
+                    if (item.search) opt.dataset.search = item.search;
+                    if (String(item.id) === String(selectedId) && t === selectedType) {
                         opt.selected = true;
                     }
                     accountSelect.appendChild(opt);
                 });
 
                 accountSelect.required = t !== 'other';
+                refreshAccountCombo();
             }
 
             function toggleAccountInputs() {

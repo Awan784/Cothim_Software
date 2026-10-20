@@ -390,7 +390,10 @@
                     return;
                 }
                 var label = (option.textContent || '').trim();
-                if (!q || label.toLowerCase().indexOf(q) !== -1) {
+                var haystack = (label + ' ' + (option.getAttribute('data-search') || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+                var compactHaystack = haystack.replace(/ /g, '');
+                var compactQuery = q.replace(/\s+/g, '');
+                if (!q || haystack.indexOf(q) !== -1 || (compactQuery && compactHaystack.indexOf(compactQuery) !== -1)) {
                     matches.push({ option: option, index: index, label: label });
                 }
             });

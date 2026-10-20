@@ -40,6 +40,78 @@ class PartyLedgerService
         return $query->orderBy('name')->get(['id', 'name']);
     }
 
+    /**
+     * @return Collection<int, array{id: int, name: string, search: string}>
+     */
+    public function accountOptions(string $accountType): Collection
+    {
+        $this->assertAccountType($accountType);
+
+        return match ($accountType) {
+            'customer' => Customer::query()
+                ->orderByRaw('COALESCE(NULLIF(company_name, ""), name)')
+                ->get()
+                ->map(function (Customer $customer) {
+                    $shop = trim((string) $customer->company_name);
+                    $person = trim((string) ($customer->proprietor_name ?: $customer->name));
+                    $label = $shop !== '' ? $shop : ($person !== '' ? $person : $customer->displayName());
+                    if ($shop !== '' && $person !== '' && strcasecmp($shop, $person) !== 0) {
+                        $label .= ' — '.$person;
+                    }
+
+                    return [
+                        'id' => $customer->id,
+                        'name' => $label,
+                        'search' => $customer->searchText(),
+                    ];
+                }),
+            'supplier' => Supplier::query()->orderBy('name')->get()->map(fn (Supplier $supplier) => [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+                'search' => $this->searchText([
+                    $supplier->name,
+                    $supplier->phone,
+                    $supplier->email,
+                    $supplier->city,
+                    $supplier->address,
+                    $supplier->vat_number,
+                ]),
+            ]),
+            'vendor' => Vendor::query()->orderBy('name')->get()->map(fn (Vendor $vendor) => [
+                'id' => $vendor->id,
+                'name' => $vendor->name,
+                'search' => $this->searchText([
+                    $vendor->name,
+                    $vendor->phone,
+                    $vendor->email,
+                    $vendor->city,
+                    $vendor->address,
+                ]),
+            ]),
+            'expense' => ExpenseAccount::query()->orderBy('name')->get()->map(fn (ExpenseAccount $account) => [
+                'id' => $account->id,
+                'name' => $account->name,
+                'search' => $this->searchText([$account->name, $account->description]),
+            ]),
+        };
+    }
+
+    /**
+     * @param  list<mixed>  $parts
+     */
+    private function searchText(array $parts): string
+    {
+        $values = [];
+        foreach ($parts as $part) {
+            $part = trim((string) $part);
+            if ($part !== '' && ! in_array($part, $values, true)) {
+                $values[] = $part;
+            }
+        }
+
+        return implode(' ', $values);
+    }
+
     public function partyName(string $accountType, int $accountId): ?string
     {
         return $this->accountsForType($accountType)->firstWhere('id', $accountId)?->name;

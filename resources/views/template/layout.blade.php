@@ -126,7 +126,7 @@
     <script src="{{ asset('assets/js/volt.js') }}"></script>
     <script src="{{ asset('vendor/choices.js/public/assets/scripts/choices.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="{{ asset('js/ams-ui.js') }}?v=7"></script>
+    <script src="{{ asset('js/ams-ui.js') }}?v=8"></script>
     @if(! $isSalesmanShell)
         <audio id="amsOrderRingtone" src="{{ asset('sounds/order-ring.wav') }}" preload="auto" loop playsinline autoplay muted></audio>
         <script>
@@ -150,16 +150,28 @@
                 });
             }
 
+            function amsSearchText(value) {
+                return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            }
+
+            function amsPrefixMatch(query, text) {
+                var spacedQuery = amsSearchText(query);
+                var spacedText = amsSearchText(text);
+                if (!spacedQuery || !spacedText) return false;
+                if (spacedText.indexOf(spacedQuery) !== -1) return true;
+                return spacedText.replace(/ /g, '').indexOf(spacedQuery.replace(/ /g, '')) !== -1;
+            }
+
             function amsPrefixSearch(query) {
                 var dt = this;
                 if (!dt.hasRows) return false;
 
-                query = String(query || '').toLowerCase().trim();
+                query = String(query || '');
                 dt.currentPage = 1;
                 dt.searching = true;
                 dt.searchData = [];
 
-                if (!query.length) {
+                if (!amsSearchText(query).length) {
                     dt.searching = false;
                     dt.update();
                     dt.emit('datatable.search', query, dt.searchData);
@@ -167,22 +179,21 @@
                     return false;
                 }
 
-                var tokens = query.split(/\s+/).filter(Boolean);
                 var allowed = dt._amsSearchColumns;
 
                 dt.clear();
                 dt.data.forEach(function (row, index) {
-                    var matched = tokens.every(function (token) {
-                        for (var c = 0; c < row.cells.length; c++) {
-                            if (allowed && allowed.indexOf(c) === -1) continue;
-                            if (!allowed && c === row.cells.length - 1) continue;
-                            var cell = row.cells[c];
-                            var text = cell.getAttribute('data-content') || cell.textContent || '';
-                            text = String(text).toLowerCase().trim();
-                            if (text && text.indexOf(token) === 0) return true;
+                    var matched = false;
+                    for (var c = 0; c < row.cells.length; c++) {
+                        if (allowed && allowed.indexOf(c) === -1) continue;
+                        if (!allowed && c === row.cells.length - 1) continue;
+                        var cell = row.cells[c];
+                        var text = cell.getAttribute('data-content') || cell.textContent || '';
+                        if (amsPrefixMatch(query, text)) {
+                            matched = true;
+                            break;
                         }
-                        return false;
-                    });
+                    }
 
                     if (matched) {
                         row.searchIndex = index;
@@ -215,7 +226,7 @@
                     pagerDelta: 2,
                     perPage: 10,
                     perPageSelect: [10, 25, 50, 100],
-                    labels: isPrefix ? { placeholder: 'Search starting letters...' } : {},
+                    labels: isPrefix ? { placeholder: 'Search company / shop' } : {},
                 });
 
                 if (isPrefix) {

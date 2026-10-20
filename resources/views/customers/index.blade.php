@@ -31,7 +31,7 @@
                     <tbody>
                         @forelse($customers as $customer)
                             <tr class="customer-row" data-href="{{ route('customers.show', $customer) }}" tabindex="0">
-                                <td class="text-gray-900" data-content="{{ $customer->displayName() }}">
+                                <td class="text-gray-900" data-content="{{ $customer->searchText() }}">
                                     <a href="{{ route('customers.show', $customer) }}" class="customer-open">{{ $customer->displayName() }}</a>
                                 </td>
                                 <td class="text-gray-900" data-content="{{ $customer->name }}">{{ $customer->name }}</td>

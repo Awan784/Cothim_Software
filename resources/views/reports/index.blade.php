@@ -136,7 +136,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="pl_account_id" class="form-label">Account</label>
-                            <select name="account_id" id="pl_account_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search account" required disabled>
+                            <select name="account_id" id="pl_account_id" class="form-select ams-search-select" data-ams-search="1" data-search-placeholder="Search company / shop, name, owner, phone" required disabled>
                                 <option value="">Select account type first…</option>
                             </select>
                         </div>
@@ -442,6 +442,7 @@
                             const option = document.createElement('option');
                             option.value = account.id;
                             option.textContent = account.name;
+                            option.dataset.search = account.search || '';
                             accountSelect.appendChild(option);
                         });
                         accountSelect.disabled = false;
