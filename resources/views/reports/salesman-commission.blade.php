@@ -10,9 +10,7 @@
         $phone = $settings->phone();
         $logoPath = $settings->publicLogoPath();
         $titleDate = $toDate->format('d-m-y');
-        $area = trim((string) $salesman->area);
-        $region = trim($salesman->citiesLabel());
-        $place = collect([$area, $region])->filter()->implode(', ');
+        $place = trim((string) $salesman->area);
     @endphp
     <style>
         * { box-sizing: border-box; }
@@ -203,11 +201,6 @@
                 </tbody>
                 <tfoot>
                     <tr class="total">
-                        <td colspan="8" class="lbl" style="text-align:right;">OPENING BALANCE</td>
-                        <td class="num">{{ ams_num($openingBalance) }}</td>
-                        <td></td>
-                    </tr>
-                    <tr class="total">
                         <td colspan="4" class="ctr">TOTAL</td>
                         <td class="num">{{ $builtyExpenses > 0 ? ams_num($builtyExpenses) : '' }}</td>
                         <td colspan="3"></td>
@@ -219,14 +212,31 @@
                         <td class="num">({{ ams_num($totalCommission) }})</td>
                         <td></td>
                     </tr>
+                    <tr class="total">
+                        <td colspan="8" class="lbl" style="text-align:right;">TOTAL</td>
+                        <td class="num">{{ ams_num($afterCommission) }}</td>
+                        <td></td>
+                    </tr>
+                    <tr class="total">
+                        <td colspan="8" class="lbl" style="text-align:right;">PREVIOUS BALANCE</td>
+                        <td class="num">{{ ams_num($previousBalance) }}</td>
+                        <td></td>
+                    </tr>
                     <tr class="less">
                         <td colspan="8" class="lbl">LESS BUILTY EXPENSES</td>
                         <td class="num">({{ ams_num($builtyExpenses) }})</td>
                         <td></td>
                     </tr>
-                    <tr class="less">
-                        <td colspan="8" class="lbl">LESS OPENING ADVANCE</td>
-                        <td class="num">({{ ams_num($openingAdvance) }})</td>
+                    @if($openingAdvance > 0)
+                        <tr class="less">
+                            <td colspan="8" class="lbl">LESS OPENING ADVANCE</td>
+                            <td class="num">({{ ams_num($openingAdvance) }})</td>
+                            <td></td>
+                        </tr>
+                    @endif
+                    <tr class="total">
+                        <td colspan="8" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
+                        <td class="num">{{ ams_num($netBeforePayments) }}</td>
                         <td></td>
                     </tr>
                     @foreach($payments as $payment)
@@ -237,7 +247,7 @@
                         </tr>
                     @endforeach
                     <tr class="net">
-                        <td colspan="8" class="lbl" style="text-align:right;">NET RECEIVABLE</td>
+                        <td colspan="8" class="lbl" style="text-align:right;">TOTAL BALANCE</td>
                         <td class="num">{{ ams_num($netReceivable) }}</td>
                         <td></td>
                     </tr>

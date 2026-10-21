@@ -324,25 +324,14 @@ class ReportController extends Controller
             ];
         })->values();
         $settlementPaid = round((float) $payments->sum('received'), 2);
+        $openingAdvance = 0.0;
         if (array_key_exists('previous_advance', $data) && $data['previous_advance'] !== null) {
             $openingAdvance = round((float) $data['previous_advance'], 2);
-        } else {
-            $priorClosing = SalesmanSettlement::query()
-                ->where('salesman_id', $salesman->id)
-                ->where('settlement_date', '<', $fromStr)
-                ->orderByDesc('settlement_date')
-                ->orderByDesc('id')
-                ->value('closing_advance');
-            $openingAdvance = round((float) ($priorClosing ?? 0), 2);
         }
-        $appliedSinceFrom = (float) SalesmanSettlement::query()
-            ->where('salesman_id', $salesman->id)
-            ->where('settlement_date', '>=', $fromStr)
-            ->sum('applied_to_opening');
-        $openingBalance = round((float) $salesman->opening_balance + $appliedSinceFrom, 2);
+        $previousBalance = $this->salesmanPreviousBalance($salesman, $from, $fromStr, $invoices->pluck('id')->all(), $openOrders->pluck('id')->all());
         $afterCommission = round($totalSales - $totalCommission, 2);
-        $afterBuilty = round($afterCommission - $builtyExpenses, 2);
-        $netReceivable = round($openingBalance + $afterBuilty - $openingAdvance - $settlementPaid, 2);
+        $netBeforePayments = round($previousBalance + $afterCommission - $builtyExpenses - $openingAdvance, 2);
+        $netReceivable = round($netBeforePayments - $settlementPaid, 2);
 
         $settings = app(SettingsService::class);
 
@@ -360,10 +349,64 @@ class ReportController extends Controller
             'builtyExpenses' => $builtyExpenses,
             'payments' => $payments,
             'settlementPaid' => $settlementPaid,
-            'openingBalance' => $openingBalance,
             'openingAdvance' => $openingAdvance,
+            'afterCommission' => $afterCommission,
+            'previousBalance' => $previousBalance,
+            'netBeforePayments' => $netBeforePayments,
             'netReceivable' => $netReceivable,
         ]);
+    }
+
+    /**
+     * Ledger balance before this report: the opening entered on the salesman, plus earlier sales, less earlier commission, builty, and settlements.
+     *
+     * @param  list<int>  $periodInvoiceIds
+     * @param  list<int>  $periodOrderIds
+     */
+    private function salesmanPreviousBalance(Salesman $salesman, Carbon $from, string $fromStr, array $periodInvoiceIds, array $periodOrderIds): float
+    {
+        $originalOpening = round((float) $salesman->opening_balance + (float) SalesmanSettlement::query()
+            ->where('salesman_id', $salesman->id)
+            ->sum('applied_to_opening'), 2);
+
+        $priorInvoices = SalesInvoice::with('salesOrder')
+            ->where('status', '!=', 'draft')
+            ->where(function ($query) use ($salesman) {
+                $query->where('salesman_id', $salesman->id)
+                    ->orWhereHas('salesOrder', fn ($order) => $order->where('salesman_id', $salesman->id));
+            })
+            ->where(function ($query) use ($from, $fromStr) {
+                $query->where('invoice_date', '<', $fromStr)
+                    ->orWhere('created_at', '<', $from)
+                    ->orWhereHas('salesOrder', function ($order) use ($from, $fromStr) {
+                        $order->where('order_date', '<', $fromStr)
+                            ->orWhere('created_at', '<', $from);
+                    });
+            })
+            ->when($periodInvoiceIds !== [], fn ($query) => $query->whereNotIn('id', $periodInvoiceIds))
+            ->get();
+
+        $priorOrders = SalesOrder::query()
+            ->where('salesman_id', $salesman->id)
+            ->whereNull('sales_invoice_id')
+            ->where('status', '!=', SalesOrder::STATUS_REJECTED)
+            ->where(function ($query) use ($from, $fromStr) {
+                $query->where('order_date', '<', $fromStr)
+                    ->orWhere('created_at', '<', $from);
+            })
+            ->when($periodOrderIds !== [], fn ($query) => $query->whereNotIn('id', $periodOrderIds))
+            ->get();
+
+        $priorSales = round((float) $priorInvoices->sum('total') + (float) $priorOrders->sum('total'), 2);
+        $priorCommission = round((float) $priorInvoices->sum('salesman_commission_amount') + (float) $priorOrders->sum('salesman_commission_amount'), 2);
+        $priorBuilty = round((float) $priorInvoices->sum(fn (SalesInvoice $invoice) => (float) ($invoice->builty_exp ?? $invoice->salesOrder?->builty_exp ?? 0))
+            + (float) $priorOrders->sum('builty_exp'), 2);
+        $priorPaid = round((float) SalesmanSettlement::query()
+            ->where('salesman_id', $salesman->id)
+            ->where('settlement_date', '<', $fromStr)
+            ->sum('cash_received'), 2);
+
+        return round($originalOpening + $priorSales - $priorCommission - $priorBuilty - $priorPaid, 2);
     }
 
     private function accountReceivablesReport(array $item): View
