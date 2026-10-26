@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BankAccount;
 use App\Models\CashAccount;
 use App\Models\CashVoucher;
 use App\Models\JournalVoucherLine;
@@ -146,21 +147,28 @@ class CashRegisterService
     private function entryFromCashVoucher(CashVoucher $voucher): array
     {
         $amount = (float) $voucher->amount;
-        $isCash = ($voucher->payment_method ?? 'cash') === 'cash';
+        $countsAsCash = $this->countsAsCash($voucher);
+        $isCashMethod = ($voucher->payment_method ?? 'cash') === 'cash';
 
         $partyName = $voucher->account_type === 'other'
             ? ($voucher->other_name ?? '—')
             : ($voucher->account_display_name ?? '—');
 
-        if ($isCash) {
+        if ($isCashMethod) {
             $paidVia = $voucher->cashAccount?->name
                 ? 'Cash — '.$voucher->cashAccount->name
+                : 'Cash';
+        } elseif ($countsAsCash) {
+            $paidVia = $voucher->bankAccount?->name
+                ? 'Cash — '.$voucher->bankAccount->name
                 : 'Cash';
         } else {
             $paidVia = $voucher->bankAccount?->name
                 ? 'Bank — '.$voucher->bankAccount->name
                 : 'Bank';
         }
+
+        $affectsBalance = $countsAsCash && $voucher->affectsCashBalance();
 
         return [
             'date' => $voucher->voucher_date,
@@ -174,10 +182,31 @@ class CashRegisterService
             'reference' => $voucher->reference ?? '',
             'notes' => $voucher->cashBookNotes(),
             'amount' => $amount,
-            'cash_in' => $isCash && $voucher->affectsCashBalance() && $voucher->type === 'receive' ? $amount : 0.0,
-            'cash_out' => $isCash && $voucher->affectsCashBalance() && $voucher->type === 'payment' ? $amount : 0.0,
-            'affects_cash_balance' => $isCash && $voucher->affectsCashBalance(),
+            'cash_in' => $affectsBalance && $voucher->type === 'receive' ? $amount : 0.0,
+            'cash_out' => $affectsBalance && $voucher->type === 'payment' ? $amount : 0.0,
+            'affects_cash_balance' => $affectsBalance,
         ];
+    }
+
+    /**
+     * Cash method vouchers, and bank vouchers into Shop Cash (is_cash bank accounts), count in the cash register.
+     */
+    private function countsAsCash(CashVoucher $voucher): bool
+    {
+        if (($voucher->payment_method ?? 'cash') === 'cash') {
+            return true;
+        }
+
+        if (($voucher->payment_method ?? '') !== 'bank') {
+            return false;
+        }
+
+        $bank = $voucher->bankAccount;
+        if (! $bank && $voucher->bank_account_id) {
+            $bank = BankAccount::query()->find($voucher->bank_account_id);
+        }
+
+        return (bool) ($bank?->is_cash);
     }
 
     private function transactionLabel(CashVoucher $voucher): string
@@ -202,14 +231,24 @@ class CashRegisterService
 
     private function openingCashBalance(): float
     {
-        return (float) CashAccount::sum('opening_balance');
+        return (float) CashAccount::sum('opening_balance')
+            + (float) BankAccount::query()->where('is_cash', true)->sum('opening_balance');
     }
 
     private function netCashMovement(?Carbon $from, ?Carbon $to): float
     {
         $net = 0.0;
 
-        $voucherQuery = CashVoucher::query()->where('payment_method', 'cash')->affectingCash();
+        $voucherQuery = CashVoucher::query()
+            ->with('bankAccount')
+            ->affectingCash()
+            ->where(function ($query) {
+                $query->where('payment_method', 'cash')
+                    ->orWhere(function ($bank) {
+                        $bank->where('payment_method', 'bank')
+                            ->whereHas('bankAccount', fn ($account) => $account->where('is_cash', true));
+                    });
+            });
 
         if ($from) {
             $voucherQuery->whereDate('voucher_date', '>=', $from->toDateString());
@@ -219,6 +258,10 @@ class CashRegisterService
         }
 
         foreach ($voucherQuery->get() as $voucher) {
+            if (! $this->countsAsCash($voucher)) {
+                continue;
+            }
+
             $amount = (float) $voucher->amount;
             $net += $voucher->type === 'receive' ? $amount : -$amount;
         }
