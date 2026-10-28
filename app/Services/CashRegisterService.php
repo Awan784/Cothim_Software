@@ -185,7 +185,7 @@ class CashRegisterService
     }
 
     /**
-     * Cash vouchers, Shop Cash bank accounts, and salesman settlement receipts (cash or bank) count in the cash register.
+     * Cash vouchers always count. Bank receipts count too. Bank payments count only from Shop Cash (is_cash) accounts.
      */
     private function countsAsCash(CashVoucher $voucher): bool
     {
@@ -193,12 +193,12 @@ class CashRegisterService
             return true;
         }
 
-        if ($voucher->isSettlementCash()) {
-            return true;
-        }
-
         if (($voucher->payment_method ?? '') !== 'bank') {
             return false;
+        }
+
+        if ($voucher->type === 'receive') {
+            return true;
         }
 
         $bank = $voucher->bankAccount;
