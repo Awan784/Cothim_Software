@@ -158,10 +158,6 @@ class CashRegisterService
             $paidVia = $voucher->cashAccount?->name
                 ? 'Cash — '.$voucher->cashAccount->name
                 : 'Cash';
-        } elseif ($countsAsCash) {
-            $paidVia = $voucher->bankAccount?->name
-                ? 'Cash — '.$voucher->bankAccount->name
-                : 'Cash';
         } else {
             $paidVia = $voucher->bankAccount?->name
                 ? 'Bank — '.$voucher->bankAccount->name
@@ -189,11 +185,15 @@ class CashRegisterService
     }
 
     /**
-     * Cash method vouchers, and bank vouchers into Shop Cash (is_cash bank accounts), count in the cash register.
+     * Cash vouchers, Shop Cash bank accounts, and salesman settlement receipts (cash or bank) count in the cash register.
      */
     private function countsAsCash(CashVoucher $voucher): bool
     {
         if (($voucher->payment_method ?? 'cash') === 'cash') {
+            return true;
+        }
+
+        if ($voucher->isSettlementCash()) {
             return true;
         }
 
@@ -241,14 +241,7 @@ class CashRegisterService
 
         $voucherQuery = CashVoucher::query()
             ->with('bankAccount')
-            ->affectingCash()
-            ->where(function ($query) {
-                $query->where('payment_method', 'cash')
-                    ->orWhere(function ($bank) {
-                        $bank->where('payment_method', 'bank')
-                            ->whereHas('bankAccount', fn ($account) => $account->where('is_cash', true));
-                    });
-            });
+            ->affectingCash();
 
         if ($from) {
             $voucherQuery->whereDate('voucher_date', '>=', $from->toDateString());
