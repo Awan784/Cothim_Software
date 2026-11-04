@@ -35,15 +35,13 @@ class SmsNotifier
         $message = $this->renderInvoiceMessage($invoice);
 
         if ($sendCustomer) {
-            $phone = $this->phoneFrom($invoice->customer);
-            if ($phone) {
+            foreach ($this->phonesFrom($invoice->customer) as $phone) {
                 $this->safeSend($phone, $message);
             }
         }
 
         if ($sendSalesman) {
-            $phone = $this->phoneFrom($invoice->salesman);
-            if ($phone) {
+            foreach ($this->phonesFrom($invoice->salesman) as $phone) {
                 $this->safeSend($phone, $message);
             }
         }
@@ -80,18 +78,20 @@ class SmsNotifier
         ];
 
         foreach ($targets as $label => $party) {
-            $phone = $this->phoneFrom($party);
-            if (! $phone) {
-                $skipped[] = $label.' (no phone)';
+            $phones = $this->phonesFrom($party);
+            if ($phones === []) {
+                $skipped[] = $label.' (no phone/mobile)';
                 continue;
             }
 
-            $result = $this->safeSend($phone, $message);
-            $lastReply = $result['response'] !== '' ? $result['response'] : $lastReply;
-            if ($result['ok']) {
-                $sent++;
-            } else {
-                $skipped[] = $label.' ('.$result['message'].')';
+            foreach ($phones as $phone) {
+                $result = $this->safeSend($phone, $message);
+                $lastReply = $result['response'] !== '' ? $result['response'] : $lastReply;
+                if ($result['ok']) {
+                    $sent++;
+                } else {
+                    $skipped[] = $label.' '.$phone.' ('.$result['message'].')';
+                }
             }
         }
 
@@ -158,8 +158,8 @@ class SmsNotifier
         }
 
         $party = $this->resolveParty($voucher->account_type, (int) $voucher->account_id);
-        $phone = $this->phoneFrom($party);
-        if (! $phone) {
+        $phones = $this->phonesFrom($party);
+        if ($phones === []) {
             return;
         }
 
@@ -173,7 +173,9 @@ class SmsNotifier
             ? $mask.': Received Rs '.$amount.' ('.$method.') from '.$name.'. Ref '.$ref.'.'
             : $mask.': Paid Rs '.$amount.' ('.$method.') to '.$name.'. Ref '.$ref.'.';
 
-        $this->safeSend($phone, $text);
+        foreach ($phones as $phone) {
+            $this->safeSend($phone, $text);
+        }
     }
 
     /**
@@ -205,20 +207,34 @@ class SmsNotifier
         }
     }
 
-    private function phoneFrom(mixed $party): ?string
+    /**
+     * Collect phone and/or mobile for SMS.
+     * Uses whichever is filled; if both differ, both are returned so SMS goes to each.
+     *
+     * @return list<string>
+     */
+    private function phonesFrom(mixed $party): array
     {
         if (! is_object($party)) {
-            return null;
+            return [];
         }
 
-        foreach (['mobile', 'phone'] as $field) {
+        $numbers = [];
+        foreach (['phone', 'mobile'] as $field) {
             $value = trim((string) ($party->{$field} ?? ''));
-            if ($value !== '') {
-                return $value;
+            if ($value === '') {
+                continue;
             }
+
+            $key = preg_replace('/\D+/', '', $value) ?: $value;
+            if (isset($numbers[$key])) {
+                continue;
+            }
+
+            $numbers[$key] = $value;
         }
 
-        return null;
+        return array_values($numbers);
     }
 
     private function resolveParty(string $type, int $id): mixed
