@@ -1,18 +1,53 @@
 @extends('reports.print')
 
 @section('body')
+    <div class="section-title">Opening balances · {{ ams_date($fromDate) }}</div>
+    <table class="items">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Account</th>
+                <th class="num">Opening balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($openingAccounts as $account)
+                <tr>
+                    <td>{{ $account['kind_label'] }}</td>
+                    <td>{{ $account['name'] }}</td>
+                    <td class="num">{{ ams_num($account['balance']) }}</td>
+                </tr>
+            @empty
+                <tr class="empty">
+                    <td colspan="3">No cash or bank accounts.</td>
+                </tr>
+            @endforelse
+        </tbody>
+        @if($openingAccounts->isNotEmpty())
+            <tfoot>
+                <tr>
+                    <td colspan="2">Total opening (Cash + Bank)</td>
+                    <td class="num">{{ ams_num($broughtForward) }}</td>
+                </tr>
+            </tfoot>
+        @endif
+    </table>
+
+    <div class="section-title">Period summary</div>
     <table class="items">
         <thead>
             <tr>
                 <th>Period</th>
-                <th class="num">Cash in</th>
-                <th class="num">Cash out</th>
-                <th class="num">Cash balance</th>
+                <th class="num">Opening</th>
+                <th class="num">In</th>
+                <th class="num">Out</th>
+                <th class="num">Closing</th>
             </tr>
         </thead>
         <tbody>
             <tr>
                 <td>{{ ams_date($fromDate) }} to {{ ams_date($toDate) }}</td>
+                <td class="num">{{ ams_num($broughtForward) }}</td>
                 <td class="num">{{ ams_num($totalCashIn) }}</td>
                 <td class="num">{{ ams_num($totalCashOut) }}</td>
                 <td class="num">{{ ams_num($closingBalance) }}</td>
@@ -33,8 +68,8 @@
                 <th>Reference</th>
                 <th>Notes</th>
                 <th class="num">Amount</th>
-                <th class="num">Cash in</th>
-                <th class="num">Cash out</th>
+                <th class="num">In</th>
+                <th class="num">Out</th>
                 <th class="num">Balance</th>
             </tr>
         </thead>

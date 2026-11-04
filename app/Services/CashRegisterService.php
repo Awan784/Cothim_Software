@@ -14,6 +14,7 @@ class CashRegisterService
     /**
      * @return array{
      *     entries: \Illuminate\Support\Collection<int, array<string, mixed>>,
+     *     openingAccounts: \Illuminate\Support\Collection<int, array<string, mixed>>,
      *     broughtForward: float,
      *     closingBalance: float,
      *     totalCashIn: float,
@@ -22,8 +23,8 @@ class CashRegisterService
      */
     public function register(Carbon $from, Carbon $to): array
     {
-        $broughtForward = $this->openingCashBalance()
-            + $this->netCashMovement(null, $from->copy()->subDay());
+        $openingAccounts = $this->openingAccounts($from);
+        $broughtForward = round((float) $openingAccounts->sum('balance'), 2);
 
         $raw = $this->collectMovements($from, $to)
             ->sortBy([
@@ -37,25 +38,26 @@ class CashRegisterService
         $totalCashIn = 0.0;
         $totalCashOut = 0.0;
 
-        if (abs($broughtForward) > 0.005) {
-            $entries->push([
-                'date' => $from->copy(),
-                'voucher_no' => '—',
-                'type' => '',
-                'type_label' => 'Brought Forward',
-                'party_type' => '',
-                'party_name' => '',
-                'paid_via' => '',
-                'reference' => '',
-                'notes' => '',
-                'amount' => abs($broughtForward),
-                'cash_in' => $broughtForward > 0 ? $broughtForward : 0.0,
-                'cash_out' => $broughtForward < 0 ? abs($broughtForward) : 0.0,
-                'balance' => $broughtForward,
-                'affects_cash_balance' => true,
-                'is_brought_forward' => true,
-            ]);
-        }
+        $entries->push([
+            'date' => $from->copy(),
+            'voucher_no' => '—',
+            'type' => '',
+            'type_label' => 'Opening Balance (Cash + Bank)',
+            'party_type' => '',
+            'party_name' => '',
+            'paid_via' => '',
+            'reference' => '',
+            'notes' => $openingAccounts
+                ->filter(fn (array $row) => abs((float) $row['balance']) > 0.005)
+                ->map(fn (array $row) => $row['name'].' '.number_format((float) $row['balance'], 2))
+                ->implode(' · '),
+            'amount' => abs($broughtForward),
+            'cash_in' => $broughtForward > 0 ? $broughtForward : 0.0,
+            'cash_out' => $broughtForward < 0 ? abs($broughtForward) : 0.0,
+            'balance' => $broughtForward,
+            'affects_cash_balance' => true,
+            'is_brought_forward' => true,
+        ]);
 
         foreach ($raw as $row) {
             $affectsBalance = ! empty($row['affects_cash_balance']);
@@ -69,18 +71,65 @@ class CashRegisterService
             }
 
             $entries->push(array_merge($row, [
-                'balance' => $running,
+                'balance' => round($running, 2),
                 'is_brought_forward' => false,
             ]));
         }
 
         return [
             'entries' => $entries,
+            'openingAccounts' => $openingAccounts,
             'broughtForward' => $broughtForward,
-            'closingBalance' => $running,
-            'totalCashIn' => $totalCashIn,
-            'totalCashOut' => $totalCashOut,
+            'closingBalance' => round($running, 2),
+            'totalCashIn' => round($totalCashIn, 2),
+            'totalCashOut' => round($totalCashOut, 2),
         ];
+    }
+
+    /**
+     * Cash + bank balances as of the morning of $from (movements before from_date).
+     *
+     * @return \Illuminate\Support\Collection<int, array{kind: string, kind_label: string, id: int, name: string, balance: float}>
+     */
+    private function openingAccounts(Carbon $from): Collection
+    {
+        $before = $from->copy()->subDay()->endOfDay();
+        $rows = collect();
+
+        foreach (CashAccount::query()->orderBy('name')->orderBy('id')->get() as $cash) {
+            $balance = (float) $cash->opening_balance
+                + $this->netVoucherMovement('cash', (int) $cash->id, null, $before)
+                + $this->netJournalMovement('cash', (int) $cash->id, null, $before);
+
+            $rows->push([
+                'kind' => 'cash',
+                'kind_label' => 'Cash',
+                'id' => (int) $cash->id,
+                'name' => (string) $cash->name,
+                'balance' => round($balance, 2),
+            ]);
+        }
+
+        foreach (BankAccount::query()->orderBy('name')->orderBy('id')->get() as $bank) {
+            $balance = (float) $bank->opening_balance
+                + $this->netVoucherMovement('bank', (int) $bank->id, null, $before)
+                + $this->netJournalMovement('bank', (int) $bank->id, null, $before);
+
+            $label = trim((string) $bank->name);
+            if (! empty($bank->bank_name) && strcasecmp((string) $bank->bank_name, $label) !== 0) {
+                $label .= ' — '.$bank->bank_name;
+            }
+
+            $rows->push([
+                'kind' => 'bank',
+                'kind_label' => $bank->is_cash ? 'Shop Cash' : 'Bank',
+                'id' => (int) $bank->id,
+                'name' => $label,
+                'balance' => round($balance, 2),
+            ]);
+        }
+
+        return $rows;
     }
 
     private function collectMovements(Carbon $from, Carbon $to): Collection
@@ -103,7 +152,7 @@ class CashRegisterService
         }
 
         $journalQuery = JournalVoucherLine::query()
-            ->where('account_type', 'cash')
+            ->whereIn('account_type', ['cash', 'bank'])
             ->with('journalVoucher')
             ->whereHas('journalVoucher', function ($q) use ($from, $to) {
                 $q->whereDate('voucher_date', '>=', $from->toDateString())
@@ -118,7 +167,10 @@ class CashRegisterService
 
             $debit = (float) $line->debit;
             $credit = (float) $line->credit;
-            $cashAccountName = CashAccount::find($line->account_id)?->name ?? 'Cash';
+            $isCash = $line->account_type === 'cash';
+            $accountName = $isCash
+                ? (CashAccount::find($line->account_id)?->name ?? 'Cash')
+                : (BankAccount::find($line->account_id)?->name ?? 'Bank');
 
             $entries->push([
                 'date' => $voucher->voucher_date,
@@ -126,9 +178,9 @@ class CashRegisterService
                 'voucher_no' => $voucher->voucher_no,
                 'type' => 'journal',
                 'type_label' => 'Journal Entry',
-                'party_type' => 'Cash',
-                'party_name' => $cashAccountName,
-                'paid_via' => 'Cash',
+                'party_type' => $isCash ? 'Cash' : 'Bank',
+                'party_name' => $accountName,
+                'paid_via' => $isCash ? 'Cash' : 'Bank',
                 'reference' => '',
                 'notes' => $line->line_note ?? $voucher->notes ?? '',
                 'amount' => max($debit, $credit),
@@ -147,7 +199,6 @@ class CashRegisterService
     private function entryFromCashVoucher(CashVoucher $voucher): array
     {
         $amount = (float) $voucher->amount;
-        $countsAsCash = $this->countsAsCash($voucher);
         $isCashMethod = ($voucher->payment_method ?? 'cash') === 'cash';
 
         $partyName = $voucher->account_type === 'other'
@@ -164,7 +215,7 @@ class CashRegisterService
                 : 'Bank';
         }
 
-        $affectsBalance = $countsAsCash && $voucher->affectsCashBalance();
+        $affectsBalance = $voucher->affectsCashBalance();
 
         return [
             'date' => $voucher->voucher_date,
@@ -184,86 +235,61 @@ class CashRegisterService
         ];
     }
 
-    /**
-     * Cash vouchers always count. Bank receipts count too. Bank payments count only from Shop Cash (is_cash) accounts.
-     */
-    private function countsAsCash(CashVoucher $voucher): bool
-    {
-        if (($voucher->payment_method ?? 'cash') === 'cash') {
-            return true;
-        }
-
-        if (($voucher->payment_method ?? '') !== 'bank') {
-            return false;
-        }
-
-        if ($voucher->type === 'receive') {
-            return true;
-        }
-
-        $bank = $voucher->bankAccount;
-        if (! $bank && $voucher->bank_account_id) {
-            $bank = BankAccount::query()->find($voucher->bank_account_id);
-        }
-
-        return (bool) ($bank?->is_cash);
-    }
-
     private function transactionLabel(CashVoucher $voucher): string
     {
         $isReceive = $voucher->type === 'receive';
+        $via = ($voucher->payment_method ?? 'cash') === 'bank' ? 'Bank' : 'Cash';
 
         if ($voucher->isSettlementCash()) {
             return $isReceive ? 'Settlement receive (Salesman)' : 'Settlement payment (Salesman)';
         }
 
         return match ($voucher->account_type) {
-            'customer' => $isReceive ? 'Cash Receive (Customer)' : 'Cash Payment (Customer)',
-            'supplier' => $isReceive ? 'Cash Receive (Supplier)' : 'Cash Payment (Supplier)',
-            'vendor' => $isReceive ? 'Cash Receive (Vendor)' : 'Cash Payment (Vendor)',
-            'investor' => $isReceive ? 'Cash Receive (Investor)' : 'Cash Payment (Investor)',
+            'customer' => $isReceive ? $via.' Receive (Customer)' : $via.' Payment (Customer)',
+            'supplier' => $isReceive ? $via.' Receive (Supplier)' : $via.' Payment (Supplier)',
+            'vendor' => $isReceive ? $via.' Receive (Vendor)' : $via.' Payment (Vendor)',
+            'investor' => $isReceive ? $via.' Receive (Investor)' : $via.' Payment (Investor)',
             'expense' => $isReceive ? 'Expense Receive' : 'Expense Payment',
-            'salesman' => $isReceive ? 'Cash Receive (Salesman)' : 'Cash Payment (Salesman)',
-            'other' => $isReceive ? 'Cash Receive (Other)' : 'Cash Payment (Other)',
-            default => $isReceive ? 'Cash Receive' : 'Cash Payment',
+            'salesman' => $isReceive ? $via.' Receive (Salesman)' : $via.' Payment (Salesman)',
+            'other' => $isReceive ? $via.' Receive (Other)' : $via.' Payment (Other)',
+            default => $isReceive ? $via.' Receive' : $via.' Payment',
         };
     }
 
-    private function openingCashBalance(): float
+    private function netVoucherMovement(string $source, int $accountId, ?Carbon $from, ?Carbon $to): float
     {
-        return (float) CashAccount::sum('opening_balance')
-            + (float) BankAccount::query()->where('is_cash', true)->sum('opening_balance');
-    }
+        $query = CashVoucher::query()->affectingCash();
 
-    private function netCashMovement(?Carbon $from, ?Carbon $to): float
-    {
-        $net = 0.0;
-
-        $voucherQuery = CashVoucher::query()
-            ->with('bankAccount')
-            ->affectingCash();
+        if ($source === 'cash') {
+            $query->where('payment_method', 'cash')->where('cash_account_id', $accountId);
+        } else {
+            $query->where('payment_method', 'bank')->where('bank_account_id', $accountId);
+        }
 
         if ($from) {
-            $voucherQuery->whereDate('voucher_date', '>=', $from->toDateString());
+            $query->whereDate('voucher_date', '>=', $from->toDateString());
         }
         if ($to) {
-            $voucherQuery->whereDate('voucher_date', '<=', $to->toDateString());
+            $query->whereDate('voucher_date', '<=', $to->toDateString());
         }
 
-        foreach ($voucherQuery->get() as $voucher) {
-            if (! $this->countsAsCash($voucher)) {
-                continue;
-            }
-
+        $net = 0.0;
+        foreach ($query->get(['type', 'amount']) as $voucher) {
             $amount = (float) $voucher->amount;
             $net += $voucher->type === 'receive' ? $amount : -$amount;
         }
 
-        $journalQuery = JournalVoucherLine::query()
-            ->where('account_type', 'cash')
+        return $net;
+    }
+
+    private function netJournalMovement(string $accountType, int $accountId, ?Carbon $from, ?Carbon $to): float
+    {
+        $query = JournalVoucherLine::query()
+            ->where('account_type', $accountType)
+            ->where('account_id', $accountId)
             ->with('journalVoucher');
 
-        $journalQuery->whereHas('journalVoucher', function ($q) use ($from, $to) {
+        $query->whereHas('journalVoucher', function ($q) use ($from, $to) {
             if ($from) {
                 $q->whereDate('voucher_date', '>=', $from->toDateString());
             }
@@ -272,7 +298,8 @@ class CashRegisterService
             }
         });
 
-        foreach ($journalQuery->get() as $line) {
+        $net = 0.0;
+        foreach ($query->get() as $line) {
             $net += (float) $line->debit - (float) $line->credit;
         }
 

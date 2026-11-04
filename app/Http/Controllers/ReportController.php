@@ -192,6 +192,8 @@ class ReportController extends Controller
             [
                 'wide' => true,
                 'entries' => $result['entries'],
+                'openingAccounts' => $result['openingAccounts'],
+                'broughtForward' => $result['broughtForward'],
                 'closingBalance' => $result['closingBalance'],
                 'totalCashIn' => $result['totalCashIn'],
                 'totalCashOut' => $result['totalCashOut'],
