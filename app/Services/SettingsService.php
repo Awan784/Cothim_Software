@@ -31,6 +31,7 @@ class SettingsService
         'print_note' => 'print_note',
         'print_on_behalf' => 'print_on_behalf',
         'print_developed_by' => 'print_developed_by',
+        'sms_invoice_message' => 'sms_invoice_message',
     ];
 
     public function organization(): ?Organization
@@ -71,6 +72,7 @@ class SettingsService
                 'print_note' => $this->defaultPrintText('print_note'),
                 'print_on_behalf' => $this->defaultPrintText('print_on_behalf'),
                 'print_developed_by' => $this->defaultPrintText('print_developed_by'),
+                'sms_invoice_message' => $this->defaultSmsInvoiceMessage(),
             ];
         }
 
@@ -93,7 +95,22 @@ class SettingsService
             'print_note' => $org->print_note ?: $this->defaultPrintText('print_note', $org->name),
             'print_on_behalf' => $org->print_on_behalf ?: $this->defaultPrintText('print_on_behalf', $org->name),
             'print_developed_by' => $org->print_developed_by ?: $this->defaultPrintText('print_developed_by', $org->name),
+            'sms_invoice_message' => trim((string) ($org->sms_invoice_message ?: '')) !== ''
+                ? (string) $org->sms_invoice_message
+                : $this->defaultSmsInvoiceMessage(),
         ];
+    }
+
+    public function smsInvoiceMessage(): string
+    {
+        $message = trim((string) $this->get('sms_invoice_message', ''));
+
+        return $message !== '' ? $message : $this->defaultSmsInvoiceMessage();
+    }
+
+    public function defaultSmsInvoiceMessage(): string
+    {
+        return '{mask}: Invoice {invoice_no} Rs {amount} issued for {customer}.';
     }
 
     public function set(string $key, mixed $value): void

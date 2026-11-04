@@ -159,6 +159,44 @@
             </div>
         </div>
 
+        @if($smsEnabled)
+            <div class="row g-3 mb-3">
+                <div class="col-xl-6">
+                    <div class="db-panel">
+                        <div class="db-panel-head">
+                            <h4>Test Jazz SMS</h4>
+                            <span class="ams-status-tag {{ $smsConfigured ? 'is-pending' : '' }}">
+                                {{ $smsConfigured ? 'Ready' : 'Needs .env' }}
+                            </span>
+                        </div>
+                        <div class="db-panel-body">
+                            @if(! $smsConfigured)
+                                <p class="text-muted mb-2">Set SMS_URL, SMS_USERNAME, SMS_PASSWORD, SMS_FROM, and SMS_TEST_TO in .env.</p>
+                            @else
+                                <p class="text-muted small mb-2">After send, the alert shows Jazz’s reply. Full log: <code>storage/logs/laravel.log</code> → <code>jazz_sms.send</code>.</p>
+                            @endif
+                            <form method="post" action="{{ route('dashboard.sms-test') }}" class="row g-2 align-items-end">
+                                @csrf
+                                <div class="col-md-4">
+                                    <label class="form-label" for="sms_to">To</label>
+                                    <input id="sms_to" name="to" value="{{ old('to', $smsTestTo) }}" class="form-control @error('to') is-invalid @enderror" placeholder="0300xxxxxxx" required maxlength="20">
+                                    @error('to') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label" for="sms_message">Message</label>
+                                    <input id="sms_message" name="message" value="{{ old('message', 'Test SMS from '.config('app.name')) }}" class="form-control @error('message') is-invalid @enderror" required maxlength="480">
+                                    @error('message') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-primary w-100" @disabled(! $smsConfigured)>Send test SMS</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <div class="row g-3 mb-3">
             <div class="col-xl-4">
                 <div class="db-panel">

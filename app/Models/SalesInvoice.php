@@ -40,6 +40,7 @@ class SalesInvoice extends Model
         'zatca_status',
         'zatca_uuid',
         'issued_at',
+        'sms_dispatched_at',
         'created_by',
     ];
 
@@ -47,6 +48,7 @@ class SalesInvoice extends Model
         'invoice_date' => 'date',
         'due_date' => 'date',
         'issued_at' => 'datetime',
+        'sms_dispatched_at' => 'datetime',
         'subtotal' => 'float',
         'discount_amount' => 'float',
         'vat_amount' => 'float',

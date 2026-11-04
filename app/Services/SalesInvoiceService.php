@@ -25,6 +25,7 @@ class SalesInvoiceService
         private ZatcaQrService $zatca,
         private CashVoucherService $vouchers,
         private InventoryService $inventory,
+        private SmsNotifier $sms,
     ) {}
 
     /**
@@ -169,7 +170,10 @@ class SalesInvoiceService
         });
     }
 
-    public function issue(SalesInvoice $invoice): SalesInvoice
+    /**
+     * @param  array{customer?: bool, salesman?: bool}|null  $smsOptions
+     */
+    public function issue(SalesInvoice $invoice, ?array $smsOptions = null): SalesInvoice
     {
         if (! $invoice->isDraft()) {
             throw new InvalidArgumentException('This invoice is already issued.');
@@ -178,7 +182,7 @@ class SalesInvoiceService
             throw new InvalidArgumentException('Add lines before issuing.');
         }
 
-        return DB::transaction(function () use ($invoice) {
+        $issued = DB::transaction(function () use ($invoice) {
             $invoice->status = 'issued';
             $invoice->issued_at = now();
             $invoice->zatca_uuid = $invoice->uuid;
@@ -193,8 +197,12 @@ class SalesInvoiceService
             $invoice->load('lines');
             $this->issueStockLines($invoice);
 
-            return $invoice->fresh(['lines', 'customer']);
+            return $invoice->fresh(['lines', 'customer', 'salesman']);
         });
+
+        $this->sms->invoiceIssued($issued, $smsOptions);
+
+        return $issued;
     }
 
     public function recordPayment(SalesInvoice $invoice, float $amount, string $method = 'cash', ?int $bankAccountId = null): SalesInvoice

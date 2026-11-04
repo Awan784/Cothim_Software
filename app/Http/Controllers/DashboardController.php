@@ -12,11 +12,16 @@ use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
 use App\Models\StockItem;
 use App\Models\Supplier;
+use App\Services\JazzSmsService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
+use RuntimeException;
+use Throwable;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(JazzSmsService $sms): View
     {
         $customersCount = Customer::count();
         $suppliersCount = Supplier::count();
@@ -95,6 +100,10 @@ class DashboardController extends Controller
             ->affectingCash()
             ->sum('amount');
 
+        $smsEnabled = $sms->enabled();
+        $smsConfigured = $sms->configured();
+        $smsTestTo = $sms->defaultTestTo();
+
         return view('dashboard', compact(
             'customersCount',
             'suppliersCount',
@@ -120,7 +129,32 @@ class DashboardController extends Controller
             'todayCashPayment',
             'monthCashReceive',
             'monthCashPayment',
+            'smsEnabled',
+            'smsConfigured',
+            'smsTestTo',
         ));
+    }
+
+    public function sendTestSms(Request $request, JazzSmsService $sms): RedirectResponse
+    {
+        $data = $request->validate([
+            'to' => ['required', 'string', 'max:20'],
+            'message' => ['required', 'string', 'max:480'],
+        ]);
+
+        try {
+            $result = $sms->send($data['to'], $data['message']);
+        } catch (RuntimeException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            return back()->withInput()->with('error', 'SMS request failed: '.$e->getMessage());
+        }
+
+        if (! $result['ok']) {
+            return back()->withInput()->with('error', $result['message']);
+        }
+
+        return back()->with('success', $result['message']);
     }
 }
 

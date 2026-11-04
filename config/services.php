@@ -64,4 +64,18 @@ return [
     'assistant' => [
         'provider' => env('ASSISTANT_PROVIDER', 'groq'),
     ],
+
+    'jazz_sms' => [
+        'enabled' => env('SMS_ENABLED', false),
+        'url' => env('SMS_URL', 'https://connect.jazzcmt.com/sendsms_url.html'),
+        'username' => env('SMS_USERNAME'),
+        'password' => env('SMS_PASSWORD'),
+        'from' => env('SMS_FROM'),
+        'test_to' => env('SMS_TEST_TO'),
+        'on_invoice_issue' => env('SMS_ON_INVOICE_ISSUE', false),
+        'invoice_customer' => env('SMS_INVOICE_CUSTOMER', true),
+        'invoice_salesman' => env('SMS_INVOICE_SALESMAN', true),
+        'on_cash_receive' => env('SMS_ON_CASH_RECEIVE', false),
+        'on_cash_payment' => env('SMS_ON_CASH_PAYMENT', false),
+    ],
 ];

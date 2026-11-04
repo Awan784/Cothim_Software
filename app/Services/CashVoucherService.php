@@ -16,6 +16,8 @@ use RuntimeException;
 
 class CashVoucherService
 {
+    public function __construct(private SmsNotifier $sms) {}
+
     public function defaultCashAccountId(): int
     {
         return CashAccount::query()
@@ -35,6 +37,9 @@ class CashVoucherService
      */
     public function create(array $data): CashVoucher
     {
+        $smsSend = array_key_exists('send_sms', $data) ? (bool) $data['send_sms'] : null;
+        unset($data['send_sms']);
+
         $data['cash_account_id'] = $this->defaultCashAccountId();
 
         if (($data['payment_method'] ?? '') === 'bank' && empty($data['bank_account_id'])) {
@@ -58,7 +63,7 @@ class CashVoucherService
 
         $data['affects_cash'] = (bool) ($data['affects_cash'] ?? true);
 
-        return DB::transaction(function () use ($data) {
+        $voucher = DB::transaction(function () use ($data) {
             $amount = (float) $data['amount'];
             $type = $data['type'];
             $data['voucher_no'] = $data['voucher_no'] ?? CashVoucher::nextNumber($type);
@@ -73,6 +78,10 @@ class CashVoucherService
 
             return $voucher->fresh(['cashAccount', 'bankAccount']);
         });
+
+        $this->sms->cashVoucherCreated($voucher, $smsSend === null ? null : ['send' => $smsSend]);
+
+        return $voucher;
     }
 
     public function delete(CashVoucher $voucher): void

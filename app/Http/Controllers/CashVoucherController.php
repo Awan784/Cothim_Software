@@ -113,9 +113,11 @@ class CashVoucherController extends Controller
             'voucher_date' => ['required', 'date'],
             'reference' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'send_sms' => ['nullable', 'boolean'],
         ]);
 
         $data['voucher_date'] = $data['voucher_date'] ?? now()->toDateString();
+        $data['send_sms'] = false;
 
         try {
             $this->vouchers->create($data);

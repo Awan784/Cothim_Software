@@ -92,6 +92,19 @@
                     @error('print_developed_by') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     <div class="form-text">Replaces the old “User: …” line at the bottom of the sale invoice.</div>
                 </div>
+                <hr class="my-4">
+                <h2 class="h5 mb-1">Invoice SMS</h2>
+                <p class="text-muted mb-3">
+                    Default message when an invoice is issued. Placeholders:
+                    <code>{mask}</code>, <code>{company}</code>, <code>{invoice_no}</code>,
+                    <code>{amount}</code>, <code>{customer}</code>, <code>{salesman}</code>, <code>{date}</code>.
+                    Keep it short (about 160 characters for one SMS).
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Invoice SMS message</label>
+                    <textarea name="sms_invoice_message" rows="3" maxlength="480" class="form-control @error('sms_invoice_message') is-invalid @enderror">{{ old('sms_invoice_message', $settings['sms_invoice_message'] ?? '') }}</textarea>
+                    @error('sms_invoice_message') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
                 <button class="btn btn-primary" type="submit">Save</button>
             </form>
         </div>

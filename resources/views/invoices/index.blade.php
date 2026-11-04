@@ -52,6 +52,16 @@
                                 <td class="text-end text-nowrap">
                                     <a class="btn btn-sm btn-outline-primary" href="{{ route('invoices.show', $invoice) }}">Open</a>
                                     <a class="btn btn-sm btn-outline-secondary" href="{{ route('invoices.edit', $invoice) }}">Edit sale invoice</a>
+                                    @if(config('services.jazz_sms.enabled') && ! $invoice->isDraft())
+                                        @if($invoice->sms_dispatched_at)
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Dispatched {{ ams_date($invoice->sms_dispatched_at) }}">Dispatched</button>
+                                        @else
+                                            <form action="{{ route('invoices.dispatch-sms', $invoice) }}" method="post" class="d-inline" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Sending…';">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-success" onclick="return confirm('Send SMS to customer and salesman for invoice {{ $invoice->invoice_no }}?')">Dispatch</button>
+                                            </form>
+                                        @endif
+                                    @endif
                                     <form action="{{ route('invoices.destroy', $invoice) }}" method="post" class="d-inline">
                                         @csrf
                                         @method('delete')

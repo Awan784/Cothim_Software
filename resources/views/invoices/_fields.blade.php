@@ -69,7 +69,7 @@
             </select>
         </div>
     </div>
-    <div class="mb-0">
+    <div class="mb-3">
         <label class="form-label">Notes</label>
         <textarea name="notes" class="form-control" rows="2">{{ old('notes', $isEdit ? $invoice->notes : '') }}</textarea>
     </div>

@@ -35,6 +35,7 @@ class Organization extends Model
         'print_note',
         'print_on_behalf',
         'print_developed_by',
+        'sms_invoice_message',
         'admin_notes',
     ];
 

@@ -37,6 +37,7 @@ class SettingsController extends Controller
             'print_note' => ['nullable', 'string', 'max:2000'],
             'print_on_behalf' => ['nullable', 'string', 'max:255'],
             'print_developed_by' => ['nullable', 'string', 'max:255'],
+            'sms_invoice_message' => ['nullable', 'string', 'max:480'],
         ]);
 
         unset($data['company_logo'], $data['remove_logo']);

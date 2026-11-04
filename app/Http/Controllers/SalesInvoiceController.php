@@ -10,11 +10,14 @@ use App\Models\Salesman;
 use App\Models\StockItem;
 use App\Services\SalesInvoiceService;
 use App\Services\SettingsService;
+use App\Services\SmsNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
 
 class SalesInvoiceController extends Controller
 {
@@ -22,7 +25,7 @@ class SalesInvoiceController extends Controller
 
     public function index(): View
     {
-        $invoices = SalesInvoice::with('customer')->orderByDesc('id')->limit(300)->get();
+        $invoices = SalesInvoice::with(['customer', 'salesman'])->orderByDesc('id')->limit(300)->get();
 
         return view('invoices.index', compact('invoices'));
     }
@@ -47,6 +50,13 @@ class SalesInvoiceController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
+        if (config('services.jazz_sms.enabled')) {
+            $request->session()->flash('pending_invoice_sms', [
+                'customer' => $request->boolean('send_sms_customer'),
+                'salesman' => $request->boolean('send_sms_salesman'),
+            ]);
+        }
+
         return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice generated.');
     }
 
@@ -54,7 +64,11 @@ class SalesInvoiceController extends Controller
     {
         if ($invoice->isDraft()) {
             try {
-                $invoice = $this->invoices->issue($invoice);
+                $smsOptions = session()->pull('pending_invoice_sms');
+                $invoice = $this->invoices->issue(
+                    $invoice,
+                    is_array($smsOptions) ? $smsOptions : null,
+                );
             } catch (InvalidArgumentException $e) {
                 session()->now('error', $e->getMessage());
             }
@@ -97,10 +111,16 @@ class SalesInvoiceController extends Controller
         return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice updated.');
     }
 
-    public function issue(SalesInvoice $invoice): RedirectResponse
+    public function issue(Request $request, SalesInvoice $invoice): RedirectResponse
     {
         try {
-            $this->invoices->issue($invoice);
+            $smsOptions = config('services.jazz_sms.enabled')
+                ? [
+                    'customer' => $request->boolean('send_sms_customer'),
+                    'salesman' => $request->boolean('send_sms_salesman'),
+                ]
+                : null;
+            $this->invoices->issue($invoice, $smsOptions);
         } catch (InvalidArgumentException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -128,6 +148,27 @@ class SalesInvoiceController extends Controller
         }
 
         return back()->with('success', 'Payment recorded.');
+    }
+
+    public function dispatchSms(SalesInvoice $invoice, SmsNotifier $sms): RedirectResponse
+    {
+        try {
+            $result = $sms->dispatchInvoice($invoice);
+        } catch (RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            return back()->with('error', 'SMS dispatch failed: '.$e->getMessage());
+        }
+
+        $message = 'Dispatched '.$result['sent'].' SMS.';
+        if ($result['skipped'] !== []) {
+            $message .= ' Skipped: '.implode('; ', $result['skipped']).'.';
+        }
+        if ($result['reply'] !== '') {
+            $message .= ' Jazz: '.$result['reply'];
+        }
+
+        return back()->with('success', $message);
     }
 
     public function print(SalesInvoice $invoice, SettingsService $settings): View
