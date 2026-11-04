@@ -1773,6 +1773,26 @@ body.ams-light {
     font-size: 13px;
 }
 
+.ams-light .db-chart-panel .db-panel-body {
+    padding-top: 8px;
+}
+
+.ams-light .db-chart-wrap {
+    position: relative;
+    height: 260px;
+}
+
+.ams-light .db-chart-wrap-sm {
+    height: 240px;
+}
+
+@media (max-width: 767.98px) {
+    .ams-light .db-chart-wrap,
+    .ams-light .db-chart-wrap-sm {
+        height: 220px;
+    }
+}
+
 .ams-light .ams-kpi {
     display: block;
     min-height: auto;

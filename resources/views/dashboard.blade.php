@@ -159,43 +159,49 @@
             </div>
         </div>
 
-        @if($smsEnabled)
-            <div class="row g-3 mb-3">
-                <div class="col-xl-6">
-                    <div class="db-panel">
-                        <div class="db-panel-head">
-                            <h4>Test Jazz SMS</h4>
-                            <span class="ams-status-tag {{ $smsConfigured ? 'is-pending' : '' }}">
-                                {{ $smsConfigured ? 'Ready' : 'Needs .env' }}
-                            </span>
-                        </div>
-                        <div class="db-panel-body">
-                            @if(! $smsConfigured)
-                                <p class="text-muted mb-2">Set SMS_URL, SMS_USERNAME, SMS_PASSWORD, SMS_FROM, and SMS_TEST_TO in .env.</p>
-                            @else
-                                <p class="text-muted small mb-2">After send, the alert shows Jazz’s reply. Full log: <code>storage/logs/laravel.log</code> → <code>jazz_sms.send</code>.</p>
-                            @endif
-                            <form method="post" action="{{ route('dashboard.sms-test') }}" class="row g-2 align-items-end">
-                                @csrf
-                                <div class="col-md-4">
-                                    <label class="form-label" for="sms_to">To</label>
-                                    <input id="sms_to" name="to" value="{{ old('to', $smsTestTo) }}" class="form-control @error('to') is-invalid @enderror" placeholder="0300xxxxxxx" required maxlength="20">
-                                    @error('to') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                </div>
-                                <div class="col-md-5">
-                                    <label class="form-label" for="sms_message">Message</label>
-                                    <input id="sms_message" name="message" value="{{ old('message', 'Test SMS from '.config('app.name')) }}" class="form-control @error('message') is-invalid @enderror" required maxlength="480">
-                                    @error('message') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                </div>
-                                <div class="col-md-3">
-                                    <button type="submit" class="btn btn-primary w-100" @disabled(! $smsConfigured)>Send test SMS</button>
-                                </div>
-                            </form>
+        <div class="row g-3 mb-3">
+            <div class="col-xl-8">
+                <div class="db-panel db-chart-panel">
+                    <div class="db-panel-head">
+                        <h4>Sales · last 7 days</h4>
+                        <span class="db-chip"><span>This month</span>{{ number_format((float) $monthSales, 2) }}</span>
+                    </div>
+                    <div class="db-panel-body">
+                        <div class="db-chart-wrap">
+                            <canvas id="dbSalesChart" height="120" aria-label="Sales chart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
-        @endif
+            <div class="col-xl-4">
+                <div class="db-panel db-chart-panel">
+                    <div class="db-panel-head">
+                        <h4>Balances</h4>
+                    </div>
+                    <div class="db-panel-body">
+                        <div class="db-chart-wrap db-chart-wrap-sm">
+                            <canvas id="dbBalancesChart" height="180" aria-label="Balances chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <div class="db-panel db-chart-panel">
+                    <div class="db-panel-head">
+                        <h4>Cash flow · last 14 days</h4>
+                        <a href="{{ route('cash-vouchers.index') }}" class="db-link">Cash vouchers</a>
+                    </div>
+                    <div class="db-panel-body">
+                        <div class="db-chart-wrap">
+                            <canvas id="dbCashChart" height="100" aria-label="Cash flow chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="row g-3 mb-3">
             <div class="col-xl-4">
@@ -352,3 +358,153 @@
         </div>
     </div>
 @endsection
+
+@push('page_scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            const charts = @json($charts);
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            const grid = 'rgba(148, 163, 184, 0.18)';
+            const tick = '#64748b';
+            const money = function (value) {
+                return Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+            };
+
+            const salesEl = document.getElementById('dbSalesChart');
+            if (salesEl) {
+                new Chart(salesEl, {
+                    type: 'bar',
+                    data: {
+                        labels: charts.sales.labels,
+                        datasets: [{
+                            label: 'Sales',
+                            data: charts.sales.values,
+                            backgroundColor: 'rgba(37, 99, 235, 0.75)',
+                            hoverBackgroundColor: 'rgba(37, 99, 235, 0.95)',
+                            borderRadius: 8,
+                            borderSkipped: false,
+                            maxBarThickness: 36,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) { return ' Rs ' + money(ctx.parsed.y); },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: tick } },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: grid },
+                                ticks: { color: tick, callback: money },
+                            },
+                        },
+                    },
+                });
+            }
+
+            const cashEl = document.getElementById('dbCashChart');
+            if (cashEl) {
+                new Chart(cashEl, {
+                    type: 'line',
+                    data: {
+                        labels: charts.cash.labels,
+                        datasets: [
+                            {
+                                label: 'Received',
+                                data: charts.cash.receive,
+                                borderColor: '#16a34a',
+                                backgroundColor: 'rgba(22, 163, 74, 0.15)',
+                                fill: true,
+                                tension: 0.35,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                            },
+                            {
+                                label: 'Paid',
+                                data: charts.cash.payment,
+                                borderColor: '#e11d48',
+                                backgroundColor: 'rgba(225, 29, 72, 0.12)',
+                                fill: true,
+                                tension: 0.35,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                align: 'end',
+                                labels: { boxWidth: 10, usePointStyle: true, color: tick },
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return ' ' + ctx.dataset.label + ': Rs ' + money(ctx.parsed.y);
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: tick, maxRotation: 0 } },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: grid },
+                                ticks: { color: tick, callback: money },
+                            },
+                        },
+                    },
+                });
+            }
+
+            const balEl = document.getElementById('dbBalancesChart');
+            if (balEl) {
+                new Chart(balEl, {
+                    type: 'doughnut',
+                    data: {
+                        labels: charts.balances.labels,
+                        datasets: [{
+                            data: charts.balances.values,
+                            backgroundColor: ['#b0894a', '#2563eb', '#16a34a', '#ea580c'],
+                            borderWidth: 0,
+                            hoverOffset: 6,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '62%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 10, usePointStyle: true, color: tick, padding: 14 },
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) {
+                                        return ' ' + ctx.label + ': Rs ' + money(ctx.parsed);
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+        })();
+    </script>
+@endpush

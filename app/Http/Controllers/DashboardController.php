@@ -12,16 +12,13 @@ use App\Models\SalesInvoice;
 use App\Models\SalesOrder;
 use App\Models\StockItem;
 use App\Models\Supplier;
-use App\Services\JazzSmsService;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use RuntimeException;
-use Throwable;
 
 class DashboardController extends Controller
 {
-    public function index(JazzSmsService $sms): View
+    public function index(): View
     {
         $customersCount = Customer::count();
         $suppliersCount = Supplier::count();
@@ -100,9 +97,24 @@ class DashboardController extends Controller
             ->affectingCash()
             ->sum('amount');
 
-        $smsEnabled = $sms->enabled();
-        $smsConfigured = $sms->configured();
-        $smsTestTo = $sms->defaultTestTo();
+        $monthSales = (float) SalesInvoice::query()
+            ->where('status', '!=', 'draft')
+            ->whereDate('invoice_date', '>=', $monthStart)
+            ->sum('total');
+
+        $charts = [
+            'sales' => $this->salesChart(7),
+            'cash' => $this->cashFlowChart(14),
+            'balances' => [
+                'labels' => ['Cash', 'Bank', 'Receivable', 'Payable'],
+                'values' => [
+                    round(max(0, (float) $cashBalance), 2),
+                    round(max(0, (float) $totalBankBalance), 2),
+                    round(max(0, (float) $totalCustomerReceivable), 2),
+                    round(max(0, (float) $totalSupplierPayable), 2),
+                ],
+            ],
+        ];
 
         return view('dashboard', compact(
             'customersCount',
@@ -129,32 +141,72 @@ class DashboardController extends Controller
             'todayCashPayment',
             'monthCashReceive',
             'monthCashPayment',
-            'smsEnabled',
-            'smsConfigured',
-            'smsTestTo',
+            'monthSales',
+            'charts',
         ));
     }
 
-    public function sendTestSms(Request $request, JazzSmsService $sms): RedirectResponse
+    /**
+     * @return array{labels: list<string>, values: list<float>}
+     */
+    private function salesChart(int $days): array
     {
-        $data = $request->validate([
-            'to' => ['required', 'string', 'max:20'],
-            'message' => ['required', 'string', 'max:480'],
-        ]);
+        $from = now()->subDays($days - 1)->startOfDay();
+        $rows = SalesInvoice::query()
+            ->where('status', '!=', 'draft')
+            ->whereDate('invoice_date', '>=', $from->toDateString())
+            ->selectRaw('DATE(invoice_date) as day, SUM(total) as total')
+            ->groupBy(DB::raw('DATE(invoice_date)'))
+            ->pluck('total', 'day');
 
-        try {
-            $result = $sms->send($data['to'], $data['message']);
-        } catch (RuntimeException $e) {
-            return back()->withInput()->with('error', $e->getMessage());
-        } catch (Throwable $e) {
-            return back()->withInput()->with('error', 'SMS request failed: '.$e->getMessage());
+        $labels = [];
+        $values = [];
+        for ($i = 0; $i < $days; $i++) {
+            $day = $from->copy()->addDays($i);
+            $key = $day->toDateString();
+            $labels[] = $day->format('d M');
+            $values[] = round((float) ($rows[$key] ?? 0), 2);
         }
 
-        if (! $result['ok']) {
-            return back()->withInput()->with('error', $result['message']);
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    /**
+     * @return array{labels: list<string>, receive: list<float>, payment: list<float>}
+     */
+    private function cashFlowChart(int $days): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
+        $rows = CashVoucher::query()
+            ->affectingCash()
+            ->whereDate('voucher_date', '>=', $from->toDateString())
+            ->selectRaw('DATE(voucher_date) as day, type, SUM(amount) as total')
+            ->groupBy(DB::raw('DATE(voucher_date)'), 'type')
+            ->get();
+
+        $receiveMap = [];
+        $paymentMap = [];
+        foreach ($rows as $row) {
+            $key = Carbon::parse($row->day)->toDateString();
+            if ($row->type === 'receive') {
+                $receiveMap[$key] = round((float) $row->total, 2);
+            } else {
+                $paymentMap[$key] = round((float) $row->total, 2);
+            }
         }
 
-        return back()->with('success', $result['message']);
+        $labels = [];
+        $receive = [];
+        $payment = [];
+        for ($i = 0; $i < $days; $i++) {
+            $day = $from->copy()->addDays($i);
+            $key = $day->toDateString();
+            $labels[] = $day->format('d M');
+            $receive[] = (float) ($receiveMap[$key] ?? 0);
+            $payment[] = (float) ($paymentMap[$key] ?? 0);
+        }
+
+        return ['labels' => $labels, 'receive' => $receive, 'payment' => $payment];
     }
 }
 

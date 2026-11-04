@@ -16,7 +16,6 @@ class CheckModulePermission
     /** @var array<string, array{0: string, 1: string}> */
     private const ROUTE_MAP = [
         'dashboard' => ['dashboard', 'view'],
-        'dashboard.sms-test' => ['dashboard', 'view'],
         'assistant.chat' => ['dashboard', 'view'],
         'assistant.confirm' => ['dashboard', 'view'],
         'assistant.cancel' => ['dashboard', 'view'],

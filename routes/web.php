@@ -69,9 +69,6 @@ Route::middleware(['auth:salesman', 'org-active'])->prefix('salesman')->name('sa
 
 Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::post('/dashboard/sms-test', [DashboardController::class, 'sendTestSms'])
-        ->middleware('throttle:5,1')
-        ->name('dashboard.sms-test');
 
     Route::post('/invoices/{invoice}/issue', [SalesInvoiceController::class, 'issue'])->name('invoices.issue');
     Route::post('/invoices/{invoice}/pay', [SalesInvoiceController::class, 'pay'])->name('invoices.pay');
