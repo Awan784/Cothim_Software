@@ -72,8 +72,13 @@ return [
         'password' => env('SMS_PASSWORD'),
         'from' => env('SMS_FROM'),
         'test_to' => env('SMS_TEST_TO'),
-        // Hostinger / datacenter IPv6 is often Cloudflare-blocked; force IPv4 by default.
+        // Hostinger / datacenter IPs are often Cloudflare-blocked by Jazz.
         'force_ipv4' => env('SMS_FORCE_IPV4', true),
+        'bind_ip' => env('SMS_BIND_IP'),
+        'http_proxy' => env('SMS_HTTP_PROXY'),
+        // Optional: forward Jazz calls through an allowlisted PC/VPS (tools/jazz-sms-relay.php).
+        'relay_url' => env('SMS_RELAY_URL'),
+        'relay_secret' => env('SMS_RELAY_SECRET'),
         'on_invoice_issue' => env('SMS_ON_INVOICE_ISSUE', false),
         'invoice_customer' => env('SMS_INVOICE_CUSTOMER', true),
         'invoice_salesman' => env('SMS_INVOICE_SALESMAN', true),

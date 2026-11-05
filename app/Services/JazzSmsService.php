@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -41,38 +39,26 @@ class JazzSmsService
             'Message' => $message,
         ];
 
-        try {
-            $response = $this->request($url, $query);
-        } catch (ConnectionException $e) {
-            Log::warning('jazz_sms.connection', [
-                'to' => $to,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'ok' => false,
-                'message' => 'SMS failed for '.$to.'. Could not reach Jazz SMS gateway: '.$e->getMessage(),
-                'response' => $e->getMessage(),
-            ];
-        }
-
-        $body = trim((string) $response->body());
-        $cloudflare = $this->cloudflareBlock($body, (int) $response->status());
-        $ok = ! $cloudflare && $response->successful() && $this->looksSuccessful($body);
-        $reply = $this->shortReply($body, (int) $response->status(), $cloudflare);
+        $relay = trim((string) config('services.jazz_sms.relay_url'));
+        $result = $relay !== ''
+            ? $this->sendViaRelay($relay, $query)
+            : $this->sendViaJazz($url, $query);
 
         Log::info('jazz_sms.send', [
             'to' => $to,
             'from' => $from,
-            'status' => $response->status(),
-            'ok' => $ok,
-            'cloudflare' => $cloudflare,
-            'body' => mb_substr(preg_replace('/\s+/', ' ', $body) ?? $body, 0, 400),
+            'via' => $relay !== '' ? 'relay' : 'direct',
+            'status' => $result['status'],
+            'ok' => $result['ok'],
+            'cloudflare' => $result['cloudflare'],
+            'body' => mb_substr(preg_replace('/\s+/', ' ', $result['body']) ?? $result['body'], 0, 400),
         ]);
 
+        $reply = $this->shortReply($result['body'], $result['status'], $result['cloudflare']);
+
         return [
-            'ok' => $ok,
-            'message' => $ok
+            'ok' => $result['ok'],
+            'message' => $result['ok']
                 ? 'SMS accepted for '.$to.'. Jazz reply: '.$reply
                 : 'SMS failed for '.$to.'. '.$reply,
             'response' => $reply,
@@ -81,32 +67,189 @@ class JazzSmsService
 
     /**
      * @param  array<string, string>  $query
+     * @return array{ok: bool, status: int, body: string, cloudflare: bool}
      */
-    private function request(string $url, array $query): \Illuminate\Http\Client\Response
+    private function sendViaRelay(string $relayUrl, array $query): array
     {
-        $curl = [
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        $secret = (string) config('services.jazz_sms.relay_secret');
+        $payload = array_merge($query, [
+            'Url' => trim((string) config('services.jazz_sms.url')),
+            'Secret' => $secret,
+        ]);
+
+        $raw = $this->curlRequest($relayUrl, $payload, 'POST');
+        $body = trim($raw['body']);
+        $decoded = json_decode($body, true);
+
+        if (is_array($decoded) && array_key_exists('ok', $decoded)) {
+            $jazzBody = trim((string) ($decoded['response'] ?? $decoded['body'] ?? ''));
+            $status = (int) ($decoded['status'] ?? $raw['status']);
+            $cloudflare = $this->cloudflareBlock($jazzBody, $status)
+                || $this->cloudflareBlock($body, $raw['status']);
+            $ok = (bool) $decoded['ok'] && ! $cloudflare && $this->looksSuccessful($jazzBody !== '' ? $jazzBody : $body);
+
+            return [
+                'ok' => $ok,
+                'status' => $status,
+                'body' => $jazzBody !== '' ? $jazzBody : ($decoded['message'] ?? $body),
+                'cloudflare' => $cloudflare,
+            ];
+        }
+
+        $cloudflare = $this->cloudflareBlock($body, $raw['status']);
+
+        return [
+            'ok' => ! $cloudflare && $raw['status'] >= 200 && $raw['status'] < 300 && $this->looksSuccessful($body),
+            'status' => $raw['status'],
+            'body' => $body !== '' ? $body : $raw['error'],
+            'cloudflare' => $cloudflare,
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $query
+     * @return array{ok: bool, status: int, body: string, cloudflare: bool}
+     */
+    private function sendViaJazz(string $url, array $query): array
+    {
+        $raw = $this->curlRequest($url, $query, 'GET');
+        $body = trim($raw['body']);
+        $cloudflare = $this->cloudflareBlock($body, $raw['status']);
+
+        if ($cloudflare) {
+            $raw = $this->curlRequest($url, $query, 'POST');
+            $body = trim($raw['body']);
+            $cloudflare = $this->cloudflareBlock($body, $raw['status']);
+        }
+
+        $ok = ! $cloudflare
+            && $raw['status'] >= 200
+            && $raw['status'] < 300
+            && $this->looksSuccessful($body);
+
+        return [
+            'ok' => $ok,
+            'status' => $raw['status'],
+            'body' => $body !== '' ? $body : $raw['error'],
+            'cloudflare' => $cloudflare,
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $params
+     * @return array{status: int, body: string, error: string}
+     */
+    private function curlRequest(string $url, array $params, string $method): array
+    {
+        if (! function_exists('curl_init')) {
+            throw new RuntimeException('PHP cURL extension is required for SMS.');
+        }
+
+        $method = strtoupper($method);
+        $query = http_build_query($params);
+        $target = $url;
+
+        if ($method === 'GET') {
+            $target .= (str_contains($url, '?') ? '&' : '?').$query;
+        }
+
+        $ch = curl_init($target);
+        $headers = [
+            'User-Agent: ContimadeERP-SMS/1.1',
+            'Accept: text/plain,text/html,application/json,*/*',
+            'Connection: close',
         ];
 
-        if (defined('CURLOPT_IPRESOLVE') && defined('CURL_IPRESOLVE_V4') && $this->forceIpv4()) {
-            $curl[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        $options = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ];
+
+        if ($this->forceIpv4() && defined('CURL_IPRESOLVE_V4')) {
+            $options[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
         }
 
-        $http = Http::timeout(25)
-            ->withOptions(['curl' => $curl, 'allow_redirects' => false])
-            ->withHeaders([
-                'User-Agent' => 'ContimadeERP-SMS/1.0 (+Laravel)',
-                'Accept' => 'text/plain,text/html,*/*',
-                'Connection' => 'close',
-            ]);
-
-        // Prefer GET (Jazz URL API). If blocked, retry once as form POST on same path.
-        $response = $http->get($url, $query);
-        if ($this->cloudflareBlock(trim((string) $response->body()), (int) $response->status())) {
-            $response = $http->asForm()->post($url, $query);
+        $bindIp = trim((string) config('services.jazz_sms.bind_ip'));
+        if ($bindIp !== '') {
+            $options[CURLOPT_INTERFACE] = $bindIp;
         }
 
-        return $response;
+        $proxy = trim((string) config('services.jazz_sms.http_proxy'));
+        if ($proxy !== '') {
+            $options[CURLOPT_PROXY] = $proxy;
+        }
+
+        if ($method === 'POST') {
+            $options[CURLOPT_POST] = true;
+            $options[CURLOPT_POSTFIELDS] = $query;
+            $headers[] = 'Content-Type: application/x-www-form-urlencoded';
+            $options[CURLOPT_HTTPHEADER] = $headers;
+        }
+
+        curl_setopt_array($ch, $options);
+        $body = curl_exec($ch);
+        $error = curl_error($ch) ?: '';
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($body === false) {
+            return [
+                'status' => 0,
+                'body' => '',
+                'error' => $error !== '' ? $error : 'cURL request failed',
+            ];
+        }
+
+        return [
+            'status' => $status,
+            'body' => (string) $body,
+            'error' => $error,
+        ];
+    }
+
+    /**
+     * @return array{ipv4: ?string, ipv6: ?string}
+     */
+    public function detectOutboundIps(): array
+    {
+        $ipv4 = $this->fetchText('https://api.ipify.org', true);
+        $ipv6 = $this->fetchText('https://api64.ipify.org', false);
+
+        return [
+            'ipv4' => $ipv4,
+            'ipv6' => $ipv6 && $ipv6 !== $ipv4 ? $ipv6 : null,
+        ];
+    }
+
+    private function fetchText(string $url, bool $forceIpv4): ?string
+    {
+        if (! function_exists('curl_init')) {
+            return null;
+        }
+
+        $ch = curl_init($url);
+        $options = [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_USERAGENT => 'ContimadeERP-SMS/1.1',
+        ];
+        if ($forceIpv4 && defined('CURL_IPRESOLVE_V4')) {
+            $options[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        }
+        curl_setopt_array($ch, $options);
+        $body = curl_exec($ch);
+        curl_close($ch);
+
+        $text = is_string($body) ? trim($body) : '';
+
+        return $text !== '' ? $text : null;
     }
 
     public function enabled(): bool
@@ -138,17 +281,14 @@ class JazzSmsService
             throw new RuntimeException('Enter a valid mobile number.');
         }
 
-        // Drop leading 00 international prefix (0092…).
         if (str_starts_with($digits, '00')) {
             $digits = substr($digits, 2);
         }
 
-        // Country code 92 + 10-digit mobile → 03xxxxxxxxx (11 digits).
         if (str_starts_with($digits, '92') && strlen($digits) === 12) {
             $digits = '0'.substr($digits, 2);
         }
 
-        // Bare mobile without leading 0 (3xxxxxxxxx).
         if (str_starts_with($digits, '3') && strlen($digits) === 10) {
             $digits = '0'.$digits;
         }
@@ -186,13 +326,20 @@ class JazzSmsService
         if ($cloudflare) {
             $ray = null;
             if (preg_match('/Cloudflare Ray ID:\s*<strong[^>]*>\s*([a-z0-9]+)\s*<\/strong>/i', $body, $m)
+                || preg_match('/\bRay ID:\s*([a-z0-9]+)/i', $body, $m)
                 || preg_match('/cf-ray[:\s]+([a-z0-9-]+)/i', $body, $m)) {
                 $ray = $m[1];
             }
 
-            $msg = 'Jazz/Cloudflare blocked this server IP from connect.jazzcmt.com (HTTP '.$status.'). '
-                .'Ask Jazz CMT support to whitelist your server public IP, or host SMS from an allowlisted IP. '
-                .'Local PC works because its IP is not blocked.';
+            $ips = $this->detectOutboundIps();
+            $ipHint = $ips['ipv4'] ? 'Server public IPv4: '.$ips['ipv4'].'. ' : '';
+            if (! empty($ips['ipv6'])) {
+                $ipHint .= 'IPv6: '.$ips['ipv6'].'. ';
+            }
+
+            $msg = 'Jazz/Cloudflare blocked this hosting IP (HTTP '.$status.'). '
+                .$ipHint
+                .'Email Jazz CMT support to whitelist these IPs, or set SMS_RELAY_URL to a PC/VPS that is not blocked.';
 
             if ($ray) {
                 $msg .= ' Ray ID: '.$ray.'.';
@@ -206,7 +353,7 @@ class JazzSmsService
         }
 
         if (str_contains(mb_strtolower($body), '<html')) {
-            return 'Unexpected HTML reply from Jazz (HTTP '.$status.'). Check SMS_URL and server outbound access.';
+            return 'Unexpected HTML reply from Jazz (HTTP '.$status.'). Check SMS_URL / SMS_RELAY_URL.';
         }
 
         return mb_substr(preg_replace('/\s+/', ' ', $body) ?? $body, 0, 300);
@@ -242,7 +389,6 @@ class JazzSmsService
             return true;
         }
 
-        // Unknown Jazz text with HTTP 200 — treat as failure so the UI shows the reply.
         return false;
     }
 }
