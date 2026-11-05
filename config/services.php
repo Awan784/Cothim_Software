@@ -72,6 +72,8 @@ return [
         'password' => env('SMS_PASSWORD'),
         'from' => env('SMS_FROM'),
         'test_to' => env('SMS_TEST_TO'),
+        // Hostinger / datacenter IPv6 is often Cloudflare-blocked; force IPv4 by default.
+        'force_ipv4' => env('SMS_FORCE_IPV4', true),
         'on_invoice_issue' => env('SMS_ON_INVOICE_ISSUE', false),
         'invoice_customer' => env('SMS_INVOICE_CUSTOMER', true),
         'invoice_salesman' => env('SMS_INVOICE_SALESMAN', true),
