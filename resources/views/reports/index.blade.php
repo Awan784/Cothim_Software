@@ -241,7 +241,7 @@
                             <select name="salesman_id" id="sc_salesman_id" class="form-select" required>
                                 <option value="">Select salesman</option>
                                 @foreach($salesmen as $salesman)
-                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}</option>
+                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -300,7 +300,7 @@
                                 <select name="salesman_id" id="sp_salesman_id" class="form-select">
                                     <option value="">All salesmen</option>
                                     @foreach($salesmen as $salesman)
-                                        <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}</option>
+                                        <option value="{{ $salesman->id }}">{{ $salesman->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -365,7 +365,7 @@
                             <select name="salesman_id" id="rf_salesman_id" class="form-select">
                                 <option value="">All salesmen</option>
                                 @foreach($salesmen as $salesman)
-                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}</option>
+                                    <option value="{{ $salesman->id }}">{{ $salesman->name }}</option>
                                 @endforeach
                             </select>
                         </div>
