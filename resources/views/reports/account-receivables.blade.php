@@ -16,12 +16,7 @@
             @forelse($rows as $row)
                 <tr>
                     <td>{{ $row['code'] }}</td>
-                    <td>
-                        {{ $row['salesman'] }}
-                        @if($row['city'] !== '')
-                            <span class="party-type">{{ $row['city'] }}</span>
-                        @endif
-                    </td>
+                    <td>{{ $row['salesman'] }}</td>
                     <td class="num">{{ ams_num($row['sales']) }}</td>
                     <td class="num">{{ ams_num($row['commission']) }}</td>
                     <td class="num">{{ (float) $row['debit'] > 0 ? ams_num($row['debit']) : '0' }}</td>

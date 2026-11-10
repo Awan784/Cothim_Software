@@ -24,7 +24,7 @@
                                     data-advance="{{ number_format((float) $salesman->advance_balance, 2, '.', '') }}"
                                     data-receivable="{{ number_format((float) ($receivables[$salesman->id] ?? 0), 2, '.', '') }}"
                                     @selected((string) old('salesman_id', $selectedSalesmanId) === (string) $salesman->id)>
-                                    {{ $salesman->name }}{{ $salesman->citiesLabel() !== '' ? ' · '.$salesman->citiesLabel() : '' }}
+                                    {{ $salesman->name }}
                                 </option>
                             @endforeach
                         </select>
