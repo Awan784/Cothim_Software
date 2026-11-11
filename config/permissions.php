@@ -23,6 +23,7 @@ return [
         'sales-returns' => 'Sales Returns',
         'sales-orders' => 'Sales Orders',
         'reports' => 'Reports',
+        'sms-logs' => 'SMS',
     ],
 
     'actions' => [

@@ -21,6 +21,7 @@ use App\Http\Controllers\Salesman\OrderController as SalesmanOrderController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\StockCategoryController;
 use App\Http\Controllers\StockItemController;
 use App\Http\Controllers\SupplierController;
@@ -126,6 +127,8 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
         ->name('cash-vouchers.print');
     Route::resource('cash-vouchers', CashVoucherController::class);
     Route::resource('journal-vouchers', JournalVoucherController::class);
+
+    Route::get('sms-logs', [SmsLogController::class, 'index'])->name('sms-logs.index');
 
     // Reports
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');

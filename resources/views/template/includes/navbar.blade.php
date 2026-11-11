@@ -112,6 +112,12 @@
                     <span class="sidebar-text">{{ __('Reports') }}</span>
                 </a>
             </li>
+
+            <li class="nav-item">
+                <a href="{{ route('sms-logs.index') }}" class="nav-link {{ request()->routeIs('sms-logs.*') ? 'active' : '' }}">
+                    <span class="sidebar-text">{{ __('SMS') }}</span>
+                </a>
+            </li>
         </ul>
 
         <ul class="nav flex-column mt-auto">

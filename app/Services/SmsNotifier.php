@@ -6,6 +6,7 @@ use App\Models\CashVoucher;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\Salesman;
+use App\Models\SmsLog;
 use App\Models\Supplier;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\Log;
@@ -35,15 +36,17 @@ class SmsNotifier
         $message = $this->renderInvoiceMessage($invoice);
 
         if ($sendCustomer) {
-            foreach ($this->phonesFrom($invoice->customer) as $phone) {
-                $this->safeSend($phone, $message);
-            }
+            $this->sendToParty($invoice->customer, 'customer', $message, [
+                'purpose' => 'invoice_issue',
+                'sales_invoice_id' => $invoice->id,
+            ]);
         }
 
         if ($sendSalesman) {
-            foreach ($this->phonesFrom($invoice->salesman) as $phone) {
-                $this->safeSend($phone, $message);
-            }
+            $this->sendToParty($invoice->salesman, 'salesman', $message, [
+                'purpose' => 'invoice_issue',
+                'sales_invoice_id' => $invoice->id,
+            ]);
         }
     }
 
@@ -78,14 +81,22 @@ class SmsNotifier
         ];
 
         foreach ($targets as $label => $party) {
+            $context = [
+                'purpose' => 'invoice_dispatch',
+                'recipient_type' => $label,
+                'recipient_name' => $this->partyLabel($label, $party),
+                'sales_invoice_id' => $invoice->id,
+            ];
+
             $phones = $this->phonesFrom($party);
             if ($phones === []) {
                 $skipped[] = $label.' (no phone/mobile)';
+                $this->recordLog('', $message, SmsLog::STATUS_SKIPPED, 'No phone/mobile on '.$label, $context);
                 continue;
             }
 
             foreach ($phones as $phone) {
-                $result = $this->safeSend($phone, $message);
+                $result = $this->safeSend($phone, $message, $context);
                 $lastReply = $result['response'] !== '' ? $result['response'] : $lastReply;
                 if ($result['ok']) {
                     $sent++;
@@ -174,14 +185,40 @@ class SmsNotifier
             : $mask.': Paid Rs '.$amount.' ('.$method.') to '.$name.'. Ref '.$ref.'.';
 
         foreach ($phones as $phone) {
-            $this->safeSend($phone, $text);
+            $this->safeSend($phone, $text, [
+                'purpose' => $isReceive ? 'cash_receive' : 'cash_payment',
+                'recipient_type' => $voucher->account_type,
+                'recipient_name' => $name,
+                'cash_voucher_id' => $voucher->id,
+            ]);
         }
     }
 
     /**
+     * @param  array{purpose?: string, recipient_type?: string, recipient_name?: string, sales_invoice_id?: int|null, cash_voucher_id?: int|null}  $context
+     */
+    private function sendToParty(mixed $party, string $type, string $message, array $context): void
+    {
+        $context['recipient_type'] = $type;
+        $context['recipient_name'] = $this->partyLabel($type, $party);
+
+        $phones = $this->phonesFrom($party);
+        if ($phones === []) {
+            $this->recordLog('', $message, SmsLog::STATUS_SKIPPED, 'No phone/mobile on '.$type, $context);
+
+            return;
+        }
+
+        foreach ($phones as $phone) {
+            $this->safeSend($phone, $message, $context);
+        }
+    }
+
+    /**
+     * @param  array{purpose?: string, recipient_type?: string, recipient_name?: string, sales_invoice_id?: int|null, cash_voucher_id?: int|null}  $context
      * @return array{ok: bool, message: string, response: string}
      */
-    private function safeSend(string $to, string $message): array
+    private function safeSend(string $to, string $message, array $context = []): array
     {
         try {
             $result = $this->sms->send($to, $message);
@@ -192,6 +229,14 @@ class SmsNotifier
                 ]);
             }
 
+            $this->recordLog(
+                $to,
+                $message,
+                $this->statusFromResult($result),
+                $result['response'] !== '' ? $result['response'] : $result['message'],
+                $context
+            );
+
             return $result;
         } catch (Throwable $e) {
             Log::warning('sms_notifier.exception', [
@@ -199,11 +244,55 @@ class SmsNotifier
                 'error' => $e->getMessage(),
             ]);
 
+            $this->recordLog($to, $message, SmsLog::STATUS_FAILED, $e->getMessage(), $context);
+
             return [
                 'ok' => false,
                 'message' => $e->getMessage(),
                 'response' => '',
             ];
+        }
+    }
+
+    /**
+     * @param  array{ok: bool, message: string, response: string}  $result
+     */
+    private function statusFromResult(array $result): string
+    {
+        if ($result['ok']) {
+            return SmsLog::STATUS_SENT;
+        }
+
+        $blob = mb_strtolower(trim(($result['response'] ?? '').' '.($result['message'] ?? '')));
+        if (str_contains($blob, 'cloudflare')
+            || str_contains($blob, 'blocked this')
+            || str_contains($blob, 'you have been blocked')) {
+            return SmsLog::STATUS_BLOCKED;
+        }
+
+        return SmsLog::STATUS_FAILED;
+    }
+
+    /**
+     * @param  array{purpose?: string, recipient_type?: string, recipient_name?: string, sales_invoice_id?: int|null, cash_voucher_id?: int|null}  $context
+     */
+    private function recordLog(string $phone, string $message, string $status, string $reply, array $context = []): void
+    {
+        try {
+            SmsLog::query()->create([
+                'purpose' => $context['purpose'] ?? 'sms',
+                'recipient_type' => $context['recipient_type'] ?? null,
+                'recipient_name' => $context['recipient_name'] ?? null,
+                'phone' => $phone !== '' ? $phone : '—',
+                'message' => mb_substr($message, 0, 1000),
+                'status' => $status,
+                'provider_reply' => mb_substr(trim($reply), 0, 2000),
+                'sales_invoice_id' => $context['sales_invoice_id'] ?? null,
+                'cash_voucher_id' => $context['cash_voucher_id'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('sms_notifier.log_failed', ['error' => $e->getMessage()]);
         }
     }
 
@@ -255,6 +344,10 @@ class SmsNotifier
     {
         if ($party instanceof Customer) {
             return $party->displayName();
+        }
+
+        if ($party instanceof Salesman) {
+            return (string) $party->name;
         }
 
         if (is_object($party) && isset($party->name) && trim((string) $party->name) !== '') {
