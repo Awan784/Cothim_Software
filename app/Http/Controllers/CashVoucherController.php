@@ -90,11 +90,9 @@ class CashVoucherController extends Controller
         $suppliers = Supplier::orderBy('name')->get();
         $vendors = Vendor::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
-        $bankAccounts = BankAccount::orderBy('name')->get();
-        $cashAccountId = $this->defaultCashAccountId();
-        $cashBalance = (float) CashAccount::whereKey($cashAccountId)->value('current_balance');
+        $bankAccounts = BankAccount::query()->where('is_cash', false)->orderBy('name')->get();
 
-        return view('cash-vouchers.create', compact('customers', 'suppliers', 'vendors', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
+        return view('cash-vouchers.create', compact('customers', 'suppliers', 'vendors', 'expenseAccounts', 'bankAccounts'));
     }
 
     /**
@@ -104,8 +102,8 @@ class CashVoucherController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'in:receive,payment'],
-            'payment_method' => ['required', 'in:cash,bank'],
-            'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
+            'payment_method' => ['nullable', 'in:bank'],
+            'bank_account_id' => ['required', 'exists:bank_accounts,id'],
             'account_type' => ['required', 'in:customer,supplier,vendor,expense,other'],
             'account_id' => ['nullable', 'integer'],
             'other_name' => ['nullable', 'string', 'max:255'],
@@ -116,6 +114,7 @@ class CashVoucherController extends Controller
             'send_sms' => ['nullable', 'boolean'],
         ]);
 
+        $data['payment_method'] = 'bank';
         $data['voucher_date'] = $data['voucher_date'] ?? now()->toDateString();
         $data['send_sms'] = false;
 
@@ -191,11 +190,17 @@ class CashVoucherController extends Controller
         $suppliers = Supplier::orderBy('name')->get();
         $vendors = Vendor::orderBy('name')->get();
         $expenseAccounts = ExpenseAccount::orderBy('name')->get();
-        $bankAccounts = BankAccount::orderBy('name')->get();
-        $cashAccountId = $this->defaultCashAccountId();
-        $cashBalance = (float) CashAccount::whereKey($cashAccountId)->value('current_balance');
+        $bankAccounts = BankAccount::query()
+            ->where(function ($query) use ($cashVoucher) {
+                $query->where('is_cash', false);
+                if ($cashVoucher->bank_account_id) {
+                    $query->orWhereKey($cashVoucher->bank_account_id);
+                }
+            })
+            ->orderBy('name')
+            ->get();
 
-        return view('cash-vouchers.edit', compact('cashVoucher', 'customers', 'suppliers', 'vendors', 'expenseAccounts', 'bankAccounts', 'cashAccountId', 'cashBalance'));
+        return view('cash-vouchers.edit', compact('cashVoucher', 'customers', 'suppliers', 'vendors', 'expenseAccounts', 'bankAccounts'));
     }
 
     /**
@@ -209,8 +214,8 @@ class CashVoucherController extends Controller
 
         $data = $request->validate([
             'type' => ['required', 'in:receive,payment'],
-            'payment_method' => ['required', 'in:cash,bank'],
-            'bank_account_id' => ['nullable', 'exists:bank_accounts,id'],
+            'payment_method' => ['nullable', 'in:bank'],
+            'bank_account_id' => ['required', 'exists:bank_accounts,id'],
             'account_type' => ['required', 'in:customer,supplier,vendor,expense,other'],
             'account_id' => ['nullable', 'integer'],
             'other_name' => ['nullable', 'string', 'max:255'],
@@ -220,13 +225,12 @@ class CashVoucherController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
+        $data['payment_method'] = 'bank';
         $data['cash_account_id'] = $this->defaultCashAccountId();
 
-        if ($data['payment_method'] === 'bank' && empty($data['bank_account_id'])) {
-            return back()->withInput()->with('error', 'Please select a bank account.');
-        }
-        if ($data['payment_method'] === 'cash') {
-            $data['bank_account_id'] = null;
+        $bank = BankAccount::query()->find($data['bank_account_id']);
+        if (! $bank || $bank->is_cash) {
+            return back()->withInput()->with('error', 'Please select a bank account (not Shop Cash).');
         }
 
         if ($data['account_type'] === 'other') {

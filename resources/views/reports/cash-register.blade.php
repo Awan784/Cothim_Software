@@ -19,14 +19,14 @@
                 </tr>
             @empty
                 <tr class="empty">
-                    <td colspan="3">No cash or bank accounts.</td>
+                    <td colspan="3">No bank accounts.</td>
                 </tr>
             @endforelse
         </tbody>
         @if($openingAccounts->isNotEmpty())
             <tfoot>
                 <tr>
-                    <td colspan="2">Total opening (Cash + Bank)</td>
+                    <td colspan="2">Total opening (Bank)</td>
                     <td class="num">{{ ams_num($broughtForward) }}</td>
                 </tr>
             </tfoot>

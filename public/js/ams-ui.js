@@ -382,6 +382,26 @@
             toggle.classList.toggle('is-placeholder', !label);
         }
 
+        function isClearable() {
+            if (select.required || select.dataset.amsClearable === '0') {
+                return false;
+            }
+            if (select.dataset.amsClearable === '1') {
+                return true;
+            }
+            return !!(select.options[0] && select.options[0].value === '');
+        }
+
+        function clearLabel() {
+            if (select.options[0] && select.options[0].value === '') {
+                var label = (select.options[0].textContent || '').trim();
+                if (label) {
+                    return label;
+                }
+            }
+            return 'None';
+        }
+
         function visibleOptions(query) {
             var q = (query || '').trim().toLowerCase();
             var matches = [];
@@ -394,7 +414,7 @@
                 var compactHaystack = haystack.replace(/ /g, '');
                 var compactQuery = q.replace(/\s+/g, '');
                 if (!q || haystack.indexOf(q) !== -1 || (compactQuery && compactHaystack.indexOf(compactQuery) !== -1)) {
-                    matches.push({ option: option, index: index, label: label });
+                    matches.push({ option: option, index: index, label: label, value: option.value });
                 }
             });
             return matches;
@@ -404,7 +424,21 @@
             var matches = visibleOptions(query);
             list.innerHTML = '';
 
-            if (matches.length === 0) {
+            if (!query && isClearable()) {
+                var clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'ams-combo-option ams-combo-clear';
+                clearBtn.setAttribute('role', 'option');
+                clearBtn.setAttribute('data-value', '');
+                clearBtn.setAttribute('data-index', '0');
+                clearBtn.textContent = clearLabel();
+                if (select.value === '') {
+                    clearBtn.classList.add('is-selected', 'is-active');
+                }
+                list.appendChild(clearBtn);
+            }
+
+            if (matches.length === 0 && list.children.length === 0) {
                 var empty = document.createElement('div');
                 empty.className = 'ams-combo-empty';
                 empty.textContent = 'No matches';
@@ -417,13 +451,13 @@
                 btn.type = 'button';
                 btn.className = 'ams-combo-option';
                 btn.setAttribute('role', 'option');
-                btn.dataset.value = item.option.value;
+                btn.dataset.value = item.value;
                 btn.dataset.index = String(item.index);
                 btn.textContent = item.label;
-                if (item.option.value === select.value || (!activeValue && i === 0 && query)) {
+                if (item.value === select.value || (!activeValue && i === 0 && query && select.value !== '')) {
                     btn.classList.add('is-active');
                 }
-                if (item.option.value === select.value) {
+                if (item.value === select.value) {
                     btn.classList.add('is-selected');
                 }
                 list.appendChild(btn);
@@ -449,6 +483,7 @@
         }
 
         function pickValue(value) {
+            value = value == null ? '' : String(value);
             if (select.value !== value) {
                 select.value = value;
                 select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -494,7 +529,7 @@
             } else if (event.key === 'Enter') {
                 event.preventDefault();
                 if (current) {
-                    pickValue(current.dataset.value);
+                    pickValue(current.getAttribute('data-value'));
                 }
             } else if (event.key === 'Escape') {
                 event.preventDefault();
@@ -509,7 +544,7 @@
                 return;
             }
             event.preventDefault();
-            pickValue(option.dataset.value);
+            pickValue(option.getAttribute('data-value'));
         });
 
         wrap._amsCloseCombo = closeCombo;

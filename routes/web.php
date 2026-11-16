@@ -115,7 +115,7 @@ Route::middleware(['auth', 'org-active', 'permission'])->group(function () {
     Route::get('salesman-settlements/invoices', [SalesmanSettlementController::class, 'invoices'])
         ->name('salesman-settlements.invoices');
     Route::resource('salesman-settlements', SalesmanSettlementController::class)
-        ->only(['index', 'create', 'store', 'show', 'destroy']);
+        ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::resource('suppliers', SupplierController::class);
     Route::resource('vendors', VendorController::class);
     Route::resource('bank-accounts', BankAccountController::class);

@@ -41,12 +41,15 @@ class CashVoucherService
         unset($data['send_sms']);
 
         $data['cash_account_id'] = $this->defaultCashAccountId();
+        $data['payment_method'] = 'bank';
 
-        if (($data['payment_method'] ?? '') === 'bank' && empty($data['bank_account_id'])) {
+        if (empty($data['bank_account_id'])) {
             throw new InvalidArgumentException('Please select a bank account.');
         }
-        if (($data['payment_method'] ?? '') === 'cash') {
-            $data['bank_account_id'] = null;
+
+        $bank = BankAccount::query()->find($data['bank_account_id']);
+        if (! $bank || $bank->is_cash) {
+            throw new InvalidArgumentException('Please select a bank account (not Shop Cash).');
         }
 
         if (($data['account_type'] ?? '') === 'other') {

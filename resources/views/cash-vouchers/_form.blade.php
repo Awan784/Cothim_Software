@@ -8,16 +8,17 @@
     } else {
         $defaultVoucherType = old('type', $isEdit ? $cashVoucher->type : request('type', request('account_type') === 'expense' ? 'payment' : 'receive'));
     }
-    $selectedPaymentMethod = old('payment_method', $isEdit ? ($cashVoucher->payment_method ?? 'cash') : 'cash');
     $selectedBankAccountId = old('bank_account_id', $isEdit ? ($cashVoucher->bank_account_id ?? '') : '');
 @endphp
+
+<input type="hidden" name="payment_method" id="payment_method" value="bank">
 
 <div class="row">
     @if ($showTypeField)
         <div class="col-md-4 mb-3">
             <label class="form-label">Type</label>
             <select name="type" class="form-select @error('type') is-invalid @enderror" id="voucher_type" required>
-                @foreach(['receive' => 'Cash Receive', 'payment' => 'Cash Payment'] as $k => $label)
+                @foreach(['receive' => 'Receive', 'payment' => 'Payment'] as $k => $label)
                     <option value="{{ $k }}" {{ $defaultVoucherType === $k ? 'selected' : '' }}>
                         {{ $label }}
                     </option>
@@ -30,37 +31,8 @@
     @endif
 
     <div @class(['col-md-4 mb-3' => $showTypeField, 'col-md-6 mb-3' => ! $showTypeField])>
-        <label class="form-label">Payment Method</label>
-        <select name="payment_method" class="form-select @error('payment_method') is-invalid @enderror" id="payment_method" required>
-            <option value="cash" {{ $selectedPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
-            <option value="bank" {{ $selectedPaymentMethod === 'bank' ? 'selected' : '' }}>Bank Account</option>
-        </select>
-        @error('payment_method') <div class="invalid-feedback">{{ $message }}</div> @enderror
-    </div>
-
-    <div @class(['col-md-4 mb-3' => $showTypeField, 'col-md-6 mb-3' => ! $showTypeField])>
-        <label class="form-label">Voucher Date</label>
-        <x-ams-date-input
-            name="voucher_date"
-            :value="$isEdit ? $cashVoucher->voucher_date : now()"
-            required
-        />
-    </div>
-</div>
-
-<div class="row" id="cash_info_row">
-    <div class="col-md-4 mb-3">
-        <label class="form-label">Cash</label>
-        <div class="form-control bg-light">
-            Current Cash Balance: <strong class="text-danger">{{ number_format((float) ($cashBalance ?? 0), 2) }}</strong>
-        </div>
-    </div>
-</div>
-
-<div class="row d-none" id="bank_row">
-    <div class="col-md-8 mb-3">
         <label class="form-label">Bank Account</label>
-        <select name="bank_account_id" class="form-select @error('bank_account_id') is-invalid @enderror" id="bank_account_id">
+        <select name="bank_account_id" class="form-select @error('bank_account_id') is-invalid @enderror" id="bank_account_id" required>
             <option value="">Select bank account</option>
             @foreach($bankAccounts ?? [] as $b)
                 <option value="{{ $b->id }}" {{ (string) $selectedBankAccountId === (string) $b->id ? 'selected' : '' }}>
@@ -70,6 +42,15 @@
         </select>
         @error('bank_account_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
         <div class="form-text" id="bank_balance_text"></div>
+    </div>
+
+    <div @class(['col-md-4 mb-3' => $showTypeField, 'col-md-6 mb-3' => ! $showTypeField])>
+        <label class="form-label">Voucher Date</label>
+        <x-ams-date-input
+            name="voucher_date"
+            :value="$isEdit ? $cashVoucher->voucher_date : now()"
+            required
+        />
     </div>
 </div>
 
@@ -169,9 +150,6 @@
 @push('page_scripts')
     <script>
         (function () {
-            const paymentMethodSelect = document.getElementById('payment_method');
-            const cashInfoRow = document.getElementById('cash_info_row');
-            const bankRow = document.getElementById('bank_row');
             const bankSelect = document.getElementById('bank_account_id');
             const bankBalanceText = document.getElementById('bank_balance_text');
 
@@ -188,15 +166,6 @@
             const accountSelect = document.getElementById('account_id');
             const selectedId = @json((string) $selectedAccountId);
             const selectedType = @json($selectedAccountType);
-
-            function toggleSource() {
-                const method = paymentMethodSelect.value;
-                const isBank = method === 'bank';
-
-                cashInfoRow.classList.toggle('d-none', isBank);
-                bankRow.classList.toggle('d-none', !isBank);
-                bankSelect.required = isBank;
-            }
 
             async function loadBankBalance() {
                 const id = bankSelect.value;
@@ -265,15 +234,9 @@
                 toggleAccountInputs();
             });
 
-            paymentMethodSelect.addEventListener('change', function () {
-                toggleSource();
-                loadBankBalance();
-            });
-
             bankSelect?.addEventListener('change', loadBankBalance);
 
             toggleAccountInputs();
-            toggleSource();
             loadBankBalance();
         })();
     </script>

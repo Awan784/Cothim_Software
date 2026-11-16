@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\BankAccount;
-use App\Models\CashAccount;
 use App\Models\CashVoucher;
 use App\Models\JournalVoucherLine;
 use Carbon\Carbon;
@@ -42,7 +41,7 @@ class CashRegisterService
             'date' => $from->copy(),
             'voucher_no' => '—',
             'type' => '',
-            'type_label' => 'Opening Balance (Cash + Bank)',
+            'type_label' => 'Opening Balance (Bank)',
             'party_type' => '',
             'party_name' => '',
             'paid_via' => '',
@@ -87,7 +86,7 @@ class CashRegisterService
     }
 
     /**
-     * Cash + bank balances as of the morning of $from (movements before from_date).
+     * Bank balances as of the morning of $from (Cash / Shop Cash excluded).
      *
      * @return \Illuminate\Support\Collection<int, array{kind: string, kind_label: string, id: int, name: string, balance: float}>
      */
@@ -96,21 +95,7 @@ class CashRegisterService
         $before = $from->copy()->subDay()->endOfDay();
         $rows = collect();
 
-        foreach (CashAccount::query()->orderBy('name')->orderBy('id')->get() as $cash) {
-            $balance = (float) $cash->opening_balance
-                + $this->netVoucherMovement('cash', (int) $cash->id, null, $before)
-                + $this->netJournalMovement('cash', (int) $cash->id, null, $before);
-
-            $rows->push([
-                'kind' => 'cash',
-                'kind_label' => 'Cash',
-                'id' => (int) $cash->id,
-                'name' => (string) $cash->name,
-                'balance' => round($balance, 2),
-            ]);
-        }
-
-        foreach (BankAccount::query()->orderBy('name')->orderBy('id')->get() as $bank) {
+        foreach (BankAccount::query()->where('is_cash', false)->orderBy('name')->orderBy('id')->get() as $bank) {
             $balance = (float) $bank->opening_balance
                 + $this->netVoucherMovement('bank', (int) $bank->id, null, $before)
                 + $this->netJournalMovement('bank', (int) $bank->id, null, $before);
@@ -122,7 +107,7 @@ class CashRegisterService
 
             $rows->push([
                 'kind' => 'bank',
-                'kind_label' => $bank->is_cash ? 'Shop Cash' : 'Bank',
+                'kind_label' => 'Bank',
                 'id' => (int) $bank->id,
                 'name' => $label,
                 'balance' => round($balance, 2),
@@ -139,6 +124,8 @@ class CashRegisterService
         $vouchers = CashVoucher::query()
             ->with(['cashAccount', 'bankAccount', 'salesmanSettlement'])
             ->affectingCash()
+            ->where('payment_method', 'bank')
+            ->whereHas('bankAccount', fn ($q) => $q->where('is_cash', false))
             ->whereDate('voucher_date', '>=', $from->toDateString())
             ->whereDate('voucher_date', '<=', $to->toDateString())
             ->orderBy('voucher_date')
@@ -151,8 +138,11 @@ class CashRegisterService
             $entries->push($this->entryFromCashVoucher($voucher));
         }
 
+        $bankIds = BankAccount::query()->where('is_cash', false)->pluck('id')->all();
+
         $journalQuery = JournalVoucherLine::query()
-            ->whereIn('account_type', ['cash', 'bank'])
+            ->where('account_type', 'bank')
+            ->whereIn('account_id', $bankIds)
             ->with('journalVoucher')
             ->whereHas('journalVoucher', function ($q) use ($from, $to) {
                 $q->whereDate('voucher_date', '>=', $from->toDateString())
@@ -167,10 +157,7 @@ class CashRegisterService
 
             $debit = (float) $line->debit;
             $credit = (float) $line->credit;
-            $isCash = $line->account_type === 'cash';
-            $accountName = $isCash
-                ? (CashAccount::find($line->account_id)?->name ?? 'Cash')
-                : (BankAccount::find($line->account_id)?->name ?? 'Bank');
+            $accountName = BankAccount::find($line->account_id)?->name ?? 'Bank';
 
             $entries->push([
                 'date' => $voucher->voucher_date,
@@ -178,9 +165,9 @@ class CashRegisterService
                 'voucher_no' => $voucher->voucher_no,
                 'type' => 'journal',
                 'type_label' => 'Journal Entry',
-                'party_type' => $isCash ? 'Cash' : 'Bank',
+                'party_type' => 'Bank',
                 'party_name' => $accountName,
-                'paid_via' => $isCash ? 'Cash' : 'Bank',
+                'paid_via' => 'Bank',
                 'reference' => '',
                 'notes' => $line->line_note ?? $voucher->notes ?? '',
                 'amount' => max($debit, $credit),

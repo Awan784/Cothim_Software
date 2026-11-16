@@ -38,6 +38,9 @@
                                 <td class="text-end">{{ number_format((float) $settlement->closing_advance, 2) }}</td>
                                 <td class="text-end">
                                     <a href="{{ route('salesman-settlements.show', $settlement) }}" class="btn btn-sm btn-outline-primary">Open</a>
+                                    @if(in_array((int) $settlement->id, $latestIds ?? [], true))
+                                        <a href="{{ route('salesman-settlements.edit', $settlement) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

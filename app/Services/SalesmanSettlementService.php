@@ -21,19 +21,36 @@ class SalesmanSettlementService
     /**
      * @return Collection<int, SalesInvoice>
      */
-    public function unpaidInvoices(Salesman $salesman): Collection
+    public function unpaidInvoices(Salesman $salesman, ?SalesmanSettlement $settlement = null): Collection
     {
+        $allocatedIds = $settlement
+            ? $settlement->allocations()->pluck('sales_invoice_id')->filter()->map(fn ($id) => (int) $id)->all()
+            : [];
+
         return SalesInvoice::query()
             ->with('customer')
             ->where('status', '!=', 'draft')
-            ->whereRaw('(total - amount_paid) > 0.009')
             ->where(function ($query) use ($salesman) {
                 $query->where('salesman_id', $salesman->id)
                     ->orWhereHas('salesOrder', fn ($order) => $order->where('salesman_id', $salesman->id));
             })
+            ->where(function ($query) use ($allocatedIds) {
+                $query->whereRaw('(total - amount_paid) > 0.009');
+                if ($allocatedIds !== []) {
+                    $query->orWhereIn('id', $allocatedIds);
+                }
+            })
             ->orderBy('invoice_date')
             ->orderBy('id')
             ->get();
+    }
+
+    public function isLatest(SalesmanSettlement $settlement): bool
+    {
+        return ! SalesmanSettlement::query()
+            ->where('salesman_id', $settlement->salesman_id)
+            ->where('id', '>', $settlement->id)
+            ->exists();
     }
 
     public function currentAdvance(Salesman $salesman): float
@@ -103,6 +120,36 @@ class SalesmanSettlementService
      */
     public function create(array $data, array $allocations, ?int $userId = null): SalesmanSettlement
     {
+        return DB::transaction(function () use ($data, $allocations, $userId) {
+            return $this->persist(null, $data, $allocations, $userId);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array{invoice_id: int, amount: float}>  $allocations
+     */
+    public function update(SalesmanSettlement $settlement, array $data, array $allocations, ?int $userId = null): SalesmanSettlement
+    {
+        return DB::transaction(function () use ($settlement, $data, $allocations, $userId) {
+            $settlement = SalesmanSettlement::query()->whereKey($settlement->id)->lockForUpdate()->firstOrFail();
+            if (! $this->isLatest($settlement)) {
+                throw new RuntimeException('Edit newer settlements for this salesman first.');
+            }
+
+            $data['salesman_id'] = (int) $settlement->salesman_id;
+            $this->reverseEffects($settlement, deleteRecord: false);
+
+            return $this->persist($settlement, $data, $allocations, $userId ?? $settlement->created_by);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array{invoice_id: int, amount: float}>  $allocations
+     */
+    private function persist(?SalesmanSettlement $existing, array $data, array $allocations, ?int $userId = null): SalesmanSettlement
+    {
         $cashReceived = round((float) ($data['cash_received'] ?? 0), 2);
         $method = ($data['payment_method'] ?? 'cash') === 'bank' ? 'bank' : 'cash';
         $bankAccountId = $method === 'bank' ? ($data['bank_account_id'] ?? null) : null;
@@ -136,165 +183,174 @@ class SalesmanSettlementService
             throw new InvalidArgumentException('Enter cash received from the salesman or allocate at least one customer invoice.');
         }
 
-        return DB::transaction(function () use ($data, $normalized, $cashReceived, $allocatedTotal, $method, $bankAccountId, $userId) {
-            $salesman = Salesman::query()->whereKey($data['salesman_id'])->lockForUpdate()->firstOrFail();
-            if ($salesman->organization_id) {
-                app()->instance('current_organization_id', (int) $salesman->organization_id);
-            }
-            $opening = round((float) $salesman->advance_balance, 2);
-            $openingReceivable = round(max(0, (float) $salesman->opening_balance), 2);
-            $available = round($opening + $cashReceived, 2);
+        $salesman = Salesman::query()->whereKey($data['salesman_id'])->lockForUpdate()->firstOrFail();
+        if ($salesman->organization_id) {
+            app()->instance('current_organization_id', (int) $salesman->organization_id);
+        }
+        $opening = round((float) $salesman->advance_balance, 2);
+        $openingReceivable = round(max(0, (float) $salesman->opening_balance), 2);
+        $available = round($opening + $cashReceived, 2);
 
-            if ($allocatedTotal - $available > 0.009) {
+        if ($allocatedTotal - $available > 0.009) {
+            throw new InvalidArgumentException(
+                'Allocated '.number_format($allocatedTotal, 2).' is more than available '
+                .number_format($available, 2).' (opening advance + cash received).'
+            );
+        }
+
+        $leftover = round($available - $allocatedTotal, 2);
+        $appliedToOpening = round(min($leftover, $openingReceivable), 2);
+        $closing = round($leftover - $appliedToOpening, 2);
+        $date = $data['settlement_date'] ?? now()->toDateString();
+
+        $payload = [
+            'organization_id' => $salesman->organization_id,
+            'salesman_id' => $salesman->id,
+            'settlement_date' => $date,
+            'cash_received' => $cashReceived,
+            'allocated_amount' => $allocatedTotal,
+            'opening_advance' => $opening,
+            'closing_advance' => $closing,
+            'opening_receivable' => $openingReceivable,
+            'applied_to_opening' => $appliedToOpening,
+            'payment_method' => $method,
+            'bank_account_id' => $bankAccountId,
+            'cash_voucher_id' => null,
+            'notes' => $data['notes'] ?? null,
+        ];
+
+        if ($existing) {
+            $existing->fill($payload);
+            $existing->save();
+            $settlement = $existing;
+        } else {
+            $payload['settlement_no'] = SalesmanSettlement::nextNumber();
+            $payload['created_by'] = $userId;
+            $settlement = SalesmanSettlement::create($payload);
+        }
+
+        if ($cashReceived > 0.009) {
+            $cashVoucher = $this->vouchers->create([
+                'type' => 'receive',
+                'payment_method' => $method,
+                'bank_account_id' => $bankAccountId,
+                'account_type' => 'salesman',
+                'account_id' => $salesman->id,
+                'amount' => $cashReceived,
+                'voucher_date' => $date,
+                'reference' => $settlement->settlement_no,
+                'notes' => 'Cash received from salesman '.$salesman->name
+                    .' · allocated '.number_format($allocatedTotal, 2)
+                    .' · applied to opening balance '.number_format($appliedToOpening, 2)
+                    .' · advance '.number_format($closing, 2),
+                'affects_cash' => true,
+                'salesman_settlement_id' => $settlement->id,
+            ]);
+            $settlement->update(['cash_voucher_id' => $cashVoucher->id]);
+        }
+
+        foreach ($normalized as $invoiceId => $amount) {
+            $invoice = SalesInvoice::query()->whereKey($invoiceId)->lockForUpdate()->firstOrFail();
+            $this->assertInvoiceBelongsToSalesman($invoice, $salesman);
+            $due = $invoice->balanceDue();
+            if ($amount - $due > 0.009) {
                 throw new InvalidArgumentException(
-                    'Allocated '.number_format($allocatedTotal, 2).' is more than available '
-                    .number_format($available, 2).' (opening advance + cash received).'
+                    'Allocation for '.($invoice->invoice_no ?: 'invoice #'.$invoice->id)
+                    .' cannot exceed due '.number_format($due, 2).'.'
                 );
             }
 
-            $leftover = round($available - $allocatedTotal, 2);
-            $appliedToOpening = round(min($leftover, $openingReceivable), 2);
-            $closing = round($leftover - $appliedToOpening, 2);
-            $date = $data['settlement_date'] ?? now()->toDateString();
+            $invoice->amount_paid = round((float) $invoice->amount_paid + $amount, 2);
+            $invoice->status = $invoice->balanceDue() <= 0.009 ? 'paid' : 'issued';
+            $invoice->save();
 
-            $settlement = SalesmanSettlement::create([
-                'organization_id' => $salesman->organization_id,
-                'salesman_id' => $salesman->id,
-                'settlement_no' => SalesmanSettlement::nextNumber(),
-                'settlement_date' => $date,
-                'cash_received' => $cashReceived,
-                'allocated_amount' => $allocatedTotal,
-                'opening_advance' => $opening,
-                'closing_advance' => $closing,
-                'opening_receivable' => $openingReceivable,
-                'applied_to_opening' => $appliedToOpening,
+            $allocationVoucher = $this->vouchers->create([
+                'type' => 'receive',
                 'payment_method' => $method,
-                'bank_account_id' => $bankAccountId,
-                'created_by' => $userId,
-                'notes' => $data['notes'] ?? null,
+                'bank_account_id' => $method === 'bank' ? $bankAccountId : null,
+                'account_type' => 'customer',
+                'account_id' => $invoice->customer_id,
+                'amount' => $amount,
+                'voucher_date' => $date,
+                'reference' => $invoice->invoice_no,
+                'notes' => 'Receive payment via salesman settlement '.$settlement->settlement_no
+                    .' ('.$salesman->name.')',
+                'affects_cash' => false,
+                'salesman_settlement_id' => $settlement->id,
+                'sales_invoice_id' => $invoice->id,
             ]);
 
-            $cashVoucher = null;
-            if ($cashReceived > 0.009) {
-                $cashVoucher = $this->vouchers->create([
-                    'type' => 'receive',
-                    'payment_method' => $method,
-                    'bank_account_id' => $bankAccountId,
-                    'account_type' => 'salesman',
-                    'account_id' => $salesman->id,
-                    'amount' => $cashReceived,
-                    'voucher_date' => $date,
-                    'reference' => $settlement->settlement_no,
-                    'notes' => 'Cash received from salesman '.$salesman->name
-                        .' · allocated '.number_format($allocatedTotal, 2)
-                        .' · applied to opening balance '.number_format($appliedToOpening, 2)
-                        .' · advance '.number_format($closing, 2),
-                    'affects_cash' => true,
-                    'salesman_settlement_id' => $settlement->id,
-                ]);
-                $settlement->update(['cash_voucher_id' => $cashVoucher->id]);
-            }
+            SalesmanSettlementAllocation::create([
+                'organization_id' => $salesman->organization_id,
+                'salesman_settlement_id' => $settlement->id,
+                'sales_invoice_id' => $invoice->id,
+                'customer_id' => $invoice->customer_id,
+                'cash_voucher_id' => $allocationVoucher->id,
+                'amount' => $amount,
+            ]);
+        }
 
-            foreach ($normalized as $invoiceId => $amount) {
-                $invoice = SalesInvoice::query()->whereKey($invoiceId)->lockForUpdate()->firstOrFail();
-                $this->assertInvoiceBelongsToSalesman($invoice, $salesman);
-                $due = $invoice->balanceDue();
-                if ($amount - $due > 0.009) {
-                    throw new InvalidArgumentException(
-                        'Allocation for '.($invoice->invoice_no ?: 'invoice #'.$invoice->id)
-                        .' cannot exceed due '.number_format($due, 2).'.'
-                    );
-                }
+        $salesman->opening_balance = round($openingReceivable - $appliedToOpening, 2);
+        $salesman->advance_balance = $closing;
+        $salesman->save();
 
-                $invoice->amount_paid = round((float) $invoice->amount_paid + $amount, 2);
-                $invoice->status = $invoice->balanceDue() <= 0.009 ? 'paid' : 'issued';
-                $invoice->save();
-
-                $allocationVoucher = $this->vouchers->create([
-                    'type' => 'receive',
-                    'payment_method' => $method,
-                    'bank_account_id' => $method === 'bank' ? $bankAccountId : null,
-                    'account_type' => 'customer',
-                    'account_id' => $invoice->customer_id,
-                    'amount' => $amount,
-                    'voucher_date' => $date,
-                    'reference' => $invoice->invoice_no,
-                    'notes' => 'Receive payment via salesman settlement '.$settlement->settlement_no
-                        .' ('.$salesman->name.')',
-                    'affects_cash' => false,
-                    'salesman_settlement_id' => $settlement->id,
-                    'sales_invoice_id' => $invoice->id,
-                ]);
-
-                SalesmanSettlementAllocation::create([
-                    'organization_id' => $salesman->organization_id,
-                    'salesman_settlement_id' => $settlement->id,
-                    'sales_invoice_id' => $invoice->id,
-                    'customer_id' => $invoice->customer_id,
-                    'cash_voucher_id' => $allocationVoucher->id,
-                    'amount' => $amount,
-                ]);
-            }
-
-            $salesman->opening_balance = round($openingReceivable - $appliedToOpening, 2);
-            $salesman->advance_balance = $closing;
-            $salesman->save();
-
-            return $settlement->fresh(['salesman', 'allocations.invoice', 'allocations.customer', 'allocations.cashVoucher', 'cashVoucher']);
-        });
+        return $settlement->fresh(['salesman', 'allocations.invoice', 'allocations.customer', 'allocations.cashVoucher', 'cashVoucher']);
     }
 
     public function delete(SalesmanSettlement $settlement): void
     {
         DB::transaction(function () use ($settlement) {
             $settlement = SalesmanSettlement::query()->whereKey($settlement->id)->lockForUpdate()->firstOrFail();
-            $salesman = Salesman::query()->whereKey($settlement->salesman_id)->lockForUpdate()->firstOrFail();
-
-            $later = SalesmanSettlement::query()
-                ->where('salesman_id', $salesman->id)
-                ->where('id', '>', $settlement->id)
-                ->exists();
-            if ($later) {
+            if (! $this->isLatest($settlement)) {
                 throw new RuntimeException('Delete newer settlements for this salesman first.');
             }
 
-            foreach ($settlement->allocations()->get() as $allocation) {
-                $invoice = $allocation->invoice;
-                if ($invoice) {
-                    $invoice = SalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->first();
-                    if ($invoice) {
-                        $invoice->amount_paid = round(max(0, (float) $invoice->amount_paid - (float) $allocation->amount), 2);
-                        $invoice->status = $invoice->isDraft()
-                            ? 'draft'
-                            : ($invoice->balanceDue() <= 0.009 ? 'paid' : 'issued');
-                        $invoice->save();
-                    }
-                }
-
-                if ($allocation->cash_voucher_id) {
-                    $voucher = CashVoucher::query()->whereKey($allocation->cash_voucher_id)->first();
-                    if ($voucher) {
-                        $this->vouchers->delete($voucher);
-                    }
-                }
-
-                $allocation->delete();
-            }
-
-            if ($settlement->cash_voucher_id) {
-                $cashVoucher = CashVoucher::query()->whereKey($settlement->cash_voucher_id)->first();
-                $settlement->update(['cash_voucher_id' => null]);
-                if ($cashVoucher) {
-                    $this->vouchers->delete($cashVoucher);
-                }
-            }
-
-            $salesman->opening_balance = round((float) $salesman->opening_balance + (float) $settlement->applied_to_opening, 2);
-            $salesman->advance_balance = round((float) $settlement->opening_advance, 2);
-            $salesman->save();
-
-            $settlement->delete();
+            $this->reverseEffects($settlement, deleteRecord: true);
         });
+    }
+
+    private function reverseEffects(SalesmanSettlement $settlement, bool $deleteRecord): void
+    {
+        $salesman = Salesman::query()->whereKey($settlement->salesman_id)->lockForUpdate()->firstOrFail();
+
+        foreach ($settlement->allocations()->get() as $allocation) {
+            $invoice = $allocation->invoice;
+            if ($invoice) {
+                $invoice = SalesInvoice::query()->whereKey($invoice->id)->lockForUpdate()->first();
+                if ($invoice) {
+                    $invoice->amount_paid = round(max(0, (float) $invoice->amount_paid - (float) $allocation->amount), 2);
+                    $invoice->status = $invoice->isDraft()
+                        ? 'draft'
+                        : ($invoice->balanceDue() <= 0.009 ? 'paid' : 'issued');
+                    $invoice->save();
+                }
+            }
+
+            if ($allocation->cash_voucher_id) {
+                $voucher = CashVoucher::query()->whereKey($allocation->cash_voucher_id)->first();
+                if ($voucher) {
+                    $this->vouchers->delete($voucher);
+                }
+            }
+
+            $allocation->delete();
+        }
+
+        if ($settlement->cash_voucher_id) {
+            $cashVoucher = CashVoucher::query()->whereKey($settlement->cash_voucher_id)->first();
+            $settlement->update(['cash_voucher_id' => null]);
+            if ($cashVoucher) {
+                $this->vouchers->delete($cashVoucher);
+            }
+        }
+
+        $salesman->opening_balance = round((float) $salesman->opening_balance + (float) $settlement->applied_to_opening, 2);
+        $salesman->advance_balance = round((float) $settlement->opening_advance, 2);
+        $salesman->save();
+
+        if ($deleteRecord) {
+            $settlement->delete();
+        }
     }
 
     private function assertInvoiceBelongsToSalesman(SalesInvoice $invoice, Salesman $salesman): void

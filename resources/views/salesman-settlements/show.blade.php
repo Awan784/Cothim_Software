@@ -13,11 +13,16 @@
             </div>
             <div class="d-flex gap-2">
                 <a href="{{ route('salesman-settlements.index') }}" class="btn btn-sm btn-secondary">Back</a>
-                <form method="post" action="{{ route('salesman-settlements.destroy', $settlement) }}" onsubmit="return confirm('Delete this settlement? Invoice payments and the cash voucher will be reversed.');">
-                    @csrf
-                    @method('delete')
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                </form>
+                @if($canEdit ?? false)
+                    <a href="{{ route('salesman-settlements.edit', $settlement) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form method="post" action="{{ route('salesman-settlements.destroy', $settlement) }}" onsubmit="return confirm('Delete this settlement? Invoice payments and the cash voucher will be reversed.');">
+                        @csrf
+                        @method('delete')
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                @else
+                    <span class="small text-muted align-self-center">Newer settlements exist — edit/delete those first.</span>
+                @endif
             </div>
         </div>
 
