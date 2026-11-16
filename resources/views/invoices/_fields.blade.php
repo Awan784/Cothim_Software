@@ -34,8 +34,11 @@
             <x-ams-date-input name="invoice_date" :value="$isEdit ? $invoice->invoice_date : now()" required />
         </div>
         <div class="col-md-4 mb-3">
-            <label class="form-label">Salesman <span class="text-muted fw-normal">(optional)</span></label>
-            <select name="salesman_id" class="form-select ams-search-select" data-ams-search="1" data-ams-clearable="1" data-search-placeholder="Search salesman">
+            <label class="form-label d-flex justify-content-between align-items-center">
+                <span>Salesman <span class="text-muted fw-normal">(optional)</span></span>
+                <button type="button" class="btn btn-link btn-sm p-0" id="clear_salesman_btn">No salesman</button>
+            </label>
+            <select name="salesman_id" id="invoice_salesman_id" class="form-select ams-search-select" data-ams-search="1" data-ams-clearable="1" data-search-placeholder="Search salesman">
                 <option value="">No salesman</option>
                 @foreach($salesmen ?? [] as $salesman)
                     <option value="{{ $salesman->id }}" {{ (string) old('salesman_id', $isEdit ? $invoice->salesman_id : '') === (string) $salesman->id ? 'selected' : '' }}>
@@ -85,3 +88,22 @@
         'showBatch' => true,
         'showPrintNote' => true,
     ])
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var btn = document.getElementById('clear_salesman_btn');
+            var select = document.getElementById('invoice_salesman_id');
+            if (!btn || !select) return;
+
+            btn.addEventListener('click', function () {
+                select.value = '';
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                var wrap = select.closest('.ams-combo');
+                if (wrap && typeof wrap._amsSyncCombo === 'function') {
+                    wrap._amsSyncCombo();
+                }
+            });
+        });
+    </script>
+@endpush

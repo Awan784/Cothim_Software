@@ -126,7 +126,7 @@
     <script src="{{ asset('assets/js/volt.js') }}"></script>
     <script src="{{ asset('vendor/choices.js/public/assets/scripts/choices.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="{{ asset('js/ams-ui.js') }}?v=8"></script>
+    <script src="{{ asset('js/ams-ui.js') }}?v={{ @filemtime(public_path('js/ams-ui.js')) ?: 9 }}"></script>
     @if(! $isSalesmanShell)
         <audio id="amsOrderRingtone" src="{{ asset('sounds/order-ring.wav') }}" preload="auto" loop playsinline autoplay muted></audio>
         <script>
