@@ -194,7 +194,7 @@ class CashVoucherController extends Controller
             ->where(function ($query) use ($cashVoucher) {
                 $query->where('is_cash', false);
                 if ($cashVoucher->bank_account_id) {
-                    $query->orWhereKey($cashVoucher->bank_account_id);
+                    $query->orWhere('id', $cashVoucher->bank_account_id);
                 }
             })
             ->orderBy('name')
